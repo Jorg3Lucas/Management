@@ -23,7 +23,7 @@ disponíveis para ativação.
 - **Times por servidor**: agrupe clãs em times (blocos de aliança) e acompanhe clãs, membros, poder total e maior
   poder de cada time; o jogador entra no time do clã.
 - **Servidor casa e transferências**: o mesmo nome em servidores diferentes é o mesmo jogador; a troca de servidor é
-  sugerida na sincronização, confirmada (ou rejeitada) pelo admin, e o tempo de guerra é somado entre os personagens.
+  confirmada na sincronização (sem aprovação) e o tempo de guerra é somado entre os personagens.
 - **Administração por servidor e auditoria**: o usuário pode ser dono de um servidor liberado (administra a
   diplomacia local) e toda alteração administrativa é registrada em `/audit`.
 - **Poder máximo**: o pico é mantido em `characters.peak_power` (sync ou edição manual) e cada variação é registrada
@@ -135,10 +135,11 @@ um cron externo chamando a CLI ou a rota:
 - Cada personagem continua sendo um registro por servidor; a identidade do jogador (`players`) atravessa servidores
   pelo nome normalizado. Assim o jogador pode ter um personagem em cada servidor sem perder o histórico.
 - **Servidor casa** (`players.home_server_id`) é definido no primeiro registro e pode ser alterado na ficha do jogador
-  (dono/editor do servidor) ou automaticamente ao confirmar uma transferência.
+  (dono/editor do servidor) ou automaticamente quando uma transferência é detectada.
 - **Detecção**: quando um personagem novo aparece em um servidor e o mesmo jogador foi visto em outro nos últimos 30
-  dias, uma transferência pendente é criada. Nada é aplicado sem confirmação — nomes podem colidir entre servidores.
-- `/transfers` lista as pendências e o histórico de decisões. Confirmar move o servidor casa; rejeitar mantém.
+  dias, a transferência é registrada já confirmada e o servidor casa passa a ser o novo servidor; não há etapa de
+  aprovação.
+- `/transfers` mostra o histórico das transferências detectadas e aplicadas automaticamente.
 - A ficha mostra o **tempo de guerra consolidado** (todos os personagens do jogador), o tempo de cada personagem e as
   transferências registradas.
 - Personagens antigos (anteriores à tabela `players`) são ligados na primeira carga da ficha ou de `/transfers`.

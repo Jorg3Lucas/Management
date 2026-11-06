@@ -239,6 +239,24 @@ function migrate(db: DatabaseSync) {
   db.exec("CREATE INDEX IF NOT EXISTS idx_characters_clan ON characters (server_id, clan_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_characters_player ON characters (player_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_clan_relations_server ON clan_relations (server_id, stance)");
+
+  // Transferência não passa mais por aprovação: pendências antigas são aplicadas agora.
+  confirmLegacyPendingMoves(db);
+}
+
+function confirmLegacyPendingMoves(db: DatabaseSync): void {
+  const pending = db
+    .prepare("SELECT id, player_id, to_server_id, detected_at FROM server_moves WHERE status = 'pending' ORDER BY detected_at ASC")
+    .all() as unknown as { id: number; player_id: number; to_server_id: number; detected_at: string }[];
+  if (pending.length === 0) return;
+
+  const now = new Date().toISOString();
+  const confirm = db.prepare("UPDATE server_moves SET status = 'confirmed', decided_at = ? WHERE id = ?");
+  const moveHome = db.prepare("UPDATE players SET home_server_id = ?, updated_at = ? WHERE id = ?");
+  for (const move of pending) {
+    confirm.run(move.detected_at, move.id);
+    moveHome.run(move.to_server_id, now, move.player_id);
+  }
 }
 
 function ensureColumn(db: DatabaseSync, table: string, column: string, definition: string): void {

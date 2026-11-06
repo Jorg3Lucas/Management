@@ -96,8 +96,9 @@ export function linkCharacterPlayer(characterId: number, name: string, serverId:
 }
 
 /**
- * Registra uma sugestão de transferência quando o jogador aparece em um servidor novo
- * e o mesmo nome foi visto em outro servidor recentemente. Não aplica nada: só cria a pendência.
+ * Registra e aplica a transferência quando o jogador aparece em um servidor novo
+ * e o mesmo nome foi visto em outro servidor recentemente. Não existe aprovação:
+ * a mudança é confirmada na hora e o servidor casa passa a ser o novo servidor.
  */
 export function detectServerMove(playerId: number, toServerId: number): number | null {
   const previous = queryOne<{ server_id: number; last_seen_at: string | null }>(
@@ -113,21 +114,20 @@ export function detectServerMove(playerId: number, toServerId: number): number |
   const age = Date.now() - Date.parse(previous.last_seen_at);
   if (!Number.isFinite(age) || age > MOVE_WINDOW_MS) return null;
 
-  const pending = queryOne<{ id: number }>(
-    "SELECT id FROM server_moves WHERE player_id = ? AND to_server_id = ? AND status = 'pending'",
-    playerId,
-    toServerId,
-  );
-  if (pending) return null;
-
-  execute(
-    `INSERT INTO server_moves (player_id, from_server_id, to_server_id, detected_at, status, source)
-     VALUES (?, ?, ?, ?, 'pending', 'sync')`,
-    playerId,
-    previous.server_id,
-    toServerId,
-    new Date().toISOString(),
-  );
+  const now = new Date().toISOString();
+  transaction(() => {
+    execute(
+      `INSERT INTO server_moves
+        (player_id, from_server_id, to_server_id, detected_at, status, source, decided_at)
+       VALUES (?, ?, ?, ?, 'confirmed', 'sync', ?)`,
+      playerId,
+      previous.server_id,
+      toServerId,
+      now,
+      now,
+    );
+    execute("UPDATE players SET home_server_id = ?, updated_at = ? WHERE id = ?", toServerId, now, playerId);
+  });
   return previous.server_id;
 }
 
@@ -178,16 +178,10 @@ const MOVE_SELECT = `
   LEFT JOIN characters c ON c.player_id = m.player_id AND c.server_id = m.to_server_id
 `;
 
-export function pendingMoves(limit = 40): ServerMoveView[] {
+/** Transferências detectadas na sincronização, já aplicadas automaticamente. */
+export function recentMoves(limit = 60): ServerMoveView[] {
   return queryAll<ServerMoveView>(
-    `${MOVE_SELECT} WHERE m.status = 'pending' ORDER BY m.detected_at DESC LIMIT ?`,
-    limit,
-  );
-}
-
-export function decidedMoves(limit = 40): ServerMoveView[] {
-  return queryAll<ServerMoveView>(
-    `${MOVE_SELECT} WHERE m.status <> 'pending' ORDER BY m.decided_at DESC, m.detected_at DESC LIMIT ?`,
+    `${MOVE_SELECT} WHERE m.status <> 'pending' ORDER BY m.detected_at DESC LIMIT ?`,
     limit,
   );
 }
@@ -198,41 +192,6 @@ export function movesForPlayer(playerId: number, limit = 10): ServerMoveView[] {
     playerId,
     limit,
   );
-}
-
-export function getMove(moveId: number): ServerMoveView | undefined {
-  return queryOne<ServerMoveView>(`${MOVE_SELECT} WHERE m.id = ?`, moveId);
-}
-
-/** Confirma a transferência: marca a decisão e move o servidor casa do jogador. */
-export function confirmMove(moveId: number, userId: number): ServerMoveView | null {
-  const move = getMove(moveId);
-  if (!move || move.status !== "pending") return null;
-
-  return transaction(() => {
-    const now = new Date().toISOString();
-    execute(
-      "UPDATE server_moves SET status = 'confirmed', confirmed_by = ?, decided_at = ? WHERE id = ? AND status = 'pending'",
-      userId,
-      now,
-      moveId,
-    );
-    execute("UPDATE players SET home_server_id = ?, updated_at = ? WHERE id = ?", move.to_server_id, now, move.player_id);
-    return getMove(moveId) ?? null;
-  });
-}
-
-export function rejectMove(moveId: number, userId: number): ServerMoveView | null {
-  const move = getMove(moveId);
-  if (!move || move.status !== "pending") return null;
-
-  execute(
-    "UPDATE server_moves SET status = 'rejected', confirmed_by = ?, decided_at = ? WHERE id = ? AND status = 'pending'",
-    userId,
-    new Date().toISOString(),
-    moveId,
-  );
-  return getMove(moveId) ?? null;
 }
 
 /** Define o servidor casa manualmente. */

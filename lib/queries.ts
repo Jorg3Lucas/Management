@@ -196,6 +196,28 @@ export function powerHistory(characterId: number, limit = 30): PowerHistoryRow[]
   );
 }
 
+export type PowerHistoryWithCharacter = PowerHistoryRow & {
+  character_name: string;
+  server_code: string;
+  server_label: string;
+};
+
+/** Histórico de poder de vários personagens do mesmo jogador, do mais recente para o mais antigo. */
+export function powerHistoryForCharacters(characterIds: number[], limit = 40): PowerHistoryWithCharacter[] {
+  if (characterIds.length === 0) return [];
+  return queryAll<PowerHistoryWithCharacter>(
+    `SELECT p.*, c.name AS character_name, s.code AS server_code, s.label AS server_label
+     FROM power_history p
+     JOIN characters c ON c.id = p.character_id
+     JOIN servers s ON s.id = c.server_id
+     WHERE p.character_id IN (${characterIds.map(() => "?").join(",")})
+     ORDER BY p.captured_at DESC, p.id DESC
+     LIMIT ?`,
+    ...characterIds,
+    limit,
+  );
+}
+
 export type SyncRunWithServer = SyncRunRow & { server_code: string | null; server_label: string | null };
 
 export function recentSyncRuns(limit = 20, serverIds?: number[]): SyncRunWithServer[] {

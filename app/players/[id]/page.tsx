@@ -2,10 +2,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { accessibleServers, canAccessServer, canEditServer, requireUser } from "@/lib/auth";
-import { clanHistoryForCharacter, stanceForClan } from "@/lib/clans";
+import { clanTimelineForCharacters, stanceForClan } from "@/lib/clans";
 import { formatDuration, formatNumber, formatPower, warTypeLabel } from "@/lib/format";
 import { characterPeers, movesForPlayer, playerForCharacter } from "@/lib/players";
-import { getCharacterWithServer, powerHistory, warSessionsForCharacter, warSessionsForCharacters } from "@/lib/queries";
+import {
+  getCharacterWithServer,
+  powerHistoryForCharacters,
+  warSessionsForCharacter,
+  warSessionsForCharacters,
+} from "@/lib/queries";
 import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
 import { sessionSeconds, summarizeByCharacter, summarizeByWarServer, totalWarSeconds } from "@/lib/wars";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -47,7 +52,6 @@ export default async function PlayerDetailPage({
 
   const servers = accessibleServers(user);
   const sessions = warSessionsForCharacter(character.id);
-  const history = powerHistory(character.id, 25);
   const now = Date.now();
   const totalSeconds = totalWarSeconds(sessions, now);
   const activeSession = sessions.find((session) => !session.ended_at) ?? null;
@@ -57,7 +61,6 @@ export default async function PlayerDetailPage({
   const path = `/players/${character.id}`;
   const editable = canEditServer(user, character.server_id);
   const clanStance = character.clan_id ? stanceForClan(character.server_id, character.clan_id) : null;
-  const clanChanges = clanHistoryForCharacter(character.id, 10);
   const player = playerForCharacter(character.id);
   const peers = player
     ? characterPeers(player.id).filter((peer) => peer.id === character.id || canAccessServer(user, peer.server_id))
@@ -65,7 +68,10 @@ export default async function PlayerDetailPage({
   const playerSessions = peers.length > 0 ? warSessionsForCharacters(peers.map((peer) => peer.id)) : [];
   const playerSeconds = totalWarSeconds(playerSessions, now);
   const secondsByCharacter = summarizeByCharacter(playerSessions, now);
-  const playerMoves = player ? movesForPlayer(player.id, 5) : [];
+  const playerMoves = player ? movesForPlayer(player.id, 20) : [];
+  const peerIds = peers.map((peer) => peer.id);
+  const clanTimeline = clanTimelineForCharacters(peerIds, 30);
+  const powerTimeline = powerHistoryForCharacters(peerIds, 40);
   const homeServer = player?.home_server_id
     ? servers.find((server) => server.id === player.home_server_id) ?? null
     : null;
@@ -377,8 +383,17 @@ export default async function PlayerDetailPage({
           <div className="card-body stack">
             <div className="spread">
               <div>
-                <div className="small muted">Servidor casa</div>
-                <div style={{ fontWeight: 650 }}>{homeServer?.label ?? "não definido"}</div>
+                <div className="small muted">Servidor casa atual</div>
+                <div className="row" style={{ marginTop: 4 }}>
+                  <span className="badge gold" style={{ fontSize: 13, padding: "4px 10px" }}>
+                    {homeServer?.label ?? (player.home_server_id ? "servidor sem acesso" : "não definido")}
+                  </span>
+                  {homeServer ? (
+                    <span className="small muted">
+                      {homeServer.code} · {homeServer.group_name}
+                    </span>
+                  ) : null}
+                </div>
               </div>
               {editable ? (
                 <form action={setHomeServerAction} className="inline-form">
@@ -432,17 +447,50 @@ export default async function PlayerDetailPage({
               </div>
             </div>
 
-            {playerMoves.length > 0 ? (
-              <div>
-                <div className="small muted" style={{ marginBottom: 6 }}>
-                  Transferências
+          </div>
+        </section>
+      ) : null}
+
+      {player ? (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <div className="card-head">
+            <div>
+              <div className="card-title">Histórico do jogador</div>
+              <div className="card-sub">
+                Servidores, clãs e poder somando todos os personagens deste jogador
+              </div>
+            </div>
+            <div className="row">
+              <span className="badge">{playerMoves.length} transferência(s)</span>
+              <span className="badge">{clanTimeline.length} clã(s)</span>
+              <span className="badge">{powerTimeline.length} captura(s)</span>
+            </div>
+          </div>
+          <div className="card-body stack">
+            <div>
+              <div className="spread" style={{ marginBottom: 6 }}>
+                <span className="small muted">Mudanças de servidor</span>
+                <span className="small muted">
+                  casa atual: {homeServer?.label ?? (player.home_server_id ? "servidor sem acesso" : "não definida")}
+                </span>
+              </div>
+              {playerMoves.length === 0 ? (
+                <div className="empty">
+                  <strong>Nenhuma mudança de servidor detectada</strong>
+                  Quando este jogador aparecer em outro servidor, a troca entra aqui automaticamente.
                 </div>
+              ) : (
                 <div className="list">
                   {playerMoves.map((move) => (
                     <div key={move.id} className="list-row">
                       <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {move.from_label ?? "origem desconhecida"} → {move.to_label}
+                        <div className="row" style={{ gap: 6 }}>
+                          <span className="muted">{move.from_label ?? "origem desconhecida"}</span>
+                          <span className="muted">→</span>
+                          <span style={{ fontWeight: 600 }}>{move.to_label}</span>
+                          {move.to_server_id === player.home_server_id ? (
+                            <span className="badge gold">casa atual</span>
+                          ) : null}
                         </div>
                         <div className="small muted">{formatDateTime(move.detected_at)}</div>
                       </div>
@@ -458,114 +506,113 @@ export default async function PlayerDetailPage({
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div>
+              <div className="spread" style={{ marginBottom: 6 }}>
+                <span className="small muted">Clãs em que esteve</span>
+                <span className="small muted">atual: {character.clan ?? "sem clã"}</span>
               </div>
-            ) : null}
+              {clanTimeline.length === 0 ? (
+                <div className="empty">
+                  <strong>Sem clã registrado</strong>
+                  O histórico começa quando o jogador entra em um clã.
+                </div>
+              ) : (
+                <div className="list">
+                  {clanTimeline.map((entry) => (
+                    <div key={`${entry.character_id}-${entry.changed_at}-${entry.clan_name}`} className="list-row">
+                      <div>
+                        <div className="row" style={{ gap: 6 }}>
+                          <span style={{ fontWeight: 600 }}>{entry.clan_name}</span>
+                          {entry.current ? <span className="badge gold">atual</span> : null}
+                          {entry.previous_clan_name ? (
+                            <span className="small muted">veio de {entry.previous_clan_name}</span>
+                          ) : null}
+                        </div>
+                        <div className="small muted">
+                          {entry.character_name} · {entry.server_label} · {formatDateTime(entry.changed_at)}
+                          {entry.source === "manual" ? " · manual" : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="spread" style={{ marginBottom: 6 }}>
+                <span className="small muted">Histórico de poder</span>
+                <span className="small muted">{powerTimeline.length} captura(s)</span>
+              </div>
+              {powerTimeline.length === 0 ? (
+                <div className="empty">Sem histórico de poder.</div>
+              ) : (
+                <div className="table-wrap">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Personagem</th>
+                        <th className="num">Poder</th>
+                        <th className="num">Rank</th>
+                        <th>Origem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {powerTimeline.map((entry) => (
+                        <tr key={entry.id}>
+                          <td className="small nowrap">{formatDateTime(entry.captured_at)}</td>
+                          <td className="small">
+                            {entry.character_name} <span className="muted">{entry.server_label}</span>
+                          </td>
+                          <td className="num mono">{formatNumber(entry.power_score)}</td>
+                          <td className="num mono muted">{entry.rank_position ?? "—"}</td>
+                          <td>
+                            <span className={`badge ${entry.source === "manual" ? "gold" : ""}`}>
+                              {entry.source === "manual" ? "manual" : "fórum"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </section>
       ) : null}
 
-      <section className="card" style={{ marginBottom: 16 }}>
+      <section className="card">
         <div className="card-head">
           <div>
-            <div className="card-title">Trocas de clã</div>
-            <div className="card-sub">Detectadas na sincronização e nas edições manuais</div>
+            <div className="card-title">Por servidor de guerra</div>
+            <div className="card-sub">Onde o tempo foi gasto</div>
           </div>
-          <span className="badge">{clanChanges.length}</span>
         </div>
         <div className="card-body tight">
-          {clanChanges.length === 0 ? (
-            <div className="empty">
-              <strong>Nenhuma troca registrada</strong>
-              O histórico começa a partir da próxima mudança de clã deste jogador.
-            </div>
+          {breakdown.size === 0 ? (
+            <div className="empty">Sem dados de guerra.</div>
           ) : (
             <div className="list">
-              {clanChanges.map((change) => (
-                <div key={change.id} className="list-row">
-                  <div>
-                    <div style={{ fontWeight: 600 }}>
-                      {change.previous_clan_name ?? "sem clã"} → {change.clan_name}
+              {[...breakdown.entries()]
+                .sort((a, b) => b[1].totalSeconds - a[1].totalSeconds)
+                .map(([serverId, data]) => (
+                  <div key={serverId} className="list-row">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{breakdownLabels.get(serverId) ?? `Servidor ${serverId}`}</div>
+                      <div className="small muted">{data.sessions} registro(s)</div>
                     </div>
-                    <div className="small muted">origem: {change.source}</div>
+                    <span className="mono">{formatDuration(data.totalSeconds)}</span>
                   </div>
-                  <span className="small muted nowrap">{formatDateTime(change.changed_at)}</span>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
       </section>
-
-      <div className="grid cols-2">
-        <section className="card">
-          <div className="card-head">
-            <div>
-              <div className="card-title">Por servidor de guerra</div>
-              <div className="card-sub">Onde o tempo foi gasto</div>
-            </div>
-          </div>
-          <div className="card-body tight">
-            {breakdown.size === 0 ? (
-              <div className="empty">Sem dados de guerra.</div>
-            ) : (
-              <div className="list">
-                {[...breakdown.entries()]
-                  .sort((a, b) => b[1].totalSeconds - a[1].totalSeconds)
-                  .map(([serverId, data]) => (
-                    <div key={serverId} className="list-row">
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{breakdownLabels.get(serverId) ?? `Servidor ${serverId}`}</div>
-                        <div className="small muted">{data.sessions} registro(s)</div>
-                      </div>
-                      <span className="mono">{formatDuration(data.totalSeconds)}</span>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="card">
-          <div className="card-head">
-            <div>
-              <div className="card-title">Histórico de poder</div>
-              <div className="card-sub">Últimas {history.length} capturas</div>
-            </div>
-          </div>
-          <div className="card-body tight">
-            {history.length === 0 ? (
-              <div className="empty">Sem histórico.</div>
-            ) : (
-              <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th className="num">Poder</th>
-                      <th className="num">Rank</th>
-                      <th>Origem</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="small nowrap">{formatDateTime(entry.captured_at)}</td>
-                        <td className="num mono">{formatNumber(entry.power_score)}</td>
-                        <td className="num mono muted">{entry.rank_position ?? "—"}</td>
-                        <td>
-                          <span className={`badge ${entry.source === "manual" ? "gold" : ""}`}>
-                            {entry.source === "manual" ? "manual" : "fórum"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
 
       <datalist id="mir4-classes">
         <option value="Warrior" />

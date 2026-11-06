@@ -144,6 +144,94 @@ export function clanHistoryForCharacter(characterId: number, limit = 10): ClanCh
   );
 }
 
+export type ClanTimelineRow = {
+  character_id: number;
+  character_name: string;
+  server_code: string;
+  server_label: string;
+  previous_clan_name: string | null;
+  clan_name: string;
+  source: string;
+  changed_at: string;
+  /** Clã em que o personagem está agora. */
+  current: boolean;
+};
+
+/** Origem das linhas sintéticas que só mostram o clã atual (sem troca registrada). */
+const CURRENT_CLAN_SOURCE = "atual";
+
+/**
+ * Linha do tempo de clãs do jogador, juntando todos os personagens dele.
+ * Inclui o clã atual mesmo sem troca registrada, para "clãs em que esteve" não ficar vazio
+ * em jogadores que nunca mudaram de clã depois do primeiro sync.
+ */
+export function clanTimelineForCharacters(characterIds: number[], limit = 30): ClanTimelineRow[] {
+  if (characterIds.length === 0) return [];
+  const placeholders = characterIds.map(() => "?").join(",");
+
+  const changes = queryAll<ClanTimelineRow & { clan_id: number | null }>(
+    `SELECT h.character_id, ch.name AS character_name,
+            s.code AS server_code, s.label AS server_label,
+            h.previous_clan_name, h.clan_name, h.clan_id, h.source, h.changed_at,
+            0 AS current
+     FROM character_clan_history h
+     JOIN characters ch ON ch.id = h.character_id
+     JOIN servers s ON s.id = ch.server_id
+     WHERE h.character_id IN (${placeholders})
+     ORDER BY h.changed_at DESC`,
+    ...characterIds,
+  );
+
+  const currentClans = queryAll<{
+    character_id: number;
+    character_name: string;
+    server_code: string;
+    server_label: string;
+    clan_name: string;
+    clan_id: number;
+    seen_at: string;
+  }>(
+    `SELECT ch.id AS character_id, ch.name AS character_name,
+            s.code AS server_code, s.label AS server_label,
+            c.name AS clan_name, c.id AS clan_id,
+            COALESCE(ch.last_seen_at, ch.updated_at) AS seen_at
+     FROM characters ch
+     JOIN clans c ON c.id = ch.clan_id
+     JOIN servers s ON s.id = ch.server_id
+     WHERE ch.id IN (${placeholders})`,
+    ...characterIds,
+  );
+
+  const rows = changes.map((row) => ({ ...row, current: false }));
+  const latestIndex = new Map<number, number>();
+  rows.forEach((row, index) => {
+    if (!latestIndex.has(row.character_id)) latestIndex.set(row.character_id, index);
+  });
+
+  for (const entry of currentClans) {
+    const index = latestIndex.get(entry.character_id);
+    if (index !== undefined && rows[index].clan_id === entry.clan_id) {
+      rows[index].current = true;
+      continue;
+    }
+    rows.push({
+      character_id: entry.character_id,
+      character_name: entry.character_name,
+      server_code: entry.server_code,
+      server_label: entry.server_label,
+      previous_clan_name: index !== undefined ? rows[index].clan_name : null,
+      clan_name: entry.clan_name,
+      clan_id: entry.clan_id,
+      source: CURRENT_CLAN_SOURCE,
+      changed_at: entry.seen_at,
+      current: true,
+    });
+  }
+
+  rows.sort((a, b) => (a.changed_at < b.changed_at ? 1 : a.changed_at > b.changed_at ? -1 : 0));
+  return rows.slice(0, limit).map(({ clan_id: _clanId, ...row }) => row);
+}
+
 export function recentClanChanges(serverId: number, limit = 20): ClanChangeRow[] {
   return queryAll<ClanChangeRow>(
     `SELECT h.id, h.character_id, ch.name AS character_name,

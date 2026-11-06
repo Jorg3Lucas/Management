@@ -1,6 +1,7 @@
 import { queryAll, queryOne } from "./db";
 import type {
   CharacterWithServer,
+  ClanStance,
   PowerHistoryRow,
   ServerRow,
   SyncRunRow,
@@ -37,6 +38,8 @@ export type CharacterListOptions = {
   serverId?: number;
   search?: string;
   sort?: "power" | "rank" | "name" | "recent";
+  /** Filtra pela postura diplomática do clã no servidor do personagem. */
+  stance?: ClanStance;
   page?: number;
   pageSize?: number;
 };
@@ -63,6 +66,14 @@ export function listCharacters(options: CharacterListOptions): {
     filters.push("(c.name LIKE ? OR c.clan LIKE ?)");
     const term = `%${options.search}%`;
     params.push(term, term);
+  }
+
+  if (options.stance) {
+    filters.push(
+      `EXISTS (SELECT 1 FROM clan_relations cr
+               WHERE cr.server_id = c.server_id AND cr.clan_id = c.clan_id AND cr.stance = ?)`,
+    );
+    params.push(options.stance);
   }
 
   const where = filters.join(" AND ");

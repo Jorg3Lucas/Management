@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canAccessServer, requireUser } from "@/lib/auth";
+import { canEditServer, requireUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { ensureClan, logClanChange } from "@/lib/clans";
 import { execute, queryOne } from "@/lib/db";
+import { playerForCharacter, setHomeServer } from "@/lib/players";
 import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import { zonedInputToUtc } from "@/lib/time";
 import { WAR_TYPES } from "@/lib/format";
@@ -45,8 +48,8 @@ export async function createCharacterAction(formData: FormData): Promise<void> {
   const serverId = Number(formData.get("serverId"));
   const server = getServerById(serverId);
 
-  if (!server || !canAccessServer(user, serverId)) {
-    redirect(back("/players", "error", "Servidor inválido ou sem acesso."));
+  if (!server || !canEditServer(user, serverId)) {
+    redirect(back("/players", "error", "Servidor inválido ou sem permissão de edição."));
   }
 
   const name = cleanText(formData.get("name"), 60);
@@ -59,17 +62,19 @@ export async function createCharacterAction(formData: FormData): Promise<void> {
   if (power === null) redirect(back("/players", "error", "Informe um poder válido."));
 
   const now = new Date().toISOString();
+  const clanRow = clan ? ensureClan(clan) : null;
   let characterId: number;
 
   try {
     const result = execute(
       `INSERT INTO characters
-        (server_id, name, clan, class_name, level, power_score, peak_power, peak_power_at,
+        (server_id, name, clan, clan_id, class_name, level, power_score, peak_power, peak_power_at,
          rank_position, notes, sync_locked, last_seen_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, 0, NULL, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, 0, NULL, ?, ?)`,
       serverId,
       name,
       clan,
+      clanRow?.id ?? null,
       className,
       level,
       power,
@@ -97,6 +102,15 @@ export async function createCharacterAction(formData: FormData): Promise<void> {
     );
   }
 
+  logAudit({
+    user,
+    action: "character.create",
+    entity: "character",
+    entityId: characterId,
+    serverId,
+    detail: `${name} (${power}) cadastrado manualmente`,
+  });
+
   revalidatePath("/players");
   revalidatePath("/");
   redirect(back(`/players/${characterId}`, "ok", "Personagem cadastrado manualmente."));
@@ -108,8 +122,8 @@ export async function updateCharacterAction(formData: FormData): Promise<void> {
   const character = getCharacterWithServer(characterId);
 
   if (!character) redirect(back("/players", "error", "Personagem não encontrado."));
-  if (!canAccessServer(user, character.server_id)) {
-    redirect(back("/players", "error", "Sem acesso ao servidor deste personagem."));
+  if (!canEditServer(user, character.server_id)) {
+    redirect(back("/players", "error", "Sem permissão de edição neste servidor."));
   }
 
   const detail = `/players/${characterId}`;
@@ -127,15 +141,17 @@ export async function updateCharacterAction(formData: FormData): Promise<void> {
   const now = new Date().toISOString();
   const peak = Math.max(character.peak_power, power);
   const peakAt = power > character.peak_power ? now : character.peak_power_at;
+  const clanRow = clan ? ensureClan(clan) : null;
 
   try {
     execute(
       `UPDATE characters
-       SET name = ?, clan = ?, class_name = ?, level = ?, power_score = ?, peak_power = ?,
+       SET name = ?, clan = ?, clan_id = ?, class_name = ?, level = ?, power_score = ?, peak_power = ?,
            peak_power_at = ?, notes = ?, sync_locked = ?, updated_at = ?
        WHERE id = ?`,
       name,
       clan,
+      clanRow?.id ?? null,
       className,
       level,
       power,
@@ -153,6 +169,18 @@ export async function updateCharacterAction(formData: FormData): Promise<void> {
     );
   }
 
+  if (clan !== character.clan) {
+    logClanChange({
+      characterId,
+      previousName: character.clan,
+      previousId: character.clan_id,
+      nextName: clan,
+      nextId: clanRow?.id ?? null,
+      source: "manual",
+      changedAt: now,
+    });
+  }
+
   if (power !== character.power_score) {
     execute(
       `INSERT INTO power_history (character_id, power_score, rank_position, source, captured_at)
@@ -163,6 +191,17 @@ export async function updateCharacterAction(formData: FormData): Promise<void> {
       now,
     );
   }
+
+  logAudit({
+    user,
+    action: "character.update",
+    entity: "character",
+    entityId: characterId,
+    serverId: character.server_id,
+    detail: `${character.name}: poder ${character.power_score} → ${power}${
+      clan !== character.clan ? `, clã ${character.clan ?? "sem clã"} → ${clan ?? "sem clã"}` : ""
+    }`,
+  });
 
   revalidatePath(detail);
   revalidatePath("/players");
@@ -176,13 +215,13 @@ export async function addWarSessionAction(formData: FormData): Promise<void> {
   const character = getCharacterWithServer(characterId);
 
   if (!character) redirect(back("/wars", "error", "Personagem não encontrado."));
-  if (!canAccessServer(user, character.server_id)) {
-    redirect(back("/wars", "error", "Sem acesso ao servidor deste personagem."));
+  if (!canEditServer(user, character.server_id)) {
+    redirect(back("/wars", "error", "Sem permissão de edição neste servidor."));
   }
 
   const detail = `/players/${characterId}`;
   const warServerId = Number(formData.get("warServerId")) || character.server_id;
-  if (!getServerById(warServerId) || !canAccessServer(user, warServerId)) {
+  if (!getServerById(warServerId) || !canEditServer(user, warServerId)) {
     redirect(back(detail, "error", "Servidor da guerra inválido ou sem acesso."));
   }
 
@@ -242,8 +281,8 @@ export async function endWarSessionAction(formData: FormData): Promise<void> {
   );
 
   if (!session) redirect(back(redirectTo, "error", "Guerra não encontrada."));
-  if (!canAccessServer(user, session.home_server_id)) {
-    redirect(back(redirectTo, "error", "Sem acesso a este registro."));
+  if (!canEditServer(user, session.home_server_id)) {
+    redirect(back(redirectTo, "error", "Sem permissão para alterar este registro."));
   }
   if (session.ended_at) redirect(back(redirectTo, "error", "Essa guerra já está encerrada."));
 
@@ -273,8 +312,8 @@ export async function deleteWarSessionAction(formData: FormData): Promise<void> 
   );
 
   if (!session) redirect(back(redirectTo, "error", "Guerra não encontrada."));
-  if (!canAccessServer(user, session.home_server_id)) {
-    redirect(back(redirectTo, "error", "Sem acesso a este registro."));
+  if (!canEditServer(user, session.home_server_id)) {
+    redirect(back(redirectTo, "error", "Sem permissão para alterar este registro."));
   }
 
   execute("DELETE FROM war_sessions WHERE id = ?", sessionId);
@@ -283,4 +322,38 @@ export async function deleteWarSessionAction(formData: FormData): Promise<void> 
   revalidatePath("/wars");
   revalidatePath("/");
   redirect(back(redirectTo, "ok", "Registro de guerra removido."));
+}
+
+/** Define o servidor casa do jogador (identidade compartilhada pelos personagens). */
+export async function setHomeServerAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const characterId = Number(formData.get("characterId"));
+  const serverId = Number(formData.get("serverId"));
+  const character = getCharacterWithServer(characterId);
+  const detail = `/players/${characterId}`;
+
+  if (!character) redirect(back("/players", "error", "Personagem não encontrado."));
+  if (!canEditServer(user, character.server_id)) {
+    redirect(back(detail, "error", "Sem permissão de edição neste servidor."));
+  }
+
+  const player = playerForCharacter(characterId);
+  if (!player) redirect(back(detail, "error", "Este personagem ainda não está ligado a um jogador."));
+
+  const server = getServerById(serverId);
+  if (!server) redirect(back(detail, "error", "Servidor inválido."));
+
+  setHomeServer(player.id, server.id);
+
+  logAudit({
+    user,
+    action: "player.home",
+    entity: "player",
+    entityId: player.id,
+    serverId: server.id,
+    detail: `${player.display_name}: servidor casa em ${server.label}`,
+  });
+
+  revalidatePath(detail);
+  redirect(back(detail, "ok", `Servidor casa definido: ${server.label}.`));
 }

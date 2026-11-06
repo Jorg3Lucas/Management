@@ -9,8 +9,11 @@ import {
   requireAdmin,
   resetUserPassword,
   setUserActive,
+  setUserServerOwners,
   setUserServers,
+  userServerIds,
 } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { execute } from "@/lib/db";
 import { listServers } from "@/lib/queries";
 import { validatePassword } from "@/lib/password";
@@ -39,7 +42,7 @@ function validServerIds(formData: FormData): number[] {
 }
 
 export async function createUserAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const username = cleanText(formData.get("username"), 32).toLowerCase();
   const displayName = cleanText(formData.get("displayName"), 60);
@@ -62,7 +65,17 @@ export async function createUserAction(formData: FormData): Promise<void> {
     redirect(back("/users", "error", duplicate ? "Esse usuário já existe." : "Não foi possível criar o usuário."));
   }
 
-  setUserServers(userId, validServerIds(formData));
+  const serverIds = validServerIds(formData);
+  setUserServers(userId, serverIds);
+
+  logAudit({
+    user: admin,
+    action: "user.create",
+    entity: "user",
+    entityId: userId,
+    detail: `${username} (${role}) · ${serverIds.length} servidor(es) liberado(s)`,
+  });
+
   revalidatePath("/users");
   redirect(back(`/users/${userId}`, "ok", `Usuário ${username} criado. Defina os servidores liberados abaixo.`));
 }
@@ -89,12 +102,21 @@ export async function updateUserProfileAction(formData: FormData): Promise<void>
   }
 
   execute("UPDATE users SET display_name = ?, role = ? WHERE id = ?", displayName, role, userId);
+
+  logAudit({
+    user: admin,
+    action: "user.profile",
+    entity: "user",
+    entityId: userId,
+    detail: `${target.username}: ${target.display_name} → ${displayName}, ${target.role} → ${role}`,
+  });
+
   revalidatePath("/users");
   redirect(back(path, "ok", "Perfil atualizado."));
 }
 
 export async function updateUserAccessAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const userId = Number(formData.get("userId"));
   const target = getUserById(userId);
   const path = `/users/${userId}`;
@@ -103,6 +125,14 @@ export async function updateUserAccessAction(formData: FormData): Promise<void> 
 
   const serverIds = validServerIds(formData);
   setUserServers(userId, serverIds);
+
+  logAudit({
+    user: admin,
+    action: "user.access",
+    entity: "user",
+    entityId: userId,
+    detail: `${target.username}: ${serverIds.length} servidor(es) liberado(s)`,
+  });
 
   revalidatePath(path);
   revalidatePath("/users");
@@ -119,7 +149,7 @@ export async function updateUserAccessAction(formData: FormData): Promise<void> 
 }
 
 export async function resetPasswordAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const userId = Number(formData.get("userId"));
   const target = getUserById(userId);
   const path = `/users/${userId}`;
@@ -130,6 +160,9 @@ export async function resetPasswordAction(formData: FormData): Promise<void> {
   if (passwordError) redirect(back(path, "error", passwordError));
 
   resetUserPassword(userId, password);
+
+  logAudit({ user: admin, action: "user.password", entity: "user", entityId: userId, detail: `${target.username}` });
+
   redirect(back(path, "ok", "Senha redefinida. Sessões antigas foram encerradas."));
 }
 
@@ -147,6 +180,50 @@ export async function toggleUserActiveAction(formData: FormData): Promise<void> 
   }
 
   setUserActive(userId, activate);
+
+  logAudit({
+    user: admin,
+    action: "user.active",
+    entity: "user",
+    entityId: userId,
+    detail: `${target.username}: ${activate ? "reativado" : "desativado"}`,
+  });
+
   revalidatePath("/users");
   redirect(back(path, "ok", activate ? "Usuário reativado." : "Usuário desativado."));
+}
+
+/** Define quais servidores liberados têm o usuário como dono (gestor da diplomacia). */
+export async function updateUserOwnersAction(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const userId = Number(formData.get("userId"));
+  const target = getUserById(userId);
+  const path = `/users/${userId}`;
+
+  if (!target) redirect(back("/users", "error", "Usuário não encontrado."));
+
+  const granted = new Set(userServerIds(userId));
+  const owners = [...new Set(formData.getAll("owners").map((value) => Number(value)))].filter((id) =>
+    granted.has(id),
+  );
+
+  setUserServerOwners(userId, owners);
+
+  logAudit({
+    user: admin,
+    action: "user.owners",
+    entity: "user",
+    entityId: userId,
+    detail: `${target.username}: ${owners.length} servidor(es) como dono`,
+  });
+
+  revalidatePath(path);
+  revalidatePath("/users");
+  redirect(
+    back(
+      path,
+      "ok",
+      owners.length === 0 ? "Nenhum servidor com dono definido." : `${owners.length} servidor(es) com dono definido.`,
+    ),
+  );
 }

@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { accessibleServers, canAccessServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canAccessServer, canEditServer, requireUser } from "@/lib/auth";
+import { clanHistoryForCharacter, stanceForClan } from "@/lib/clans";
 import { formatDuration, formatNumber, formatPower, warTypeLabel } from "@/lib/format";
-import { getCharacterWithServer, powerHistory, warSessionsForCharacter } from "@/lib/queries";
+import { characterPeers, movesForPlayer, playerForCharacter } from "@/lib/players";
+import { getCharacterWithServer, powerHistory, warSessionsForCharacter, warSessionsForCharacters } from "@/lib/queries";
 import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
-import { sessionSeconds, summarizeByWarServer, totalWarSeconds } from "@/lib/wars";
+import { sessionSeconds, summarizeByCharacter, summarizeByWarServer, totalWarSeconds } from "@/lib/wars";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Flash, SyncBadge } from "@/components/ui";
 import {
   addWarSessionAction,
   deleteWarSessionAction,
   endWarSessionAction,
+  setHomeServerAction,
   updateCharacterAction,
 } from "../actions";
 
@@ -52,6 +55,20 @@ export default async function PlayerDetailPage({
   const breakdown = summarizeByWarServer(sessions, now);
   const breakdownLabels = new Map(sessions.map((session) => [session.server_id, session.war_server_label]));
   const path = `/players/${character.id}`;
+  const editable = canEditServer(user, character.server_id);
+  const clanStance = character.clan_id ? stanceForClan(character.server_id, character.clan_id) : null;
+  const clanChanges = clanHistoryForCharacter(character.id, 10);
+  const player = playerForCharacter(character.id);
+  const peers = player
+    ? characterPeers(player.id).filter((peer) => peer.id === character.id || canAccessServer(user, peer.server_id))
+    : [];
+  const playerSessions = peers.length > 0 ? warSessionsForCharacters(peers.map((peer) => peer.id)) : [];
+  const playerSeconds = totalWarSeconds(playerSessions, now);
+  const secondsByCharacter = summarizeByCharacter(playerSessions, now);
+  const playerMoves = player ? movesForPlayer(player.id, 5) : [];
+  const homeServer = player?.home_server_id
+    ? servers.find((server) => server.id === player.home_server_id) ?? null
+    : null;
 
   return (
     <>
@@ -70,12 +87,24 @@ export default async function PlayerDetailPage({
           </p>
         </div>
         <div className="head-actions">
+          {clanStance ? (
+            <span className={`badge ${clanStance === "ally" ? "ok" : clanStance === "enemy" ? "err" : ""}`}>
+              Clã {clanStance === "ally" ? "aliado" : clanStance === "neutral" ? "neutro" : "inimigo"}
+            </span>
+          ) : null}
           <SyncBadge status={character.last_seen_at ? "success" : null} />
           {character.sync_locked ? <span className="badge warn">Protegido contra sync</span> : null}
         </div>
       </div>
 
       <Flash ok={flash.ok} error={flash.error} />
+
+      {!editable ? (
+        <div className="alert warn">
+          Você tem acesso somente leitura neste servidor. Peça ao dono do servidor ou a um administrador para editar
+          jogadores e guerras.
+        </div>
+      ) : null}
 
       <div className="hero-strip">
         <div className="hero-item">
@@ -189,7 +218,7 @@ export default async function PlayerDetailPage({
                 </label>
               </div>
               <div className="full row">
-                <button className="btn primary" type="submit">
+                <button className="btn primary" type="submit" disabled={!editable}>
                   Salvar alterações
                 </button>
                 <span className="small muted">Cada mudança de poder entra no histórico com origem manual.</span>
@@ -252,7 +281,7 @@ export default async function PlayerDetailPage({
                 <textarea id="warNotes" name="notes" rows={2} maxLength={2000} placeholder="Ex.: entrou na guerra às 21h, saiu 23h30" />
               </div>
               <div className="full row">
-                <button className="btn primary" type="submit">
+                <button className="btn primary" type="submit" disabled={!editable}>
                   Registrar guerra
                 </button>
                 <span className="small muted">Deixe o fim vazio para contar o tempo em aberto.</span>
@@ -314,7 +343,7 @@ export default async function PlayerDetailPage({
                           <form action={endWarSessionAction} className="inline-form">
                             <input type="hidden" name="sessionId" value={session.id} />
                             <input type="hidden" name="redirectTo" value={path} />
-                            <button className="btn sm" type="submit">
+                            <button className="btn sm" type="submit" disabled={!editable}>
                               Encerrar
                             </button>
                           </form>
@@ -332,6 +361,137 @@ export default async function PlayerDetailPage({
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      </section>
+
+      {player ? (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <div className="card-head">
+            <div>
+              <div className="card-title">Jogador e servidor casa</div>
+              <div className="card-sub">Tempo de guerra somado entre os personagens desta mesma pessoa</div>
+            </div>
+            <span className="badge gold">{formatDuration(playerSeconds)} no total</span>
+          </div>
+          <div className="card-body stack">
+            <div className="spread">
+              <div>
+                <div className="small muted">Servidor casa</div>
+                <div style={{ fontWeight: 650 }}>{homeServer?.label ?? "não definido"}</div>
+              </div>
+              {editable ? (
+                <form action={setHomeServerAction} className="inline-form">
+                  <input type="hidden" name="characterId" value={character.id} />
+                  <input type="hidden" name="redirectTo" value={path} />
+                  <select
+                    name="serverId"
+                    defaultValue={player.home_server_id ?? character.server_id}
+                    aria-label="Servidor casa"
+                  >
+                    {servers.map((server) => (
+                      <option key={server.id} value={server.id}>
+                        {server.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button className="btn sm" type="submit">
+                    Salvar casa
+                  </button>
+                </form>
+              ) : null}
+            </div>
+
+            <div>
+              <div className="small muted" style={{ marginBottom: 6 }}>
+                Personagens deste jogador
+              </div>
+              <div className="list">
+                {peers.map((peer) => (
+                  <div key={peer.id} className="list-row">
+                    <div>
+                      {peer.id === character.id ? (
+                        <span className="player-name">
+                          {peer.name} <span className="badge gold">este</span>
+                        </span>
+                      ) : (
+                        <Link className="player-name" href={`/players/${peer.id}`}>
+                          {peer.name}
+                        </Link>
+                      )}
+                      <div className="small muted">
+                        {peer.server_label} ·{" "}
+                        {peer.last_seen_at ? `visto ${formatDateTime(peer.last_seen_at)}` : "sem registro recente"}
+                      </div>
+                    </div>
+                    <span className="mono small">
+                      {formatDuration(secondsByCharacter.get(peer.id)?.totalSeconds ?? 0)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {playerMoves.length > 0 ? (
+              <div>
+                <div className="small muted" style={{ marginBottom: 6 }}>
+                  Transferências
+                </div>
+                <div className="list">
+                  {playerMoves.map((move) => (
+                    <div key={move.id} className="list-row">
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {move.from_label ?? "origem desconhecida"} → {move.to_label}
+                        </div>
+                        <div className="small muted">{formatDateTime(move.detected_at)}</div>
+                      </div>
+                      <span
+                        className={`badge ${move.status === "confirmed" ? "ok" : move.status === "rejected" ? "err" : "warn"}`}
+                      >
+                        {move.status === "confirmed"
+                          ? "confirmada"
+                          : move.status === "rejected"
+                            ? "rejeitada"
+                            : "pendente"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <div>
+            <div className="card-title">Trocas de clã</div>
+            <div className="card-sub">Detectadas na sincronização e nas edições manuais</div>
+          </div>
+          <span className="badge">{clanChanges.length}</span>
+        </div>
+        <div className="card-body tight">
+          {clanChanges.length === 0 ? (
+            <div className="empty">
+              <strong>Nenhuma troca registrada</strong>
+              O histórico começa a partir da próxima mudança de clã deste jogador.
+            </div>
+          ) : (
+            <div className="list">
+              {clanChanges.map((change) => (
+                <div key={change.id} className="list-row">
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      {change.previous_clan_name ?? "sem clã"} → {change.clan_name}
+                    </div>
+                    <div className="small muted">origem: {change.source}</div>
+                  </div>
+                  <span className="small muted nowrap">{formatDateTime(change.changed_at)}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </section>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { accessibleServers, requireUser } from "@/lib/auth";
+import { accessibleServers, editableServerIds, requireUser } from "@/lib/auth";
+import { stanceIndex } from "@/lib/clans";
 import { formatDuration, formatPower } from "@/lib/format";
 import { listCharacters, warSessionsForCharacters } from "@/lib/queries";
 import { formatDateTime } from "@/lib/time";
@@ -15,6 +16,7 @@ type SearchParams = {
   server?: string;
   q?: string;
   sort?: string;
+  stance?: string;
   page?: string;
   ok?: string;
   error?: string;
@@ -37,6 +39,12 @@ export default async function PlayersPage({
   const selectedServer = servers.find((server) => server.code === requestedServer) ?? null;
   const sort: Sort = SORTS.includes((params.sort ?? "") as Sort) ? ((params.sort ?? "power") as Sort) : "power";
   const search = (params.q ?? "").trim().slice(0, 60);
+  const requestedStance = params.stance ?? "";
+  const stance =
+    requestedStance === "ally" || requestedStance === "neutral" || requestedStance === "enemy"
+      ? requestedStance
+      : undefined;
+  const editableServers = new Set(editableServerIds(user));
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   const result = listCharacters({
@@ -44,12 +52,14 @@ export default async function PlayersPage({
     serverId: selectedServer?.id,
     search,
     sort,
+    stance,
     page,
     pageSize: 50,
   });
 
   const sessions = warSessionsForCharacters(result.rows.map((row) => row.id));
   const warByCharacter = summarizeByCharacter(sessions);
+  const clanStances = stanceIndex(serverIds);
   const now = Date.now();
 
   const pageHref = (target: number) => {
@@ -57,6 +67,7 @@ export default async function PlayersPage({
     if (selectedServer) query.set("server", selectedServer.code);
     if (search) query.set("q", search);
     if (sort !== "power") query.set("sort", sort);
+    if (stance) query.set("stance", stance);
     if (target > 1) query.set("page", String(target));
     const suffix = query.toString();
     return suffix ? `/players?${suffix}` : "/players";
@@ -113,10 +124,19 @@ export default async function PlayersPage({
             <option value="recent">Atualização</option>
           </select>
         </div>
+        <div className="field">
+          <label htmlFor="stance">Postura do clã</label>
+          <select id="stance" name="stance" defaultValue={stance ?? ""}>
+            <option value="">Todas</option>
+            <option value="ally">Aliados</option>
+            <option value="neutral">Neutros</option>
+            <option value="enemy">Inimigos</option>
+          </select>
+        </div>
         <button className="btn" type="submit">
           Filtrar
         </button>
-        {search || selectedServer || sort !== "power" ? (
+        {search || selectedServer || sort !== "power" || stance ? (
           <Link className="btn ghost" href="/players">
             Limpar
           </Link>
@@ -197,6 +217,9 @@ export default async function PlayersPage({
               <tbody>
                 {result.rows.map((character, index) => {
                   const war = warByCharacter.get(character.id);
+                  const clanStance = character.clan_id
+                    ? clanStances.get(`${character.server_id}:${character.clan_id}`)
+                    : undefined;
                   const displayRank = character.rank_position ?? (result.page - 1) * result.pageSize + index + 1;
                   return (
                     <tr key={character.id}>
@@ -210,7 +233,17 @@ export default async function PlayersPage({
                             <Link className="player-name" href={`/players/${character.id}`}>
                               {character.name}
                             </Link>
-                            <div className="player-clan">{character.clan ?? "sem clã"}</div>
+                            <div className="player-clan">
+                              {character.clan ?? "sem clã"}
+                              {clanStance ? (
+                                <span
+                                  className={`badge ${clanStance === "ally" ? "ok" : clanStance === "enemy" ? "err" : ""}`}
+                                  style={{ marginLeft: 6 }}
+                                >
+                                  {clanStance === "ally" ? "aliado" : clanStance === "neutral" ? "neutro" : "inimigo"}
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -229,7 +262,7 @@ export default async function PlayersPage({
                       <td className="small muted nowrap">{formatDateTime(character.updated_at)}</td>
                       <td>
                         <Link className="btn sm ghost" href={`/players/${character.id}`}>
-                          Editar
+                          {editableServers.has(character.server_id) ? "Editar" : "Abrir"}
                         </Link>
                       </td>
                     </tr>

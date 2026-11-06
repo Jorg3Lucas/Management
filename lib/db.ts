@@ -133,7 +133,118 @@ function migrate(db: DatabaseSync) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_sync_runs_started ON sync_runs (started_at DESC);
+
+    CREATE TABLE IF NOT EXISTS clans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      name_key TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clan_aliases (
+      alias_key TEXT PRIMARY KEY,
+      clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS clan_relations (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+      stance TEXT NOT NULL CHECK (stance IN ('ally', 'neutral', 'enemy')),
+      notes TEXT,
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (server_id, clan_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS character_clan_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      previous_clan_name TEXT,
+      previous_clan_id INTEGER REFERENCES clans(id) ON DELETE SET NULL,
+      clan_name TEXT NOT NULL,
+      clan_id INTEGER REFERENCES clans(id) ON DELETE SET NULL,
+      source TEXT NOT NULL,
+      changed_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_clan_history_character ON character_clan_history (character_id, changed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_clan_history_changed ON character_clan_history (changed_at DESC);
+
+    CREATE TABLE IF NOT EXISTS teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (server_id, name)
+    );
+
+    CREATE TABLE IF NOT EXISTS clan_teams (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+      team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (server_id, clan_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_clan_teams_team ON clan_teams (team_id);
+
+    CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name_key TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      home_server_id INTEGER REFERENCES servers(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS server_moves (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      from_server_id INTEGER REFERENCES servers(id) ON DELETE SET NULL,
+      to_server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      detected_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+      source TEXT NOT NULL DEFAULT 'sync',
+      confirmed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      decided_at TEXT,
+      note TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_server_moves_status ON server_moves (status, detected_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_server_moves_pending ON server_moves (player_id, to_server_id)
+      WHERE status = 'pending';
+
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      actor TEXT,
+      action TEXT NOT NULL,
+      entity TEXT NOT NULL,
+      entity_id TEXT,
+      server_id INTEGER REFERENCES servers(id) ON DELETE SET NULL,
+      detail TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log (created_at DESC);
   `);
+
+  // Colunas adicionadas depois da primeira versão do schema.
+  ensureColumn(db, "characters", "clan_id", "INTEGER REFERENCES clans(id)");
+  ensureColumn(db, "characters", "player_id", "INTEGER REFERENCES players(id)");
+  ensureColumn(db, "user_servers", "role", "TEXT NOT NULL DEFAULT 'editor'");
+
+  db.exec("CREATE INDEX IF NOT EXISTS idx_characters_clan ON characters (server_id, clan_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_characters_player ON characters (player_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_clan_relations_server ON clan_relations (server_id, stance)");
+}
+
+function ensureColumn(db: DatabaseSync, table: string, column: string, definition: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[];
+  if (columns.some((entry) => entry.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
 function seed(db: DatabaseSync) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { accessibleServers, isAdmin } from "@/lib/auth";
+import { accessibleServers, isAdmin, ownedServerIds } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import { logoutAction } from "@/app/login/actions";
 import { SideNav } from "./SideNav";
@@ -9,6 +9,8 @@ export function Shell({ user, children }: { user: SessionUser; children: ReactNo
   const focusServers = accessibleServers(user)
     .filter((server) => server.is_focus)
     .slice(0, 2);
+  const ownedServers = isAdmin(user) ? [] : ownedServerIds(user);
+  const canManageClans = isAdmin(user) || ownedServers.length > 0;
 
   const initials = Array.from(user.displayName.trim() || user.username)[0]?.toUpperCase() ?? "?";
 
@@ -23,7 +25,7 @@ export function Shell({ user, children }: { user: SessionUser; children: ReactNo
           </div>
         </Link>
 
-        <SideNav isAdmin={isAdmin(user)} />
+        <SideNav isAdmin={isAdmin(user)} canManageClans={canManageClans} />
 
         <div className="sidebar-foot">
           <div className="focus-chips">
@@ -41,7 +43,9 @@ export function Shell({ user, children }: { user: SessionUser; children: ReactNo
             <div className="avatar">{initials}</div>
             <div className="user-meta">
               <div className="user-name">{user.displayName}</div>
-              <div className="user-role">{user.role === "ADMIN" ? "Administrador" : "Operador"}</div>
+              <div className="user-role">
+                {user.role === "ADMIN" ? "Administrador" : ownedServers.length > 0 ? "Dono de servidor" : "Operador"}
+              </div>
             </div>
           </div>
           <form action={logoutAction}>

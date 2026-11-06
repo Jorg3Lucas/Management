@@ -28,7 +28,8 @@ export default async function UsersPage({
           <p className="eyebrow">Administração</p>
           <h1 className="page-title">Usuários</h1>
           <p className="page-sub">
-            Cada usuário vê e edita somente os servidores liberados. Administradores têm acesso a tudo.
+            Cada usuário vê e edita somente os servidores liberados. Donos de servidor também classificam os clãs.
+            Administradores têm acesso a tudo.
           </p>
         </div>
         <div className="head-actions">
@@ -125,7 +126,12 @@ export default async function UsersPage({
                       {user.active ? "Ativo" : "Desativado"}
                     </span>
                   </td>
-                  <td className="num mono">{user.role === "ADMIN" ? "todos" : user.server_count}</td>
+                  <td className="num mono">
+                    {user.role === "ADMIN" ? "todos" : user.server_count}
+                    {user.role !== "ADMIN" && user.owner_count > 0 ? (
+                      <div className="player-clan">dono de {user.owner_count}</div>
+                    ) : null}
+                  </td>
                   <td className="small muted nowrap">{formatDate(user.created_at)}</td>
                   <td>
                     <div className="row" style={{ justifyContent: "flex-end" }}>

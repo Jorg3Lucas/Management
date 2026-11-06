@@ -17,6 +17,15 @@ disponíveis para ativação.
   opção **proteger contra sincronização** impede que o coletor sobrescreva o registro.
 - **Guerras**: registre início/fim e o servidor onde a batalha aconteceu (pode ser diferente do servidor do jogador).
   O painel soma tempo total, tempo em andamento, tempo por servidor e histórico por jogador.
+- **Clãs e diplomacia**: clãs viram registro próprio (nome normalizado + aliases), cada servidor marca o clã como
+  **aliado, neutro ou inimigo**, e as trocas de clã dos jogadores ficam registradas com data e origem. Filtro por
+  postura no ranking e histórico na ficha do jogador.
+- **Times por servidor**: agrupe clãs em times (blocos de aliança) e acompanhe clãs, membros, poder total e maior
+  poder de cada time; o jogador entra no time do clã.
+- **Servidor casa e transferências**: o mesmo nome em servidores diferentes é o mesmo jogador; a troca de servidor é
+  sugerida na sincronização, confirmada (ou rejeitada) pelo admin, e o tempo de guerra é somado entre os personagens.
+- **Administração por servidor e auditoria**: o usuário pode ser dono de um servidor liberado (administra a
+  diplomacia local) e toda alteração administrativa é registrada em `/audit`.
 - **Poder máximo**: o pico é mantido em `characters.peak_power` (sync ou edição manual) e cada variação é registrada
   em `power_history`.
 - **Automação**: rodada diária de **todos os servidores às 17h (horário de Brasília)**, dentro do próprio processo
@@ -93,11 +102,46 @@ um cron externo chamando a CLI ou a rota:
 
 ## Controle de acesso
 
-- `ADMIN`: vê todos os servidores, gerencia servidores e usuários, pode sincronizar.
-- `USER`: vê somente os servidores marcados em **Usuários → servidor → Servidores liberados**; pode editar jogadores e
-  registrar guerras nesses servidores.
+- `ADMIN`: vê todos os servidores, gerencia servidores e usuários, pode sincronizar e mesclar clãs.
+- `USER`: vê somente os servidores marcados em **Usuários → servidor → Servidores liberados**.
+- Dentro de cada servidor o usuário pode ser **dono** ou **editor**: dono administra a diplomacia de clãs; editor edita
+  jogadores e guerras. Sem papel de edição o acesso é somente leitura.
+- Toda alteração administrativa entra em **Auditoria** (autor, alvo, servidor e detalhe).
 - Sessões expiram em 7 dias; redefinir senha ou desativar a conta encerra as sessões abertas.
 - Não é possível desativar/remover o próprio acesso nem ficar sem administrador ativo.
+
+## Clãs e diplomacia
+
+- O nome do clã vem do fórum e é comparado por chave normalizada (caixa, espaços e caracteres invisíveis), então
+  variações de grafia não criam clãs duplicados. Em **Clãs → Nomes variantes** o admin mescla uma grafia na outra: os
+  personagens, o histórico e as posturas são reapontados e o nome antigo vira alias.
+- **Postura por servidor**: aliado, neutro ou inimigo (ou sem postura). A marcação vale apenas para aquele servidor;
+  o mesmo clã pode ser inimigo em um servidor e neutro em outro.
+- **Trocas de clã** são registradas automaticamente quando o sync vê outro clã para um jogador, e também na edição
+  manual. Cada registro guarda clã anterior, clã novo, origem (`sync`/`manual`) e data.
+- Cada linha de `/clans` mostra membros, poder total e maior poder do clã, calculados do ranking sincronizado.
+
+## Times por servidor
+
+- Times são **por servidor**: o mesmo clã pode estar em times diferentes (ou em nenhum) em cada servidor.
+- O vínculo é clã → time. O jogador entra no time do clã automaticamente, então o painel acompanha trocas de clã e
+  novas sincronizações sem trabalho manual.
+- O painel de `/times` mostra por time: clãs vinculados, jogadores, poder total e maior poder. Clãs sem time ficam
+  listados para vinculação, e cada clã leva junto a postura diplomática do servidor.
+- Remover um time devolve os clãs para "sem time" (o vínculo é apagado em cascata; nenhum jogador é tocado).
+
+## Servidor casa e transferências
+
+- Cada personagem continua sendo um registro por servidor; a identidade do jogador (`players`) atravessa servidores
+  pelo nome normalizado. Assim o jogador pode ter um personagem em cada servidor sem perder o histórico.
+- **Servidor casa** (`players.home_server_id`) é definido no primeiro registro e pode ser alterado na ficha do jogador
+  (dono/editor do servidor) ou automaticamente ao confirmar uma transferência.
+- **Detecção**: quando um personagem novo aparece em um servidor e o mesmo jogador foi visto em outro nos últimos 30
+  dias, uma transferência pendente é criada. Nada é aplicado sem confirmação — nomes podem colidir entre servidores.
+- `/transfers` lista as pendências e o histórico de decisões. Confirmar move o servidor casa; rejeitar mantém.
+- A ficha mostra o **tempo de guerra consolidado** (todos os personagens do jogador), o tempo de cada personagem e as
+  transferências registradas.
+- Personagens antigos (anteriores à tabela `players`) são ligados na primeira carga da ficha ou de `/transfers`.
 
 ## O que o fórum não entrega
 

@@ -1,7 +1,9 @@
 import { execute, queryAll, queryOne, transaction } from "./db";
 import { fetchRankingPage, isRankingEmptyMessage, parseForumRanking, type RankingRow } from "./mir4/forum";
+import { ensureClan, logClanChange, normalizeClanKey } from "./clans";
+import { detectServerMove, linkCharacterPlayer } from "./players";
 import { getServerById } from "./queries";
-import type { ServerRow } from "./types";
+import type { ClanRow, ServerRow } from "./types";
 
 export type SyncStatus = "success" | "empty" | "error";
 
@@ -38,6 +40,14 @@ function sleep(ms: number): Promise<void> {
 
 function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
   const now = new Date().toISOString();
+  // O mesmo clã aparece centenas de vezes por rodada: resolve uma vez por nome.
+  const clanCache = new Map<string, ClanRow | null>();
+  const resolveClan = (name: string | null): ClanRow | null => {
+    const key = normalizeClanKey(name ?? "");
+    if (!key) return null;
+    if (!clanCache.has(key)) clanCache.set(key, ensureClan(name ?? ""));
+    return clanCache.get(key) ?? null;
+  };
 
   return transaction(() => {
     let created = 0;
@@ -47,25 +57,32 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
     for (const row of rows) {
       const existing = queryOne<{
         id: number;
+        clan: string | null;
+        clan_id: number | null;
+        player_id: number | null;
         power_score: number;
         peak_power: number;
         peak_power_at: string | null;
         sync_locked: number;
       }>(
-        "SELECT id, power_score, peak_power, peak_power_at, sync_locked FROM characters WHERE server_id = ? AND name = ?",
+        `SELECT id, clan, clan_id, player_id, power_score, peak_power, peak_power_at, sync_locked
+         FROM characters WHERE server_id = ? AND name = ?`,
         serverId,
         row.name,
       );
 
+      const clanRow = resolveClan(row.clan);
+
       if (!existing) {
         const inserted = execute(
           `INSERT INTO characters
-            (server_id, name, clan, class_name, level, power_score, peak_power, peak_power_at,
+            (server_id, name, clan, clan_id, class_name, level, power_score, peak_power, peak_power_at,
              rank_position, notes, sync_locked, last_seen_at, created_at, updated_at)
-           VALUES (?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, 0, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, 0, ?, ?, ?)`,
           serverId,
           row.name,
           row.clan,
+          clanRow?.id ?? null,
           row.power,
           row.power,
           now,
@@ -82,6 +99,13 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
           row.rank,
           now,
         );
+        try {
+          const player = linkCharacterPlayer(inserted.lastInsertRowid, row.name, serverId);
+          if (player) detectServerMove(player.id, serverId);
+        } catch (error) {
+          console.error("[sync] falha ao vincular jogador/transferência:", error);
+        }
+
         created += 1;
         continue;
       }
@@ -96,6 +120,7 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
       execute(
         `UPDATE characters
          SET clan = COALESCE(?, clan),
+             clan_id = COALESCE(?, clan_id),
              power_score = ?,
              rank_position = ?,
              peak_power = ?,
@@ -104,6 +129,7 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
              updated_at = ?
          WHERE id = ?`,
         row.clan,
+        clanRow?.id ?? null,
         row.power,
         row.rank,
         Math.max(existing.peak_power, row.power),
@@ -112,6 +138,26 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
         now,
         existing.id,
       );
+
+      if (row.clan && normalizeClanKey(row.clan) !== normalizeClanKey(existing.clan ?? "")) {
+        logClanChange({
+          characterId: existing.id,
+          previousName: existing.clan,
+          previousId: existing.clan_id,
+          nextName: row.clan,
+          nextId: clanRow?.id ?? null,
+          source: "sync",
+          changedAt: now,
+        });
+      }
+
+      if (existing.player_id === null) {
+        try {
+          linkCharacterPlayer(existing.id, row.name, serverId);
+        } catch (error) {
+          console.error("[sync] falha ao vincular jogador:", error);
+        }
+      }
 
       if (existing.power_score !== row.power) {
         execute(

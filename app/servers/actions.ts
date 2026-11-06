@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { logAudit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth";
 import { execute } from "@/lib/db";
 import { getServerById } from "@/lib/queries";
@@ -17,7 +18,7 @@ function safePath(value: FormDataEntryValue | null, fallback: string): string {
 }
 
 export async function toggleServerFlagAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const serverId = Number(formData.get("serverId"));
   const field = String(formData.get("field") ?? "");
   const returnTo = safePath(formData.get("redirectTo"), "/servers");
@@ -29,6 +30,18 @@ export async function toggleServerFlagAction(formData: FormData): Promise<void> 
   }
 
   execute(`UPDATE servers SET ${field} = 1 - ${field} WHERE id = ?`, serverId);
+
+  logAudit({
+    user: admin,
+    action: "server.flag",
+    entity: "server",
+    entityId: serverId,
+    serverId,
+    detail:
+      field === "sync_enabled"
+        ? `${server.label}: sincronização ${server.sync_enabled ? "desativada" : "ativada"}`
+        : `${server.label}: ${server.is_focus ? "fora do foco" : "em foco"}`,
+  });
 
   revalidatePath("/servers");
   revalidatePath("/");

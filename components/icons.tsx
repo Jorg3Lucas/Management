@@ -100,3 +100,31 @@ export function IconPlus(props: Props) {
     </svg>
   );
 }
+
+export function IconFlag(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 21V4" />
+      <path d="M5 5h10l-1.7 3.5L15 12H5" />
+    </svg>
+  );
+}
+
+export function IconShield(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function IconHistory(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 8v4l3 2" />
+    </svg>
+  );
+}

@@ -1,5 +1,17 @@
 export type Role = "ADMIN" | "USER";
 
+/** Papel do usuário dentro de um servidor específico. */
+export type ServerRole = "owner" | "editor" | "viewer";
+
+export type ClanStance = "ally" | "neutral" | "enemy";
+
+export type ClanRow = {
+  id: number;
+  name: string;
+  name_key: string;
+  created_at: string;
+};
+
 export type ServerRow = {
   id: number;
   code: string;
@@ -20,6 +32,7 @@ export type CharacterRow = {
   server_id: number;
   name: string;
   clan: string | null;
+  clan_id: number | null;
   class_name: string | null;
   level: number | null;
   power_score: number;

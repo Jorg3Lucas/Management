@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
 import { execute, queryAll, queryOne } from "./db";
 import { hashPassword, verifyPassword } from "./password";
-import type { Role, ServerRow, SessionUser, UserRow } from "./types";
+import type { Role, ServerRole, ServerRow, SessionUser, UserRow } from "./types";
 
 const COOKIE_NAME = "mir4_session";
 const SESSION_DAYS = 7;
@@ -126,9 +126,63 @@ export function assertServerAccess(user: SessionUser, serverId: number): void {
   }
 }
 
-export function listUsers(): (UserRow & { server_count: number })[] {
-  return queryAll<UserRow & { server_count: number }>(
-    `SELECT u.*, COUNT(us.server_id) AS server_count
+/** Papel do usuário naquele servidor. Admin global conta como dono. */
+export function serverRole(user: SessionUser, serverId: number): ServerRole | null {
+  if (user.role === "ADMIN") return "owner";
+  const row = queryOne<{ role: ServerRole | null }>(
+    "SELECT role FROM user_servers WHERE user_id = ? AND server_id = ?",
+    user.id,
+    serverId,
+  );
+  if (!row) return null;
+  return row.role ?? "editor";
+}
+
+/** Pode editar jogadores e guerras do servidor (dono ou editor). */
+export function canEditServer(user: SessionUser, serverId: number): boolean {
+  const role = serverRole(user, serverId);
+  return role === "owner" || role === "editor";
+}
+
+/** Pode administrar o servidor: diplomacia de clãs e papéis.
+ *  Admin global: dono de todos. Dono do servidor: só dos seus. */
+export function canAdminServer(user: SessionUser, serverId: number): boolean {
+  return serverRole(user, serverId) === "owner";
+}
+
+export function editableServerIds(user: SessionUser): number[] {
+  if (user.role === "ADMIN") {
+    return queryAll<{ id: number }>("SELECT id FROM servers ORDER BY id").map((row) => row.id);
+  }
+  return queryAll<{ server_id: number }>(
+    "SELECT server_id FROM user_servers WHERE user_id = ? AND role IN ('owner', 'editor') ORDER BY server_id",
+    user.id,
+  ).map((row) => row.server_id);
+}
+
+/** Servidores em que o usuário é dono (admin global: todos). */
+export function ownedServerIds(user: SessionUser): number[] {
+  if (user.role === "ADMIN") {
+    return queryAll<{ id: number }>("SELECT id FROM servers ORDER BY id").map((row) => row.id);
+  }
+  return queryAll<{ server_id: number }>(
+    "SELECT server_id FROM user_servers WHERE user_id = ? AND role = 'owner' ORDER BY server_id",
+    user.id,
+  ).map((row) => row.server_id);
+}
+
+export function userOwnerServerIds(userId: number): number[] {
+  return queryAll<{ server_id: number }>(
+    "SELECT server_id FROM user_servers WHERE user_id = ? AND role = 'owner' ORDER BY server_id",
+    userId,
+  ).map((row) => row.server_id);
+}
+
+export function listUsers(): (UserRow & { server_count: number; owner_count: number })[] {
+  return queryAll<UserRow & { server_count: number; owner_count: number }>(
+    `SELECT u.*,
+            COUNT(us.server_id) AS server_count,
+            SUM(CASE WHEN us.role = 'owner' THEN 1 ELSE 0 END) AS owner_count
      FROM users u
      LEFT JOIN user_servers us ON us.user_id = u.id
      GROUP BY u.id
@@ -171,9 +225,35 @@ export function createUser(input: {
 }
 
 export function setUserServers(userId: number, serverIds: number[]): void {
+  // Preserva o papel de quem continua liberado, para não rebaixar donos a cada salvamento.
+  const previous = new Map(
+    queryAll<{ server_id: number; role: ServerRole }>(
+      "SELECT server_id, role FROM user_servers WHERE user_id = ?",
+      userId,
+    ).map((row) => [row.server_id, row.role ?? "editor"] as const),
+  );
+
   execute("DELETE FROM user_servers WHERE user_id = ?", userId);
   for (const serverId of serverIds) {
-    execute("INSERT OR IGNORE INTO user_servers (user_id, server_id) VALUES (?, ?)", userId, serverId);
+    execute(
+      "INSERT OR IGNORE INTO user_servers (user_id, server_id, role) VALUES (?, ?, ?)",
+      userId,
+      serverId,
+      previous.get(serverId) ?? "editor",
+    );
+  }
+}
+
+/** Marca donos entre os servidores já liberados; os demais ficam como editor. */
+export function setUserServerOwners(userId: number, ownerIds: number[]): void {
+  const owners = new Set(ownerIds);
+  for (const serverId of userServerIds(userId)) {
+    execute(
+      "UPDATE user_servers SET role = ? WHERE user_id = ? AND server_id = ?",
+      owners.has(serverId) ? "owner" : "editor",
+      userId,
+      serverId,
+    );
   }
 }
 

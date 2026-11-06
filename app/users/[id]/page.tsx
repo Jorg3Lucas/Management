@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getUserById, requireAdmin, userServerIds } from "@/lib/auth";
+import { getUserById, requireAdmin, userOwnerServerIds, userServerIds } from "@/lib/auth";
 import { listServers } from "@/lib/queries";
 import { formatDate } from "@/lib/time";
 import { Flash } from "@/components/ui";
@@ -10,6 +10,7 @@ import {
   resetPasswordAction,
   toggleUserActiveAction,
   updateUserAccessAction,
+  updateUserOwnersAction,
   updateUserProfileAction,
 } from "../actions";
 
@@ -34,6 +35,7 @@ export default async function UserDetailPage({
 
   const servers = listServers();
   const access = userServerIds(account.id);
+  const owners = userOwnerServerIds(account.id);
   const isSelf = account.id === admin.id;
 
   return (
@@ -168,6 +170,51 @@ export default async function UserDetailPage({
               </Link>
             </div>
           </form>
+
+          {account.role !== "ADMIN" ? (
+            <form
+              action={updateUserOwnersAction}
+              style={{ marginTop: 18, borderTop: "1px solid var(--border-soft)", paddingTop: 18 }}
+            >
+              <input type="hidden" name="userId" value={account.id} />
+              <div className="field-label" style={{ marginBottom: 8 }}>
+                Donos de servidor
+              </div>
+              <p className="small muted" style={{ marginBottom: 12 }}>
+                Dono administra a diplomacia de clãs do servidor. Só vale para servidores já liberados.
+              </p>
+              {access.length === 0 ? (
+                <p className="small muted">Marque os servidores liberados e salve antes de definir donos.</p>
+              ) : (
+                <>
+                  <div className="access-grid">
+                    {servers
+                      .filter((server) => access.includes(server.id))
+                      .map((server) => (
+                        <label key={server.id} className="access-item check">
+                          <input
+                            type="checkbox"
+                            name="owners"
+                            value={server.id}
+                            defaultChecked={owners.includes(server.id)}
+                          />
+                          <span>
+                            <span style={{ fontWeight: 600 }}>{server.label}</span>
+                            <span className="code">{server.code}</span>
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                  <div className="row" style={{ marginTop: 14 }}>
+                    <button className="btn" type="submit">
+                      Salvar donos
+                    </button>
+                    <span className="small muted">{owners.length} servidor(es) com dono</span>
+                  </div>
+                </>
+              )}
+            </form>
+          ) : null}
         </div>
       </section>
     </>

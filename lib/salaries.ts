@@ -494,7 +494,9 @@ export type SalaryCandidateRow = {
   power_score: number;
   team_name: string | null;
   team_color: string | null;
-};/** Jogadores aliados do servidor já vinculados a um clã aliado. */
+};
+
+/** Jogadores aliados do servidor já vinculados a um clã aliado. */
 export function salaryCandidates(
   serverId: number,
   search: string,

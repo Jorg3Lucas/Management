@@ -481,16 +481,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td style={{ fontWeight: 650 }}>Total</td>                  <td />
-                  <td />
-                
-                
-                
-                
-                
-
-                      
-                        
+                          <td style={{ fontWeight: 650 }}>Total</td>
+                          <td />
+                          <td />
                           <td className="num mono">{summary.attended}</td>
                           <td className="num mono">{decimal(summary.totalWeight)}</td>
                           <td className="num mono">{formatNumber(summary.pool)}</td>
@@ -711,7 +704,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                   </div>
                                 </div>
                                 <label className="mini-field">
-                                  <span>Recompensa</span>                                  <select name="preference" defaultValue={member.preference}>
+                                  <span>Recompensa</span>
+                                  <select name="preference" defaultValue={member.preference}>
                                     {SALARY_PREFERENCES.map((option) => (
                                       <option key={option.value} value={option.value}>
                                         {option.label}
@@ -738,98 +732,55 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 </button>
                               </form>
                             </td>
+                            <td className="num mono" data-label="Salário">
+                              {member.attendedCount > 0 ? (
+                                <>
+                                  {formatNumber(member.salary)}
+                                  <div className="small muted">
+                                    {member.attendedCount}/3
+                                    {member.share_percent !== 100 ? ` · ${member.share_percent}%` : ""}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="small muted">sem presença</span>
+                              )}
+                            </td>
+                            <td className="num" data-label="Pedras A/R">
+                              <MemberStones member={member} />
+                            </td>
+                            <td className="cell-action">
+                              <form
+                                action={removeSalaryMemberAction}
+                                className="inline-form"
+                                style={{ justifyContent: "flex-end" }}
+                              >
+                                <input type="hidden" name="periodId" value={period.id} />
+                                <input type="hidden" name="characterId" value={member.character_id} />
+                                <input type="hidden" name="redirectTo" value={returnTo} />
+                                <ConfirmButton message={`Remover ${member.name} do elenco desta semana?`}>
+                                  Remover
+                                </ConfirmButton>
+                              </form>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={4} style={{ fontWeight: 650 }}>
+                            {filtered ? "Total pago (filtro)" : "Total pago"}
+                          </td>
+                          <td className="num mono" style={{ fontWeight: 650 }}>
+                            {formatNumber(visiblePaid)}
+                          </td>
+                          <td />
+                          <td />
+                        </tr>
+                      </tfoot>
                     </table>
-                  </div>
-                  <div className="row">
-                    <button className="btn primary" type="submit">
-                      Adicionar selecionados
-                    </button>
-                    <span className="small muted">
-                      A faixa inicial vem do poder mínimo de cada coeficiente ({SALARY_TIERS.join(" · ")}); ajuste
-                      depois na tabela do elenco.
-                    </span>
-                  </div>
+                  )}
                 </div>
-              </details>
-            </>
-          )}
-        </>
-      ) : null}
-    </>
-  );
-}
-
-type RosterMember = SalarySummary["members"][number];
-
-function memberStonePurchase(member: RosterMember) {
-  const split = stoneSplitValues(member.salary, member.stone_split);
-  return {
-    split,
-    yellow: stonePurchase(split.yellow, "yellow"),
-    purple: stonePurchase(split.purple, "purple"),
-  };
-}
-
-function addStonePurchase(total: StonePurchase, entry: StonePurchase): StonePurchase {
-  return {
-    stones: total.stones + entry.stones,
-    ds: total.ds + entry.ds,
-    clanPoints: total.clanPoints + entry.clanPoints,
-    leftover: total.leftover + entry.leftover,
-  };
-}
-
-/** Quantas pedras de cada cor o membro leva, já convertidas pelo preço da loja. */
-function MemberStones({ member }: { member: RosterMember }) {
-  if (member.preference !== "stone") return <span className="small muted">darksteel</span>;
-
-                              return <span className="small muted">pedra</span>;
-                            }
-                          }
-                        </>
-                      )}
-                    </td>
-                    <td className="num" data-label="Pedras A/R">
-                      <MemberStones member={member} />
-                    </td>
-                    <td className="cell-action">
-                      <form
-                        action={removeSalaryMemberAction}
-                        className="inline-form"
-                        style={{ justifyContent: "flex-end" }}
-                      >
-                        <input type="hidden" name="periodId" value={period.id} />
-                        <input type="hidden" name="characterId" value={member.character_id} />
-                        <input type="hidden" name="redirectTo" value={returnTo} />
-                        <ConfirmButton message={`Remover ${member.name} do elenco desta semana?`}>
-                          Remover
-                        </ConfirmButton>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={4} style={{ fontWeight: 650 }}>
-                    {filtered ? "Total pago (filtro)" : "Total pago"}
-                  </td>
-                  <td className="num mono" style={{ fontWeight: 650 }}>
-                    {formatNumber(visiblePaid)}
-                  </td>
-                  <td />
-                  <td />
-                  <td />
-                  <td />
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-          </div>
-        </section>
+              </section>
 
               <details className="panel">
                 <summary>Adicionar membros ao elenco</summary>
@@ -862,8 +813,6 @@ function MemberStones({ member }: { member: RosterMember }) {
                       </Link>
                     ) : null}
                   </form>
-
-
 
                   {candidates.length === 0 ? (
                     <p className="small muted">

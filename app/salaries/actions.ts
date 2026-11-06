@@ -287,7 +287,9 @@ export async function addSalaryMembersAction(formData: FormData): Promise<void> 
       added > 0 ? "ok" : "error",
       added > 0 ? `${added} jogador(es) adicionado(s) ao elenco.` : "Nenhum jogador novo para adicionar.",
     ),
-  );}
+  );
+}
+
 export async function updateSalaryMemberAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const periodId = Number(formData.get("periodId"));

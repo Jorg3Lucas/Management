@@ -494,11 +494,8 @@ export type SalaryCandidateRow = {
   power_score: number;
   team_name: string | null;
   team_color: string | null;
-};
-
-/** Jogadores aliados do servidor que ainda não estão no elenco da semana. */
+};/** Jogadores aliados do servidor já vinculados a um clã aliado. */
 export function salaryCandidates(
-  periodId: number,
   serverId: number,
   search: string,
   limit = 200,
@@ -511,7 +508,8 @@ export function salaryCandidates(
     terms.push(term, term);
   }
 
-  return queryAll<SalaryCandidateRow>(     `SELECT c.id, c.name, c.clan, c.power_score,
+  return queryAll<SalaryCandidateRow>(
+    `SELECT c.id, c.name, c.clan, c.power_score,
             COALESCE(ti.name, t.name) AS team_name, COALESCE(ti.color, t.color) AS team_color
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
@@ -519,19 +517,17 @@ export function salaryCandidates(
      LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE c.server_id = ?
-       AND c.id NOT IN (SELECT m.character_id FROM salary_members m WHERE m.period_id = ?)
        ${filter}
      ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
      LIMIT ?`,
     serverId,
-    periodId,
     ...terms,
     limit,
   );
 }
 
 /** Personagens aliados do servidor no time, somando vínculo por clã e vínculo individual. */
-export function teamCharacterIds(serverId: number, teamId: number, limit = 300): number[] {
+function teamCharacterIds(serverId: number, teamId: number, limit = 300): number[] {
   return queryAll<{ id: number }>(
     `SELECT c.id
      FROM characters c

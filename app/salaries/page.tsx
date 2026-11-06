@@ -23,12 +23,10 @@ import {
   stoneSplitValues,
 } from "@/lib/salaries";
 import type { SalarySummary, StonePurchase } from "@/lib/salaries";
-import { listTeams } from "@/lib/teams";
 import { APP_TIMEZONE } from "@/lib/time";
 import {
   addSalaryEntryAction,
   addSalaryMembersAction,
-  addSalaryTeamAction,
   createSalaryPeriodAction,
   deleteSalaryEntryAction,
   deleteSalaryPeriodAction,
@@ -92,9 +90,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const summary = period ? salarySummary(period.id, tiers) : null;
   const vales = period ? salaryValeEntries(period.id) : [];
   const fixedEntries = period ? salaryEntries(period.id, "fixed") : [];
-  const candidates = selected && period ? salaryCandidates(period.id, selected.id, search) : [];
+  const candidates = selected ? salaryCandidates(selected.id, search) : [];
   const alliedClans = selected ? salaryAlliedClans(selected.id) : 0;
-  const teams = selected ? listTeams(selected.id) : [];
 
   const presence: PresenceFilter =
     params.presence === "with" || params.presence === "without" ? params.presence : "all";
@@ -484,9 +481,16 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td style={{ fontWeight: 650 }}>Total</td>
-                          <td />
-                          <td />
+                          <td style={{ fontWeight: 650 }}>Total</td>                  <td />
+                  <td />
+                
+                
+                
+                
+                
+
+                      
+                        
                           <td className="num mono">{summary.attended}</td>
                           <td className="num mono">{decimal(summary.totalWeight)}</td>
                           <td className="num mono">{formatNumber(summary.pool)}</td>
@@ -699,9 +703,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                           type="checkbox"
                                           name={`attended${activity.field[0].toUpperCase()}${activity.field.slice(1)}`}
                                           value="1"
-                                          defaultChecked={
-                                            member[`attended_${activity.field}` as "attended_heist" | "attended_altar" | "attended_vale"] === 1
-                                          }
+                                          defaultChecked={member[`attended_${activity.field}` as "attended_heist" | "attended_altar" | "attended_vale"] === 1}
                                         />
                                         {activity.label}
                                       </label>
@@ -709,8 +711,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                   </div>
                                 </div>
                                 <label className="mini-field">
-                                  <span>Recompensa</span>
-                                  <select name="preference" defaultValue={member.preference}>
+                                  <span>Recompensa</span>                                  <select name="preference" defaultValue={member.preference}>
                                     {SALARY_PREFERENCES.map((option) => (
                                       <option key={option.value} value={option.value}>
                                         {option.label}
@@ -737,55 +738,98 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 </button>
                               </form>
                             </td>
-                            <td className="num mono" data-label="Salário">
-                              {member.attendedCount > 0 ? (
-                                <>
-                                  {formatNumber(member.salary)}
-                                  <div className="small muted">
-                                    {member.attendedCount}/3
-                                    {member.share_percent !== 100 ? ` · ${member.share_percent}%` : ""}
-                                  </div>
-                                </>
-                              ) : (
-                                <span className="small muted">sem presença</span>
-                              )}
-                            </td>
-                            <td className="num" data-label="Pedras A/R">
-                              <MemberStones member={member} />
-                            </td>
-                            <td className="cell-action">
-                              <form
-                                action={removeSalaryMemberAction}
-                                className="inline-form"
-                                style={{ justifyContent: "flex-end" }}
-                              >
-                                <input type="hidden" name="periodId" value={period.id} />
-                                <input type="hidden" name="characterId" value={member.character_id} />
-                                <input type="hidden" name="redirectTo" value={returnTo} />
-                                <ConfirmButton message={`Remover ${member.name} do elenco desta semana?`}>
-                                  Remover
-                                </ConfirmButton>
-                              </form>
-                            </td>
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={4} style={{ fontWeight: 650 }}>
-                            {filtered ? "Total pago (filtro)" : "Total pago"}
-                          </td>
-                          <td className="num mono" style={{ fontWeight: 650 }}>
-                            {formatNumber(visiblePaid)}
-                          </td>
-                          <td />
-                          <td />
-                        </tr>
-                      </tfoot>
                     </table>
-                  )}
+                  </div>
+                  <div className="row">
+                    <button className="btn primary" type="submit">
+                      Adicionar selecionados
+                    </button>
+                    <span className="small muted">
+                      A faixa inicial vem do poder mínimo de cada coeficiente ({SALARY_TIERS.join(" · ")}); ajuste
+                      depois na tabela do elenco.
+                    </span>
+                  </div>
                 </div>
-              </section>
+              </details>
+            </>
+          )}
+        </>
+      ) : null}
+    </>
+  );
+}
+
+type RosterMember = SalarySummary["members"][number];
+
+function memberStonePurchase(member: RosterMember) {
+  const split = stoneSplitValues(member.salary, member.stone_split);
+  return {
+    split,
+    yellow: stonePurchase(split.yellow, "yellow"),
+    purple: stonePurchase(split.purple, "purple"),
+  };
+}
+
+function addStonePurchase(total: StonePurchase, entry: StonePurchase): StonePurchase {
+  return {
+    stones: total.stones + entry.stones,
+    ds: total.ds + entry.ds,
+    clanPoints: total.clanPoints + entry.clanPoints,
+    leftover: total.leftover + entry.leftover,
+  };
+}
+
+/** Quantas pedras de cada cor o membro leva, já convertidas pelo preço da loja. */
+function MemberStones({ member }: { member: RosterMember }) {
+  if (member.preference !== "stone") return <span className="small muted">darksteel</span>;
+
+                              return <span className="small muted">pedra</span>;
+                            }
+                          }
+                        </>
+                      )}
+                    </td>
+                    <td className="num" data-label="Pedras A/R">
+                      <MemberStones member={member} />
+                    </td>
+                    <td className="cell-action">
+                      <form
+                        action={removeSalaryMemberAction}
+                        className="inline-form"
+                        style={{ justifyContent: "flex-end" }}
+                      >
+                        <input type="hidden" name="periodId" value={period.id} />
+                        <input type="hidden" name="characterId" value={member.character_id} />
+                        <input type="hidden" name="redirectTo" value={returnTo} />
+                        <ConfirmButton message={`Remover ${member.name} do elenco desta semana?`}>
+                          Remover
+                        </ConfirmButton>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={4} style={{ fontWeight: 650 }}>
+                    {filtered ? "Total pago (filtro)" : "Total pago"}
+                  </td>
+                  <td className="num mono" style={{ fontWeight: 650 }}>
+                    {formatNumber(visiblePaid)}
+                  </td>
+                  <td />
+                  <td />
+                  <td />
+                  <td />
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
+        </section>
 
               <details className="panel">
                 <summary>Adicionar membros ao elenco</summary>
@@ -819,39 +863,35 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     ) : null}
                   </form>
 
-                  {teams.length > 0 ? (
-                    <form action={addSalaryTeamAction} className="filters">
-                      <input type="hidden" name="periodId" value={period.id} />
-                      <input type="hidden" name="redirectTo" value={returnTo} />
-                      <div className="field" style={{ flex: "1 1 220px" }}>
-                        <label htmlFor="teamId">Adicionar time inteiro</label>
-                        <select id="teamId" name="teamId" required>
-                          {teams.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button className="btn" type="submit">
-                        Adicionar time
-                      </button>
-                      <span className="small muted">Entram os jogadores aliados dos clãs do time.</span>
-                    </form>
-                  ) : null}
+
 
                   {candidates.length === 0 ? (
                     <p className="small muted">
                       {alliedClans === 0
                         ? "Nenhum clã aliado marcado neste servidor, então não há ninguém para adicionar."
                         : search
-                          ? "Nenhum jogador aliado fora do elenco com essa busca."
+                          ? "Nenhum jogador aliado com essa busca."
                           : "Todos os jogadores aliados deste servidor já estão no elenco."}
                     </p>
                   ) : (
                     <form action={addSalaryMembersAction} className="stack">
                       <input type="hidden" name="periodId" value={period.id} />
                       <input type="hidden" name="redirectTo" value={returnTo} />
+                      <div className="field" style={{ flex: "0 1 auto" }}>
+                        <span>Presenças iniciais</span>
+                        <div className="check-chips">
+                          {SALARY_ACTIVITIES.map((activity) => (
+                            <label key={activity.field} title={`${activity.label} — vale 1/3 da faixa`}>
+                              <input
+                                type="checkbox"
+                                name={`attended${activity.field[0].toUpperCase()}${activity.field.slice(1)}`}
+                                value="1"
+                              />
+                              {activity.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                       <div className="table-wrap">
                         <table className="data">
                           <thead>

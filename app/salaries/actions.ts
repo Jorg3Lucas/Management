@@ -22,7 +22,6 @@ import {
   setSalaryProductionSlot,
   setSalaryTier,
   stoneSplitLabel,
-  teamCharacterIds,
   updateSalaryMember,
   type SalaryPeriodRow,
 } from "@/lib/salaries";
@@ -288,43 +287,7 @@ export async function addSalaryMembersAction(formData: FormData): Promise<void> 
       added > 0 ? "ok" : "error",
       added > 0 ? `${added} jogador(es) adicionado(s) ao elenco.` : "Nenhum jogador novo para adicionar.",
     ),
-  );
-}
-
-export async function addSalaryTeamAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const periodId = Number(formData.get("periodId"));
-  const teamId = Number(formData.get("teamId"));
-  const period = await requirePeriod(
-    user,
-    periodId,
-    safePath(formData.get("redirectTo"), "/salaries"),
-  );
-
-  if (!Number.isInteger(teamId) || teamId <= 0) {
-    redirect(back(periodPath(period), "error", "Selecione um time."));
-  }
-
-  const ids = teamCharacterIds(period.server_id, teamId);
-  if (ids.length === 0) {
-    redirect(back(periodPath(period), "error", "Esse time não tem jogadores no ranking do servidor."));
-  }
-
-  const added = addSalaryMembers(period.id, period.server_id, ids);
-
-  logAudit({
-    user,
-    action: "salary.member",
-    entity: "salary_period",
-    entityId: period.id,
-    serverId: period.server_id,
-    detail: `Time ${teamId}: ${added} membro(s) adicionado(s) ao elenco`,
-  });
-
-  revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", `${added} jogador(es) do time adicionado(s).`));
-}
-
+  );}
 export async function updateSalaryMemberAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const periodId = Number(formData.get("periodId"));

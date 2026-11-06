@@ -271,9 +271,9 @@ export function homeServerMembers(serverId: number, search = "", limit = 500): H
             s.label AS server_label,
             c.clan_id,
             cl.name AS clan_name,
-            ct.team_id,
-            t.name AS team_name,
-            t.color AS team_color,
+            COALESCE(c.team_id, ct.team_id) AS team_id,
+            COALESCE(ti.name, t.name) AS team_name,
+            COALESCE(ti.color, t.color) AS team_color,
             c.power_score,
             c.rank_position,
             c.last_seen_at,
@@ -283,6 +283,7 @@ export function homeServerMembers(serverId: number, search = "", limit = 500): H
      JOIN servers s ON s.id = c.server_id
      LEFT JOIN clans cl ON cl.id = c.clan_id
      LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
+     LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE ${filters.join(" AND ")}
      ORDER BY p.display_name COLLATE NOCASE ASC, c.power_score DESC

@@ -14,6 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   "team.update": "Time editado",
   "team.delete": "Time removido",
   "team.clan": "Clã no time",
+  "team.character": "Time do personagem",
   "territory.owner": "Dono de território",
   "sabuk.win": "Vencedor do Sabuk",
   "sabuk.remove": "Sabuk removido",

@@ -155,6 +155,16 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     mark: sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : "",
   });
 
+  const mobileSort = (key: RosterSort, label: string) => {
+    const link = sortLink(key);
+    return (
+      <Link key={key} className={`btn sm${sortKey === key ? " primary" : " ghost"}`} href={link.href}>
+        {label}
+        {link.mark}
+      </Link>
+    );
+  };
+
   const returnTo = period
     ? `/salaries?server=${selected?.code ?? ""}&period=${period.id}`
     : selected
@@ -425,6 +435,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <form action={setSalaryWeightsAction}>
                   <input type="hidden" name="serverId" value={selected.id} />
                   <input type="hidden" name="redirectTo" value={returnTo} />
+                  <p className="table-hint">Deslize a tabela para o lado para ver todas as colunas →</p>
                   <div className="table-wrap">
                     <table className="data">
                       <thead>
@@ -537,6 +548,15 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     </span>
                   </div>
                 ) : null}
+                {members.length > 0 ? (
+                  <div className="roster-sort-mobile">
+                    <span className="small muted">Ordenar</span>
+                    {mobileSort("name", "Nome")}
+                    {mobileSort("power", "Poder")}
+                    {mobileSort("presence", "Presença")}
+                    {mobileSort("salary", "Salário")}
+                  </div>
+                ) : null}
                 {stones.members > 0 ? (
                   <div className="stone-totals">
                     <span className="small muted">Pedras da semana</span>
@@ -577,7 +597,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       Adicione membros aliados no painel abaixo, selecionando do ranking ou um time inteiro.
                     </EmptyState>
                   ) : (
-                    <table className="data">
+                    <table className="data table-cards">
                       <thead>
                         <tr>
                           <th>
@@ -621,7 +641,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         ) : null}
                         {visibleMembers.map((member) => (
                           <tr key={member.character_id}>
-                            <td>
+                            <td className="cell-title">
                               <Link className="player-name" href={`/players/${member.character_id}`}>
                                 {member.name}
                               </Link>
@@ -638,11 +658,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 )}
                               </div>
                             </td>
-                            <td className="small">
+                            <td className="small" data-label="Clã">
                               {member.clan ?? <span className="muted">sem clã</span>}
                             </td>
-                            <td className="num mono">{formatPower(member.power_score)}</td>
-                            <td>
+                            <td className="num mono" data-label="Poder">
+                              {formatPower(member.power_score)}
+                            </td>
+                            <td className="cell-wide" data-label="Ajustes da semana">
                               <form action={updateSalaryMemberAction} className="salary-controls">
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
@@ -715,7 +737,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 </button>
                               </form>
                             </td>
-                            <td className="num mono">
+                            <td className="num mono" data-label="Salário">
                               {member.attendedCount > 0 ? (
                                 <>
                                   {formatNumber(member.salary)}
@@ -728,10 +750,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 <span className="small muted">sem presença</span>
                               )}
                             </td>
-                            <td className="num">
+                            <td className="num" data-label="Pedras A/R">
                               <MemberStones member={member} />
                             </td>
-                            <td>
+                            <td className="cell-action">
                               <form
                                 action={removeSalaryMemberAction}
                                 className="inline-form"

@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
-import { canAdminServer, requireUser } from "@/lib/auth";
+import { canAdminServer, canEditServer, requireUser } from "@/lib/auth";
 import { getClan } from "@/lib/clans";
-import { getServerById } from "@/lib/queries";
+import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import {
+  assignCharacterTeam,
   assignClanTeam,
   createTeam,
   deleteTeam,
@@ -172,4 +173,53 @@ export async function assignTeamClanAction(formData: FormData): Promise<void> {
   revalidatePath("/teams");
   revalidatePath("/clans");
   redirect(back(returnTo, "ok", team ? `${clan.name} agora está em ${team.name}.` : `${clan.name} sem time.`));
+}
+
+/** Vínculo individual: vale só para o personagem e tem prioridade sobre o time do clã. */
+export async function assignCharacterTeamAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const characterId = Number(formData.get("characterId"));
+  const rawTeamId = String(formData.get("teamId") ?? "").trim();
+  const returnTo = safePath(formData.get("redirectTo"), "/teams");
+  const character = getCharacterWithServer(characterId);
+
+  if (!character) redirect(back(returnTo, "error", "Personagem não encontrado."));
+  if (!canEditServer(user, character.server_id)) {
+    redirect(back(returnTo, "error", "Sem permissão de edição neste servidor."));
+  }
+
+  const teamId = rawTeamId === "" ? null : Number(rawTeamId);
+  if (teamId !== null && (!Number.isInteger(teamId) || teamId <= 0)) {
+    redirect(back(returnTo, "error", "Time inválido."));
+  }
+
+  const team = teamId === null ? null : getTeam(teamId);
+  if (teamId !== null && (!team || team.server_id !== character.server_id)) {
+    redirect(back(returnTo, "error", "O time escolhido não pertence a este servidor."));
+  }
+
+  const ok = assignCharacterTeam({ characterId, serverId: character.server_id, teamId });
+  if (!ok) redirect(back(returnTo, "error", "Não foi possível salvar o time do personagem."));
+
+  logAudit({
+    user,
+    action: "team.character",
+    entity: "character",
+    entityId: characterId,
+    serverId: character.server_id,
+    detail: team ? `${character.name} → ${team.name}` : `${character.name} volta ao time do clã`,
+  });
+
+  revalidatePath(`/players/${characterId}`);
+  revalidatePath("/players");
+  revalidatePath("/players/home");
+  revalidatePath("/teams");
+  revalidatePath("/salaries");
+  redirect(
+    back(
+      returnTo,
+      "ok",
+      team ? `${character.name} agora está em ${team.name}.` : `${character.name} voltou a herdar o time do clã.`,
+    ),
+  );
 }

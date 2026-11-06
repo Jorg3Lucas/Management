@@ -1,8 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { getSessionUser } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#060811",
+};
 
 export const metadata: Metadata = {
   title: {

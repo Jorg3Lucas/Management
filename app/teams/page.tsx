@@ -2,10 +2,23 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canAdminServer, requireUser } from "@/lib/auth";
 import { formatPower } from "@/lib/format";
-import { TEAM_COLORS, listTeams, teamClans, teamForce, unassignedClans } from "@/lib/teams";
+import {
+  TEAM_COLORS,
+  listTeams,
+  teamClans,
+  teamForce,
+  teamIndividualMembers,
+  unassignedClans,
+} from "@/lib/teams";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Flash, StatCard } from "@/components/ui";
-import { assignTeamClanAction, createTeamAction, deleteTeamAction, updateTeamAction } from "./actions";
+import {
+  assignCharacterTeamAction,
+  assignTeamClanAction,
+  createTeamAction,
+  deleteTeamAction,
+  updateTeamAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Times" };
 export const dynamic = "force-dynamic";
@@ -26,8 +39,12 @@ export default async function TeamsPage({
   const force = selected ? teamForce(selected.id) : [];
   const free = selected ? unassignedClans(selected.id) : [];
   const clanLists = new Map<number, ReturnType<typeof teamClans>>();
+  const individualLists = new Map<number, ReturnType<typeof teamIndividualMembers>>();
   if (selected) {
-    for (const team of force) clanLists.set(team.team_id, teamClans(team.team_id));
+    for (const team of force) {
+      clanLists.set(team.team_id, teamClans(team.team_id));
+      individualLists.set(team.team_id, teamIndividualMembers(team.team_id));
+    }
   }
 
   const membersInTeams = force.reduce((sum, team) => sum + team.members, 0);
@@ -118,6 +135,7 @@ export default async function TeamsPage({
 
           {force.map((team) => {
             const clans = clanLists.get(team.team_id) ?? [];
+            const individuals = individualLists.get(team.team_id) ?? [];
             return (
               <section key={team.team_id} className="card" style={{ marginBottom: 16 }}>
                 <div className="card-head">
@@ -135,6 +153,7 @@ export default async function TeamsPage({
                       <div className="card-title">{team.team_name}</div>
                       <div className="card-sub">
                         {team.clans} clã(s) · {team.members} jogador(es) · maior poder {formatPower(team.top_power)}
+                        {individuals.length > 0 ? ` · ${individuals.length} vínculo(s) individual(is)` : ""}
                       </div>
                     </div>
                   </div>
@@ -144,16 +163,20 @@ export default async function TeamsPage({
                       <input type="hidden" name="teamId" value={team.team_id} />
                       <input type="hidden" name="serverId" value={selected.id} />
                       <input type="hidden" name="redirectTo" value={returnTo} />
-                      <ConfirmButton message={`Remover o time ${team.team_name}? Os clãs voltam para "sem time".`}>
+                      <ConfirmButton
+                        message={`Remover o time ${team.team_name}? Os clãs voltam para "sem time" e os vínculos individuais são removidos.`}
+                      >
                         Remover
                       </ConfirmButton>
                     </form>
                   </div>
                 </div>
                 <div className="card-body tight">
-                  {clans.length === 0 ? (
-                    <div className="empty">Nenhum clã vinculado a este time.</div>
-                  ) : (
+                  {clans.length === 0 && individuals.length === 0 ? (
+                    <div className="empty">Nenhum clã ou jogador vinculado a este time.</div>
+                  ) : null}
+
+                  {clans.length > 0 ? (
                     <div className="list">
                       {clans.map((clan) => (
                         <div key={clan.clan_id} className="list-row">
@@ -184,7 +207,38 @@ export default async function TeamsPage({
                         </div>
                       ))}
                     </div>
-                  )}
+                  ) : null}
+
+                  {individuals.length > 0 ? (
+                    <>
+                      <div className="roster-toolbar">
+                        <span className="small muted">Vínculos individuais</span>
+                        <span className="badge">{individuals.length}</span>
+                      </div>
+                      <div className="list">
+                        {individuals.map((member) => (
+                          <div key={member.character_id} className="list-row">
+                            <div>
+                              <Link className="player-name" href={`/players/${member.character_id}`}>
+                                {member.character_name}
+                              </Link>
+                              <div className="small muted">
+                                {member.clan_name ?? "sem clã"} · {formatPower(member.power_score)}
+                              </div>
+                            </div>
+                            <form action={assignCharacterTeamAction} className="inline-form">
+                              <input type="hidden" name="characterId" value={member.character_id} />
+                              <input type="hidden" name="teamId" value="" />
+                              <input type="hidden" name="redirectTo" value={returnTo} />
+                              <button className="btn sm ghost" type="submit">
+                                Voltar ao clã
+                              </button>
+                            </form>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
 
                   <div className="list-row" style={{ borderTop: "1px solid var(--border-soft)", flexWrap: "wrap" }}>
                     {free.length === 0 ? (

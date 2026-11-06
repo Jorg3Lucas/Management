@@ -392,11 +392,12 @@ export function salaryMembers(periodId: number): SalaryMemberRow[] {
             m.preference,
             m.stone_split,
             m.note,
-            t.name AS team_name,
-            t.color AS team_color
+            COALESCE(ti.name, t.name) AS team_name,
+            COALESCE(ti.color, t.color) AS team_color
      FROM salary_members m
      JOIN characters c ON c.id = m.character_id
      LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
+     LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE m.period_id = ?
      ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC`,
@@ -510,12 +511,12 @@ export function salaryCandidates(
     terms.push(term, term);
   }
 
-  return queryAll<SalaryCandidateRow>(
-    `SELECT c.id, c.name, c.clan, c.power_score,
-            t.name AS team_name, t.color AS team_color
+  return queryAll<SalaryCandidateRow>(     `SELECT c.id, c.name, c.clan, c.power_score,
+            COALESCE(ti.name, t.name) AS team_name, COALESCE(ti.color, t.color) AS team_color
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
      LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
+     LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE c.server_id = ?
        AND c.id NOT IN (SELECT m.character_id FROM salary_members m WHERE m.period_id = ?)
@@ -529,14 +530,14 @@ export function salaryCandidates(
   );
 }
 
-/** Personagens aliados do servidor que pertencem ao time (clãs vinculados ao time). */
+/** Personagens aliados do servidor no time, somando vínculo por clã e vínculo individual. */
 export function teamCharacterIds(serverId: number, teamId: number, limit = 300): number[] {
   return queryAll<{ id: number }>(
     `SELECT c.id
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
-     WHERE c.server_id = ? AND ct.team_id = ?
+     LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
+     WHERE c.server_id = ? AND COALESCE(c.team_id, ct.team_id) = ?
      ORDER BY c.power_score DESC
      LIMIT ?`,
     serverId,

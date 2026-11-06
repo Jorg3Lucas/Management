@@ -33,6 +33,8 @@ export type CharacterRow = {
   name: string;
   clan: string | null;
   clan_id: number | null;
+  /** Time individual; quando nulo, o time vem do clã. */
+  team_id: number | null;
   class_name: string | null;
   level: number | null;
   power_score: number;

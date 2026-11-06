@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { accessibleServers, canAccessServer, canEditServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canAccessServer, canAdminServer, canEditServer, requireUser } from "@/lib/auth";
 import { clanTimelineForCharacters, stanceForClan } from "@/lib/clans";
 import { formatDuration, formatNumber, formatPower, warTypeLabel } from "@/lib/format";
 import { characterPeers, movesForPlayer, playerForCharacter } from "@/lib/players";
@@ -15,6 +15,8 @@ import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
 import { sessionSeconds, summarizeByCharacter, summarizeByWarServer, totalWarSeconds } from "@/lib/wars";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Flash, SyncBadge } from "@/components/ui";
+import { getTeam, listTeams, teamForClan } from "@/lib/teams";
+import { assignCharacterTeamAction } from "@/app/teams/actions";
 import {
   addWarSessionAction,
   deleteWarSessionAction,
@@ -75,6 +77,11 @@ export default async function PlayerDetailPage({
   const homeServer = player?.home_server_id
     ? servers.find((server) => server.id === player.home_server_id) ?? null
     : null;
+  const canManageClanTeams = canAdminServer(user, character.server_id);
+  const teams = editable ? listTeams(character.server_id) : [];
+  const individualTeam = character.team_id ? getTeam(character.team_id) : undefined;
+  const clanTeam = character.clan_id ? teamForClan(character.server_id, character.clan_id) : undefined;
+  const effectiveTeam = individualTeam ?? clanTeam;
 
   return (
     <>
@@ -296,6 +303,70 @@ export default async function PlayerDetailPage({
           </div>
         </section>
       </div>
+
+      {editable ? (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <div className="card-head">
+            <div>
+              <div className="card-title">Time do personagem</div>
+              <div className="card-sub">O vínculo individual tem prioridade sobre o time do clã.</div>
+            </div>
+            <div className="row">
+              {individualTeam ? <span className="badge gold">individual</span> : null}
+              {effectiveTeam ? (
+                <span className="badge">
+                  <span className="dot" style={{ background: effectiveTeam.color ?? undefined }} />
+                  {effectiveTeam.name}
+                </span>
+              ) : (
+                <span className="badge">sem time</span>
+              )}
+            </div>
+          </div>
+          <div className="card-body stack">
+            {teams.length === 0 ? (
+              <p className="small muted" style={{ margin: 0 }}>
+                Nenhum time criado em {character.server_label}.{" "}
+                {canManageClanTeams ? (
+                  <Link href={`/teams?server=${character.server_code}`}>Criar um time</Link>
+                ) : (
+                  "Peça ao dono do servidor para criar um time."
+                )}
+              </p>
+            ) : (
+              <form action={assignCharacterTeamAction} className="filters" style={{ margin: 0 }}>
+                <input type="hidden" name="characterId" value={character.id} />
+                <input type="hidden" name="redirectTo" value={path} />
+                <div className="field" style={{ flex: "1 1 240px" }}>
+                  <label htmlFor="profileTeam">Time deste personagem</label>
+                  <select id="profileTeam" name="teamId" defaultValue={character.team_id ?? ""}>
+                    <option value="">
+                      {clanTeam ? `Herdar do clã (${clanTeam.name})` : "Sem time (herdar do clã)"}
+                    </option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button className="btn primary" type="submit">
+                  Salvar time
+                </button>
+                {canManageClanTeams ? (
+                  <Link className="btn ghost" href={`/teams?server=${character.server_code}`}>
+                    Gerenciar times
+                  </Link>
+                ) : null}
+              </form>
+            )}
+            <p className="small muted" style={{ margin: 0 }}>
+              O vínculo individual vale só para este personagem. Sem ele, o time vem do clã
+              {clanTeam ? ` (${clanTeam.name})` : ""}.
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       <section className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">

@@ -33,6 +33,18 @@ export function getTeam(id: number): TeamRow | undefined {
   return queryOne<TeamRow>("SELECT * FROM teams WHERE id = ?", id);
 }
 
+/** Time ao qual o clã pertence no servidor (o vínculo é por clã, não por personagem). */
+export function teamForClan(serverId: number, clanId: number): TeamRow | undefined {
+  return queryOne<TeamRow>(
+    `SELECT t.* FROM teams t
+     JOIN clan_teams ct ON ct.team_id = t.id
+     WHERE ct.server_id = ? AND ct.clan_id = ?
+     LIMIT 1`,
+    serverId,
+    clanId,
+  );
+}
+
 export function createTeam(input: {
   serverId: number;
   name: string;
@@ -99,6 +111,27 @@ export function assignClanTeam(input: {
   return true;
 }
 
+/**
+ * Define o time individual do personagem. teamId = null volta a herdar o time do clã.
+ * O time precisa pertencer ao mesmo servidor do personagem.
+ */
+export function assignCharacterTeam(input: {
+  characterId: number;
+  serverId: number;
+  teamId: number | null;
+}): boolean {
+  const character = queryOne<{ server_id: number }>("SELECT server_id FROM characters WHERE id = ?", input.characterId);
+  if (!character || character.server_id !== input.serverId) return false;
+
+  if (input.teamId !== null) {
+    const team = getTeam(input.teamId);
+    if (!team || team.server_id !== input.serverId) return false;
+  }
+
+  execute("UPDATE characters SET team_id = ? WHERE id = ?", input.teamId, input.characterId);
+  return true;
+}
+
 export type TeamForceRow = {
   team_id: number;
   team_name: string;
@@ -112,16 +145,22 @@ export type TeamForceRow = {
 /** Força de cada time do servidor, somando o ranking sincronizado. */
 export function teamForce(serverId: number): TeamForceRow[] {
   return queryAll<TeamForceRow>(
-    `SELECT t.id AS team_id,
+    `WITH effective AS (
+       SELECT ch.id, ch.server_id, ch.power_score,
+              COALESCE(ch.team_id, ct.team_id) AS team_id
+       FROM characters ch
+       LEFT JOIN clan_teams ct ON ct.server_id = ch.server_id AND ct.clan_id = ch.clan_id
+     )
+     SELECT t.id AS team_id,
             t.name AS team_name,
             t.color AS color,
-            COUNT(DISTINCT ct.clan_id) AS clans,
-            COUNT(ch.id) AS members,
-            COALESCE(SUM(ch.power_score), 0) AS total_power,
-            COALESCE(MAX(ch.power_score), 0) AS top_power
+            (SELECT COUNT(*) FROM clan_teams ct2
+              WHERE ct2.team_id = t.id AND ct2.server_id = t.server_id) AS clans,
+            COUNT(e.id) AS members,
+            COALESCE(SUM(e.power_score), 0) AS total_power,
+            COALESCE(MAX(e.power_score), 0) AS top_power
      FROM teams t
-     LEFT JOIN clan_teams ct ON ct.team_id = t.id AND ct.server_id = t.server_id
-     LEFT JOIN characters ch ON ch.server_id = t.server_id AND ch.clan_id = ct.clan_id
+     LEFT JOIN effective e ON e.team_id = t.id AND e.server_id = t.server_id
      WHERE t.server_id = ?
      GROUP BY t.id
      ORDER BY total_power DESC, t.name COLLATE NOCASE ASC`,
@@ -149,10 +188,38 @@ export function teamClans(teamId: number): TeamClanRow[] {
      FROM clan_teams ct
      JOIN clans c ON c.id = ct.clan_id
      LEFT JOIN characters ch ON ch.server_id = ct.server_id AND ch.clan_id = ct.clan_id
+       AND COALESCE(ch.team_id, ct.team_id) = ct.team_id
      LEFT JOIN clan_relations r ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id
      WHERE ct.team_id = ?
      GROUP BY c.id
      ORDER BY total_power DESC`,
+    teamId,
+  );
+}
+
+export type TeamIndividualRow = {
+  character_id: number;
+  character_name: string;
+  clan_name: string | null;
+  power_score: number;
+  rank_position: number | null;
+};
+
+/** Personagens com vínculo individual neste time (fora do vínculo por clã). */
+export function teamIndividualMembers(teamId: number): TeamIndividualRow[] {
+  return queryAll<TeamIndividualRow>(
+    `SELECT c.id AS character_id,
+            c.name AS character_name,
+            c.clan AS clan_name,
+            c.power_score,
+            c.rank_position
+     FROM characters c
+     WHERE c.team_id = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM clan_teams ct
+         WHERE ct.server_id = c.server_id AND ct.clan_id = c.clan_id AND ct.team_id = c.team_id
+       )
+     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC`,
     teamId,
   );
 }
@@ -174,8 +241,9 @@ export function unassignedClans(serverId: number): UnassignedClanRow[] {
      FROM characters ch
      JOIN clans c ON c.id = ch.clan_id
      LEFT JOIN clan_teams ct ON ct.server_id = ch.server_id AND ct.clan_id = ch.clan_id
-     WHERE ch.server_id = ? AND ct.team_id IS NULL
+     WHERE ch.server_id = ? AND ct.team_id IS NULL AND ch.team_id IS NULL
      GROUP BY c.id
+     HAVING COUNT(ch.id) > 0
      ORDER BY total_power DESC`,
     serverId,
   );

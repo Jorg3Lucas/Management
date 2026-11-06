@@ -200,7 +200,7 @@ export default async function PlayersPage({
                 : "Rode a sincronização do servidor ou ajuste os filtros."}
             </EmptyState>
           ) : (
-            <table className="data">
+            <table className="data table-cards">
               <thead>
                 <tr>
                   <th className="rank-cell">#</th>
@@ -223,8 +223,8 @@ export default async function PlayersPage({
                   const displayRank = character.rank_position ?? (result.page - 1) * result.pageSize + index + 1;
                   return (
                     <tr key={character.id}>
-                      <td className={`rank-cell${displayRank <= 3 ? " top" : ""}`}>{displayRank}</td>
-                      <td>
+                      <td className={`rank-cell cell-rank${displayRank <= 3 ? " top" : ""}`}>{displayRank}</td>
+                      <td className="cell-title cell-title-rank">
                         <div className="player-cell">
                           <span className="player-avatar">
                             <Initials name={character.name} />
@@ -256,20 +256,26 @@ export default async function PlayersPage({
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Servidor">
                         <span className="badge">{character.server_label}</span>
                       </td>
-                      <td className="muted small">{character.class_name ?? "—"}</td>
-                      <td className="num mono" style={{ fontWeight: 650 }}>
+                      <td className="muted small" data-label="Classe">
+                        {character.class_name ?? "—"}
+                      </td>
+                      <td className="num mono" style={{ fontWeight: 650 }} data-label="Poder">
                         {formatPower(character.power_score)}
                       </td>
-                      <td className="num mono muted">{formatPower(character.peak_power)}</td>
-                      <td className="num mono">
+                      <td className="num mono muted" data-label="Pico">
+                        {formatPower(character.peak_power)}
+                      </td>
+                      <td className="num mono" data-label="Guerra">
                         {war ? formatDuration(war.totalSeconds) : "—"}
                         {war?.activeCount ? <div className="small muted">em campo</div> : null}
                       </td>
-                      <td className="small muted nowrap">{formatDateTime(character.updated_at)}</td>
-                      <td>
+                      <td className="small muted nowrap" data-label="Atualizado">
+                        {formatDateTime(character.updated_at)}
+                      </td>
+                      <td className="cell-action">
                         <Link className="btn sm ghost" href={`/players/${character.id}`}>
                           {editableServers.has(character.server_id) ? "Editar" : "Abrir"}
                         </Link>

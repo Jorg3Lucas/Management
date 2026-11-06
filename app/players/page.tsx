@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { accessibleServers, editableServerIds, requireUser } from "@/lib/auth";
+import { accessibleServers, canAdminServer, editableServerIds, requireUser } from "@/lib/auth";
 import { stanceIndex } from "@/lib/clans";
 import { formatDuration, formatPower } from "@/lib/format";
 import { listCharacters, warSessionsForCharacters } from "@/lib/queries";
@@ -234,7 +234,16 @@ export default async function PlayersPage({
                               {character.name}
                             </Link>
                             <div className="player-clan">
-                              {character.clan ?? "sem clã"}
+                              {character.clan && character.clan_id && canAdminServer(user, character.server_id) ? (
+                                <Link
+                                  className="clan-link"
+                                  href={`/clans/${character.clan_id}?server=${character.server_code}`}
+                                >
+                                  {character.clan}
+                                </Link>
+                              ) : (
+                                (character.clan ?? "sem clã")
+                              )}
                               {clanStance ? (
                                 <span
                                   className={`badge ${clanStance === "ally" ? "ok" : clanStance === "enemy" ? "err" : ""}`}

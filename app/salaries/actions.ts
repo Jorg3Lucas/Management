@@ -15,11 +15,13 @@ import {
   getSalaryPeriod,
   isSalaryPreference,
   isSalaryTier,
+  isStoneSplit,
   removeSalaryMember,
   SALARY_TIERS,
   SALARY_VALES,
   setSalaryProductionSlot,
   setSalaryTier,
+  stoneSplitLabel,
   teamCharacterIds,
   updateSalaryMember,
   type SalaryPeriodRow,
@@ -345,6 +347,11 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
     redirect(back(periodPath(period), "error", "Preferência inválida."));
   }
 
+  const stoneSplitRaw = String(formData.get("stoneSplit") ?? "half");
+  if (!isStoneSplit(stoneSplitRaw)) {
+    redirect(back(periodPath(period), "error", "Divisão da pedra inválida."));
+  }
+
   const attendedHeist = formData.get("attendedHeist") === "1";
   const attendedAltar = formData.get("attendedAltar") === "1";
   const attendedVale = formData.get("attendedVale") === "1";
@@ -359,6 +366,7 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
     attendedAltar,
     attendedVale,
     preference: preferenceRaw,
+    stoneSplit: stoneSplitRaw,
   });
 
   if (!updated) redirect(back(periodPath(period), "error", "Jogador não está no elenco desta semana."));
@@ -369,7 +377,9 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
     entity: "salary_period",
     entityId: period.id,
     serverId: period.server_id,
-    detail: `Personagem ${characterId}: ${tierRaw}, ${sharePercent}%, presenças ${attendedCount}/3, ${preferenceRaw}`,
+    detail: `Personagem ${characterId}: ${tierRaw}, ${sharePercent}%, presenças ${attendedCount}/3, ${
+      preferenceRaw === "stone" ? `pedra (${stoneSplitLabel(stoneSplitRaw)})` : preferenceRaw
+    }`,
   });
 
   revalidatePath("/salaries");

@@ -49,6 +49,61 @@ export const SALARY_PREFERENCES = [
 
 export type SalaryPreference = (typeof SALARY_PREFERENCES)[number]["value"];
 
+/** Para quem recebe pedra: quanto vai de amarela e quanto vai de roxa. */
+export const SALARY_STONE_SPLITS = [
+  { value: "half", label: "50% amarela + 50% roxa" },
+  { value: "yellow", label: "100% amarela" },
+  { value: "purple", label: "100% roxa" },
+] as const;
+
+/** Preço de compra das pedras na loja de clã: DS e pontos de clã por pedra. */
+export const STONE_PRICES = {
+  yellow: { ds: 2000, clanPoints: 160 },
+  purple: { ds: 4500, clanPoints: 375 },
+} as const;
+
+export type StoneColor = keyof typeof STONE_PRICES;
+
+export type StonePurchase = {
+  stones: number;
+  ds: number;
+  clanPoints: number;
+  /** Parte do valor que não fecha uma pedra inteira. */
+  leftover: number;
+};
+
+/** Quantas pedras inteiras um valor de salário compra e quanto isso custa de fato. */
+export function stonePurchase(value: number, color: StoneColor): StonePurchase {
+  const price = STONE_PRICES[color];
+  if (value <= 0) return { stones: 0, ds: 0, clanPoints: 0, leftover: 0 };
+  const stones = Math.floor(value / price.ds);
+  return {
+    stones,
+    ds: stones * price.ds,
+    clanPoints: stones * price.clanPoints,
+    leftover: value - stones * price.ds,
+  };
+}
+
+export type StoneSplit = (typeof SALARY_STONE_SPLITS)[number]["value"];
+
+export function isStoneSplit(value: string): value is StoneSplit {
+  return SALARY_STONE_SPLITS.some((entry) => entry.value === value);
+}
+
+export function stoneSplitLabel(value: string): string {
+  return SALARY_STONE_SPLITS.find((entry) => entry.value === value)?.label ?? value;
+}
+
+/** Divide o valor de um salário em pedra entre as cores (50/50 sem perder unidade). */
+export function stoneSplitValues(value: number, split: StoneSplit): { yellow: number; purple: number } {
+  if (value <= 0) return { yellow: 0, purple: 0 };
+  if (split === "yellow") return { yellow: value, purple: 0 };
+  if (split === "purple") return { yellow: 0, purple: value };
+  const yellow = Math.floor(value / 2);
+  return { yellow, purple: value - yellow };
+}
+
 export function isSalaryTier(value: string): value is SalaryTier {
   return (SALARY_TIERS as readonly string[]).includes(value);
 }
@@ -105,6 +160,7 @@ export type SalaryMemberRow = {
   attended_altar: number;
   attended_vale: number;
   preference: SalaryPreference;
+  stone_split: StoneSplit;
   note: string | null;
   team_name: string | null;
   team_color: string | null;
@@ -334,6 +390,7 @@ export function salaryMembers(periodId: number): SalaryMemberRow[] {
             m.attended_altar,
             m.attended_vale,
             m.preference,
+            m.stone_split,
             m.note,
             t.name AS team_name,
             t.color AS team_color
@@ -394,11 +451,12 @@ export function updateSalaryMember(input: {
   attendedAltar: boolean;
   attendedVale: boolean;
   preference: SalaryPreference;
+  stoneSplit: StoneSplit;
 }): boolean {
   const result = execute(
     `UPDATE salary_members
      SET tier = ?, share_percent = ?, attended_heist = ?, attended_altar = ?, attended_vale = ?,
-         preference = ?, updated_at = ?
+         preference = ?, stone_split = ?, updated_at = ?
      WHERE period_id = ? AND character_id = ?`,
     input.tier,
     Math.max(0, Math.min(100, Math.round(input.sharePercent))),
@@ -406,6 +464,7 @@ export function updateSalaryMember(input: {
     input.attendedAltar ? 1 : 0,
     input.attendedVale ? 1 : 0,
     input.preference,
+    input.stoneSplit,
     new Date().toISOString(),
     input.periodId,
     input.characterId,

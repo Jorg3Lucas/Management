@@ -261,6 +261,7 @@ function migrate(db: DatabaseSync) {
       attended_altar INTEGER NOT NULL DEFAULT 0,
       attended_vale INTEGER NOT NULL DEFAULT 0,
       preference TEXT NOT NULL DEFAULT 'darksteel',
+      stone_split TEXT NOT NULL DEFAULT 'half',
       note TEXT,
       updated_at TEXT NOT NULL,
       PRIMARY KEY (period_id, character_id)
@@ -323,6 +324,7 @@ function migrate(db: DatabaseSync) {
   ensureColumn(db, "user_servers", "role", "TEXT NOT NULL DEFAULT 'editor'");
   ensureColumn(db, "salary_entries", "slot", "INTEGER");
   ensureColumn(db, "salary_members", "preference", "TEXT NOT NULL DEFAULT 'darksteel'");
+  ensureColumn(db, "salary_members", "stone_split", "TEXT NOT NULL DEFAULT 'half'");
   ensureColumn(db, "salary_members", "attended_heist", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "salary_members", "attended_altar", "INTEGER NOT NULL DEFAULT 0");
   const valeAdded = ensureColumn(db, "salary_members", "attended_vale", "INTEGER NOT NULL DEFAULT 0");

@@ -9,6 +9,7 @@ import {
   periodTitle,
   SALARY_ACTIVITIES,
   SALARY_PREFERENCES,
+  SALARY_STONE_SPLITS,
   SALARY_TIERS,
   SALARY_VALES,
   salaryAlliedClans,
@@ -17,7 +18,11 @@ import {
   salarySummary,
   salaryTiers,
   salaryValeEntries,
+  STONE_PRICES,
+  stonePurchase,
+  stoneSplitValues,
 } from "@/lib/salaries";
+import type { SalarySummary, StonePurchase } from "@/lib/salaries";
 import { listTeams } from "@/lib/teams";
 import { APP_TIMEZONE } from "@/lib/time";
 import {
@@ -36,7 +41,24 @@ import {
 export const metadata: Metadata = { title: "Salários" };
 export const dynamic = "force-dynamic";
 
-type SearchParams = { server?: string; period?: string; q?: string; ok?: string; error?: string };
+type SearchParams = {
+  server?: string;
+  period?: string;
+  q?: string;
+  sort?: string;
+  dir?: string;
+  presence?: string;
+  ok?: string;
+  error?: string;
+};
+
+type SortDir = "asc" | "desc";
+type RosterSort = "name" | "power" | "salary" | "presence";
+type PresenceFilter = "all" | "with" | "without";
+
+function isRosterSort(value: string | undefined): value is RosterSort {
+  return value === "name" || value === "power" || value === "salary" || value === "presence";
+}
 
 /** Data de hoje (ou do dia somado) no fuso da app, para os campos de semana. */
 function dayInput(offsetDays = 0): string {
@@ -73,6 +95,65 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const candidates = selected && period ? salaryCandidates(period.id, selected.id, search) : [];
   const alliedClans = selected ? salaryAlliedClans(selected.id) : 0;
   const teams = selected ? listTeams(selected.id) : [];
+
+  const presence: PresenceFilter =
+    params.presence === "with" || params.presence === "without" ? params.presence : "all";
+  const sortKey: RosterSort = isRosterSort(params.sort) ? params.sort : "name";
+  const sortDir: SortDir = params.dir === "desc" ? "desc" : "asc";
+
+  const members = summary ? summary.members : [];
+  const visibleMembers = members
+    .filter((member) =>
+      presence === "all" ? true : presence === "with" ? member.attendedCount > 0 : member.attendedCount === 0,
+    )
+    .sort((a, b) => {
+      const factor = sortDir === "asc" ? 1 : -1;
+      const byName = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+      if (sortKey === "power") return (a.power_score - b.power_score) * factor || byName;
+      if (sortKey === "salary") return (a.salary - b.salary) * factor || byName;
+      if (sortKey === "presence") return (a.attendedCount - b.attendedCount) * factor || byName;
+      return byName * factor;
+    });
+
+  const withPresence = members.filter((member) => member.attendedCount > 0).length;
+  const visiblePaid = visibleMembers.reduce((sum, member) => sum + member.salary, 0);
+  const filtered = presence !== "all";
+
+  // Pedras da semana: soma as compras de cada membro, na mesma conversão da tabela.
+  const stoneMembers = members.filter((member) => member.preference === "stone" && member.salary > 0);
+  const yellow = stoneMembers.reduce(
+    (total, member) => addStonePurchase(total, memberStonePurchase(member).yellow),
+    stonePurchase(0, "yellow"),
+  );
+  const purple = stoneMembers.reduce(
+    (total, member) => addStonePurchase(total, memberStonePurchase(member).purple),
+    stonePurchase(0, "purple"),
+  );
+  const stones = {
+    members: stoneMembers.length,
+    half: stoneMembers.filter((member) => member.stone_split === "half").length,
+  };
+  const stoneLeftover = yellow.leftover + purple.leftover;
+
+  const rosterHref = (overrides: { sort?: RosterSort; dir?: SortDir; presence?: PresenceFilter }) => {
+    const next = { sort: sortKey, dir: sortDir, presence, ...overrides };
+    const query = new URLSearchParams();
+    if (selected) query.set("server", selected.code);
+    if (period) query.set("period", String(period.id));
+    if (search) query.set("q", search);
+    if (next.sort !== "name" || next.dir !== "asc") {
+      query.set("sort", next.sort);
+      query.set("dir", next.dir);
+    }
+    if (next.presence !== "all") query.set("presence", next.presence);
+    return `/salaries?${query.toString()}`;
+  };
+
+  const sortLink = (key: RosterSort) => ({
+    href: rosterHref({ sort: key, dir: sortKey === key && sortDir === "asc" ? "desc" : "asc" }),
+    className: `th-sort${sortKey === key ? " active" : ""}`,
+    mark: sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : "",
+  });
 
   const returnTo = period
     ? `/salaries?server=${selected?.code ?? ""}&period=${period.id}`
@@ -145,7 +226,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <div className="card-title">Semanas de {selected.label}</div>
                 <div className="card-sub">A semana mais recente abre por padrão; cada uma guarda seus próprios números</div>
               </div>
-              <span className="badge">{periods.length}</span>
+              <div className="row">
+                {period ? <span className="badge gold">{periodTitle(period)}</span> : null}
+                <span className="badge">{periods.length} semana(s)</span>
+              </div>
             </div>
             <div className="card-body">
               <form action={createSalaryPeriodAction} className="form-grid">
@@ -424,6 +508,69 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     {summary.attended}/{summary.members.length}
                   </span>
                 </div>
+                {members.length > 0 ? (
+                  <div className="roster-toolbar">
+                    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                      <span className="small muted">Presença</span>
+                      <Link
+                        className={`btn sm${presence === "all" ? " primary" : " ghost"}`}
+                        href={rosterHref({ presence: "all" })}
+                      >
+                        Todos · {members.length}
+                      </Link>
+                      <Link
+                        className={`btn sm${presence === "with" ? " primary" : " ghost"}`}
+                        href={rosterHref({ presence: "with" })}
+                      >
+                        Com presença · {withPresence}
+                      </Link>
+                      <Link
+                        className={`btn sm${presence === "without" ? " primary" : " ghost"}`}
+                        href={rosterHref({ presence: "without" })}
+                      >
+                        Sem presença · {members.length - withPresence}
+                      </Link>
+                    </div>
+                    <span className="small muted">
+                      Mostrando {visibleMembers.length} de {members.length}
+                      {sortKey !== "name" || sortDir !== "asc" ? " · ordenado" : ""}
+                    </span>
+                  </div>
+                ) : null}
+                {stones.members > 0 ? (
+                  <div className="stone-totals">
+                    <span className="small muted">Pedras da semana</span>
+                    <span className="stone-color">
+                      <span
+                        className="badge gold"
+                        title={`${formatNumber(STONE_PRICES.yellow.ds)} DS + ${formatNumber(STONE_PRICES.yellow.clanPoints)} pontos de clã por pedra amarela`}
+                      >
+                        Amarela · {formatNumber(yellow.stones)} pedra(s)
+                      </span>
+                      <span className="small muted mono">
+                        {formatNumber(yellow.ds)} DS · {formatNumber(yellow.clanPoints)} pts
+                      </span>
+                    </span>
+                    <span className="stone-color">
+                      <span
+                        className="badge purple"
+                        title={`${formatNumber(STONE_PRICES.purple.ds)} DS + ${formatNumber(STONE_PRICES.purple.clanPoints)} pontos de clã por pedra roxa`}
+                      >
+                        Roxa · {formatNumber(purple.stones)} pedra(s)
+                      </span>
+                      <span className="small muted mono">
+                        {formatNumber(purple.ds)} DS · {formatNumber(purple.clanPoints)} pts
+                      </span>
+                    </span>
+                    <span className="small muted">
+                      {stones.members} membro(s) em pedra
+                      {stones.half > 0 ? ` · ${stones.half} em 50/50` : ""} · total{" "}
+                      {formatNumber(yellow.ds + purple.ds)} DS e{" "}
+                      {formatNumber(yellow.clanPoints + purple.clanPoints)} pontos de clã
+                      {stoneLeftover > 0 ? ` · sobra ${formatNumber(stoneLeftover)} DS (não fecha 1 pedra)` : ""}
+                    </span>
+                  </div>
+                ) : null}
                 <div className="table-wrap">
                   {summary.members.length === 0 ? (
                     <EmptyState title="Nenhum jogador no elenco desta semana">
@@ -433,16 +580,46 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     <table className="data">
                       <thead>
                         <tr>
-                          <th>Jogador</th>
-                          <th>Clã / time</th>
-                          <th className="num">Poder</th>
-                          <th>Faixa · % · heist · altar · vale · preferência</th>
-                          <th className="num">Salário</th>
+                          <th>
+                            <Link className={sortLink("name").className} href={sortLink("name").href}>
+                              Jogador{sortLink("name").mark}
+                            </Link>
+                          </th>
+                          <th>Clã</th>
+                          <th className="num">
+                            <Link className={sortLink("power").className} href={sortLink("power").href}>
+                              Poder{sortLink("power").mark}
+                            </Link>
+                          </th>
+                          <th>
+                            <Link
+                              className={sortLink("presence").className}
+                              href={sortLink("presence").href}
+                              title="Ordenar por presenças"
+                            >
+                              Ajustes da semana{sortLink("presence").mark}
+                            </Link>
+                          </th>
+                          <th className="num">
+                            <Link className={sortLink("salary").className} href={sortLink("salary").href}>
+                              Salário{sortLink("salary").mark}
+                            </Link>
+                          </th>
+                          <th className="num" title="Pedras amarelas (A) e roxas (R) que o membro recebe">
+                            Pedras A/R
+                          </th>
                           <th />
                         </tr>
                       </thead>
                       <tbody>
-                        {summary.members.map((member) => (
+                        {visibleMembers.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="small muted" style={{ textAlign: "center", padding: "18px 14px" }}>
+                              Nenhum membro {presence === "with" ? "com" : "sem"} presença nesta semana.
+                            </td>
+                          </tr>
+                        ) : null}
+                        {visibleMembers.map((member) => (
                           <tr key={member.character_id}>
                             <td>
                               <Link className="player-name" href={`/players/${member.character_id}`}>
@@ -457,7 +634,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                     {member.team_name}
                                   </span>
                                 ) : (
-                                  "sem time"
+                                  <span className="muted">sem time</span>
                                 )}
                               </div>
                             </td>
@@ -466,61 +643,73 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                             </td>
                             <td className="num mono">{formatPower(member.power_score)}</td>
                             <td>
-                              <form
-                                action={updateSalaryMemberAction}
-                                className="inline-form"
-                                style={{ flexWrap: "wrap", gap: 6 }}
-                              >
+                              <form action={updateSalaryMemberAction} className="salary-controls">
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
                                 <input type="hidden" name="redirectTo" value={returnTo} />
-                                <select
-                                  name="tier"
-                                  defaultValue={member.tier}
-                                  aria-label={`Faixa de ${member.name}`}
-                                  style={{ maxWidth: 92 }}
-                                >
-                                  {tiers.map((tier) => (
-                                    <option key={tier.tier} value={tier.tier}>
-                                      {tier.tier} · ×{formatNumber(tier.weight)}
-                                    </option>
-                                  ))}
-                                </select>
-                                <input
-                                  name="sharePercent"
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  step={5}
-                                  defaultValue={member.share_percent}
-                                  aria-label={`Percentual pago a ${member.name}`}
-                                  style={{ maxWidth: 70 }}
-                                />
-                                {SALARY_ACTIVITIES.map((activity) => (
-                                  <label key={activity.field} className="check" title={activity.label}>
-                                    <input
-                                      type="checkbox"
-                                      name={`attended${activity.field[0].toUpperCase()}${activity.field.slice(1)}`}
-                                      value="1"
-                                      defaultChecked={
-                                        member[`attended_${activity.field}` as "attended_heist" | "attended_altar" | "attended_vale"] === 1
-                                      }
-                                    />
-                                    {activity.label.toLowerCase()}
+                                <label className="mini-field">
+                                  <span>Faixa</span>
+                                  <select name="tier" defaultValue={member.tier}>
+                                    {tiers.map((tier) => (
+                                      <option key={tier.tier} value={tier.tier}>
+                                        {tier.tier} · ×{formatNumber(tier.weight)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="mini-field narrow">
+                                  <span>% pago</span>
+                                  <input
+                                    name="sharePercent"
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    defaultValue={member.share_percent}
+                                  />
+                                </label>
+                                <div className="mini-field">
+                                  <span>Presenças</span>
+                                  <div className="check-chips">
+                                    {SALARY_ACTIVITIES.map((activity) => (
+                                      <label key={activity.field} title={`${activity.label} — vale 1/3 da faixa`}>
+                                        <input
+                                          type="checkbox"
+                                          name={`attended${activity.field[0].toUpperCase()}${activity.field.slice(1)}`}
+                                          value="1"
+                                          defaultChecked={
+                                            member[`attended_${activity.field}` as "attended_heist" | "attended_altar" | "attended_vale"] === 1
+                                          }
+                                        />
+                                        {activity.label}
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                                <label className="mini-field">
+                                  <span>Recompensa</span>
+                                  <select name="preference" defaultValue={member.preference}>
+                                    {SALARY_PREFERENCES.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                {member.preference === "stone" ? (
+                                  <label className="mini-field">
+                                    <span>Pedra</span>
+                                    <select name="stoneSplit" defaultValue={member.stone_split}>
+                                      {SALARY_STONE_SPLITS.map((split) => (
+                                        <option key={split.value} value={split.value}>
+                                          {split.label}
+                                        </option>
+                                      ))}
+                                    </select>
                                   </label>
-                                ))}
-                                <select
-                                  name="preference"
-                                  defaultValue={member.preference}
-                                  aria-label={`Recompensa preferida de ${member.name}`}
-                                  style={{ maxWidth: 116 }}
-                                >
-                                  {SALARY_PREFERENCES.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
+                                ) : (
+                                  <input type="hidden" name="stoneSplit" value={member.stone_split} />
+                                )}
                                 <button className="btn sm" type="submit">
                                   Salvar
                                 </button>
@@ -538,6 +727,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                               ) : (
                                 <span className="small muted">sem presença</span>
                               )}
+                            </td>
+                            <td className="num">
+                              <MemberStones member={member} />
                             </td>
                             <td>
                               <form
@@ -559,11 +751,12 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       <tfoot>
                         <tr>
                           <td colSpan={4} style={{ fontWeight: 650 }}>
-                            Total pago
+                            {filtered ? "Total pago (filtro)" : "Total pago"}
                           </td>
                           <td className="num mono" style={{ fontWeight: 650 }}>
-                            {formatNumber(summary.paid)}
+                            {formatNumber(visiblePaid)}
                           </td>
+                          <td />
                           <td />
                         </tr>
                       </tfoot>
@@ -583,6 +776,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                   <form className="filters" action="/salaries" method="get">
                     <input type="hidden" name="server" value={selected.code} />
                     <input type="hidden" name="period" value={period.id} />
+                    {sortKey !== "name" || sortDir !== "asc" ? (
+                      <>
+                        <input type="hidden" name="sort" value={sortKey} />
+                        <input type="hidden" name="dir" value={sortDir} />
+                      </>
+                    ) : null}
+                    {presence !== "all" ? <input type="hidden" name="presence" value={presence} /> : null}
                     <div className="field" style={{ flex: "1 1 260px" }}>
                       <label htmlFor="q">Buscar jogador ou clã</label>
                       <input id="q" name="q" type="search" defaultValue={search} placeholder="Ex.: Arke" />
@@ -692,5 +892,44 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         </>
       ) : null}
     </>
+  );
+}
+
+type RosterMember = SalarySummary["members"][number];
+
+function memberStonePurchase(member: RosterMember) {
+  const split = stoneSplitValues(member.salary, member.stone_split);
+  return {
+    split,
+    yellow: stonePurchase(split.yellow, "yellow"),
+    purple: stonePurchase(split.purple, "purple"),
+  };
+}
+
+function addStonePurchase(total: StonePurchase, entry: StonePurchase): StonePurchase {
+  return {
+    stones: total.stones + entry.stones,
+    ds: total.ds + entry.ds,
+    clanPoints: total.clanPoints + entry.clanPoints,
+    leftover: total.leftover + entry.leftover,
+  };
+}
+
+/** Quantas pedras de cada cor o membro leva, já convertidas pelo preço da loja. */
+function MemberStones({ member }: { member: RosterMember }) {
+  if (member.preference !== "stone") return <span className="small muted">darksteel</span>;
+  if (member.salary <= 0) return <span className="small muted">—</span>;
+
+  const { split, yellow, purple } = memberStonePurchase(member);
+
+  return (
+    <div className="stone-cell">
+      <span className="badge gold" title={`${formatNumber(split.yellow)} em pedra amarela`}>
+        A · {formatNumber(yellow.stones)}
+      </span>
+      <span className="badge purple" title={`${formatNumber(split.purple)} em pedra roxa`}>
+        R · {formatNumber(purple.stones)}
+      </span>
+    </div>
   );
 }

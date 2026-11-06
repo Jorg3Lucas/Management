@@ -189,6 +189,106 @@ export function listServerClans(serverId: number): ServerClanRow[] {
   );
 }
 
+export type ClanDetailRow = {
+  clan_id: number;
+  clan_name: string;
+  stance: ClanStance | null;
+  members: number;
+  total_power: number;
+  top_power: number;
+  last_seen_at: string | null;
+};
+
+/** Clã com os totais do ranking de um servidor. */
+export function getServerClan(serverId: number, clanId: number): ClanDetailRow | undefined {
+  return queryOne<ClanDetailRow>(
+    `SELECT c.id AS clan_id,
+            c.name AS clan_name,
+            r.stance AS stance,
+            COUNT(ch.id) AS members,
+            COALESCE(SUM(ch.power_score), 0) AS total_power,
+            COALESCE(MAX(ch.power_score), 0) AS top_power,
+            MAX(ch.last_seen_at) AS last_seen_at
+     FROM clans c
+     LEFT JOIN characters ch ON ch.server_id = ? AND ch.clan_id = c.id
+     LEFT JOIN clan_relations r ON r.server_id = ? AND r.clan_id = c.id
+     WHERE c.id = ?
+     GROUP BY c.id`,
+    serverId,
+    serverId,
+    clanId,
+  );
+}
+
+export type ClanMemberRow = {
+  id: number;
+  name: string;
+  class_name: string | null;
+  power_score: number;
+  rank_position: number | null;
+  last_seen_at: string | null;
+  sync_locked: number;
+};
+
+/** Jogadores do ranking que estão no clã dentro do servidor, do mais forte para o mais fraco. */
+export function clanMembers(serverId: number, clanId: number): ClanMemberRow[] {
+  return queryAll<ClanMemberRow>(
+    `SELECT id, name, class_name, power_score, rank_position, last_seen_at, sync_locked
+     FROM characters
+     WHERE server_id = ? AND clan_id = ?
+     ORDER BY power_score DESC, rank_position ASC`,
+    serverId,
+    clanId,
+  );
+}
+
+export type ClanCandidateRow = {
+  id: number;
+  name: string;
+  clan: string | null;
+  power_score: number;
+  rank_position: number | null;
+};
+
+/**
+ * Jogadores do servidor que ainda não estão neste clã, vindos do ranking sincronizado.
+ * Quem está sem clã aparece primeiro; o restante segue por poder.
+ */
+export function clanCandidates(
+  serverId: number,
+  clanId: number,
+  options: { search?: string; limit?: number } = {},
+): ClanCandidateRow[] {
+  const search = (options.search ?? "").trim();
+  const limit = Math.min(Math.max(options.limit ?? 100, 1), 300);
+  const filters = ["server_id = ?", "(clan_id IS NULL OR clan_id <> ?)"];
+  const params: (string | number)[] = [serverId, clanId];
+
+  if (search) {
+    filters.push("name LIKE ?");
+    params.push(`%${search}%`);
+  }
+
+  return queryAll<ClanCandidateRow>(
+    `SELECT id, name, clan, power_score, rank_position
+     FROM characters
+     WHERE ${filters.join(" AND ")}
+     ORDER BY clan_id IS NULL DESC, power_score DESC, rank_position ASC
+     LIMIT ?`,
+    ...params,
+    limit,
+  );
+}
+
+/** Personagens do servidor que o ranking não associa a nenhum clã. */
+export function countClanlessCharacters(serverId: number): number {
+  const row = queryOne<{ total: number }>(
+    "SELECT COUNT(*) AS total FROM characters WHERE server_id = ? AND clan_id IS NULL",
+    serverId,
+  );
+  return row?.total ?? 0;
+}
+
 export function clanStanceCounts(serverId: number): { ally: number; neutral: number; enemy: number; unset: number } {
   const counts = { ally: 0, neutral: 0, enemy: 0, unset: 0 };
   const rows = queryAll<{ stance: ClanStance; total: number }>(

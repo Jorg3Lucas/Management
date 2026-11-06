@@ -110,6 +110,16 @@ export function IconFlag(props: Props) {
   );
 }
 
+export function IconCastle(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 21V9h4V5h3v4h4V5h3v4h4v12" />
+      <path d="M10 21v-5a2 2 0 0 1 4 0v5" />
+      <path d="M2 21h20" />
+    </svg>
+  );
+}
+
 export function IconShield(props: Props) {
   return (
     <svg {...base} {...props}>

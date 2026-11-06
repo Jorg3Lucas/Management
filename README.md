@@ -22,6 +22,10 @@ disponíveis para ativação.
   postura no ranking e histórico na ficha do jogador.
 - **Times por servidor**: agrupe clãs em times (blocos de aliança) e acompanhe clãs, membros, poder total e maior
   poder de cada time; o jogador entra no time do clã.
+- **Territórios**: o líder do servidor registra qual clã domina o **Castelo de Bicheon** e os vales de **Bicheon**,
+  **Redmoon** e **Serpentes**, com membros e poder do clã no ranking — cada troca de dono fica no histórico, com autor
+  e data. No mesmo lugar ele registra o vencedor de cada rodada do **Sabuk Clash** (uma rodada por data, com
+  histórico).
 - **Servidor casa e transferências**: o mesmo nome em servidores diferentes é o mesmo jogador; a troca de servidor é
   confirmada na sincronização (sem aprovação) e o tempo de guerra é somado entre os personagens.
 - **Administração por servidor e auditoria**: o usuário pode ser dono de um servidor liberado (administra a

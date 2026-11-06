@@ -480,6 +480,29 @@ export function mergeClans(sourceId: number, targetId: number): { characters: nu
     );
     execute("UPDATE character_clan_history SET clan_id = ? WHERE clan_id = ?", target.id, source.id);
     execute("UPDATE character_clan_history SET previous_clan_id = ? WHERE previous_clan_id = ?", target.id, source.id);
+
+    // Territórios e Sabuk também apontam para clãs: repontar evita perder o registro no merge.
+    execute("UPDATE territory_history SET clan_id = ? WHERE clan_id = ?", target.id, source.id);
+    execute("UPDATE territory_history SET previous_clan_id = ? WHERE previous_clan_id = ?", target.id, source.id);
+    const duplicatedTerritories = queryAll<{ server_id: number; territory: string }>(
+      `SELECT a.server_id, a.territory FROM server_territories a
+       JOIN server_territories b ON b.server_id = a.server_id AND b.territory = a.territory
+       WHERE a.clan_id = ? AND b.clan_id = ?`,
+      source.id,
+      target.id,
+    );
+    for (const duplicate of duplicatedTerritories) {
+      execute(
+        "DELETE FROM server_territories WHERE server_id = ? AND territory = ? AND clan_id = ?",
+        duplicate.server_id,
+        duplicate.territory,
+        source.id,
+      );
+    }
+    execute("UPDATE server_territories SET clan_id = ? WHERE clan_id = ?", target.id, source.id);
+    execute("UPDATE OR IGNORE sabuk_wins SET clan_id = ? WHERE clan_id = ?", target.id, source.id);
+    execute("DELETE FROM sabuk_wins WHERE clan_id = ?", source.id);
+
     execute("DELETE FROM clan_relations WHERE clan_id = ?", source.id);
     execute("DELETE FROM clans WHERE id = ?", source.id);
 

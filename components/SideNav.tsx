@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconArrowRight,
+  IconCastle,
   IconDashboard,
   IconFlag,
   IconHistory,
@@ -21,6 +22,7 @@ const items = [
   { href: "/wars", label: "Guerras", icon: IconSwords, adminOnly: false, managerOnly: false },
   { href: "/clans", label: "Clãs", icon: IconShield, adminOnly: false, managerOnly: true },
   { href: "/teams", label: "Times", icon: IconFlag, adminOnly: false, managerOnly: true },
+  { href: "/territories", label: "Territórios", icon: IconCastle, adminOnly: false, managerOnly: true },
   { href: "/transfers", label: "Transferências", icon: IconArrowRight, adminOnly: true, managerOnly: false },
   { href: "/servers", label: "Servidores", icon: IconServer, adminOnly: true, managerOnly: false },
   { href: "/users", label: "Usuários", icon: IconUsers, adminOnly: true, managerOnly: false },

@@ -156,6 +156,42 @@ function migrate(db: DatabaseSync) {
       PRIMARY KEY (server_id, clan_id)
     );
 
+    CREATE TABLE IF NOT EXISTS server_territories (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      territory TEXT NOT NULL,
+      clan_id INTEGER REFERENCES clans(id) ON DELETE SET NULL,
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (server_id, territory)
+    );
+
+    CREATE TABLE IF NOT EXISTS territory_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      territory TEXT NOT NULL,
+      previous_clan_id INTEGER REFERENCES clans(id) ON DELETE SET NULL,
+      previous_clan_name TEXT,
+      clan_id INTEGER REFERENCES clans(id) ON DELETE SET NULL,
+      clan_name TEXT,
+      source TEXT NOT NULL DEFAULT 'manual',
+      changed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      changed_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_territory_history_server ON territory_history (server_id, changed_at DESC);
+
+    CREATE TABLE IF NOT EXISTS sabuk_wins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+      won_on TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (server_id, won_on)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sabuk_wins_server ON sabuk_wins (server_id, won_on DESC);
+
     CREATE TABLE IF NOT EXISTS character_clan_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,

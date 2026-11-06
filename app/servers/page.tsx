@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
 import { listServers, serverPlayerCounts } from "@/lib/queries";
 import { groupServers } from "@/lib/server-groups";
+import { TERRITORIES, territoryOwnersByServer } from "@/lib/territories";
 import { formatDateTime } from "@/lib/time";
 import { Flash, SyncBadge } from "@/components/ui";
 import { syncServerAction, toggleServerFlagAction } from "./actions";
@@ -20,6 +21,7 @@ export default async function ServersPage({
   const servers = listServers();
   const counts = serverPlayerCounts();
   const groups = groupServers(servers);
+  const territoryByServer = territoryOwnersByServer(servers.map((server) => server.id));
   const focusCount = servers.filter((server) => server.is_focus).length;
   const enabledCount = servers.filter((server) => server.sync_enabled).length;
 
@@ -61,6 +63,7 @@ export default async function ServersPage({
                     <th>Servidor</th>
                     <th>IDs do fórum</th>
                     <th className="num">Jogadores</th>
+                    <th>Territórios</th>
                     <th>Sync</th>
                     <th>Último resultado</th>
                     <th className="num" style={{ textAlign: "right" }}>
@@ -87,6 +90,22 @@ export default async function ServersPage({
                         group {server.worldgroup_id} · world {server.world_id}
                       </td>
                       <td className="num mono">{(counts.get(server.id) ?? 0).toLocaleString("pt-BR")}</td>
+                      <td>
+                        <Link
+                          className="tag-list"
+                          href={`/territories?server=${server.code}`}
+                          title={`Registrar territórios de ${server.label}`}
+                        >
+                          {TERRITORIES.map((territory) => {
+                            const owner = territoryByServer.get(server.id)?.get(territory.key);
+                            return (
+                              <span key={territory.key} className={`badge${owner ? " gold" : ""}`}>
+                                {territory.short}: {owner?.clan_name ?? "—"}
+                              </span>
+                            );
+                          })}
+                        </Link>
+                      </td>
                       <td>
                         <form action={toggleServerFlagAction} className="inline-form">
                           <input type="hidden" name="serverId" value={server.id} />

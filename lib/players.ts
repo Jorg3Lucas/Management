@@ -198,3 +198,134 @@ export function movesForPlayer(playerId: number, limit = 10): ServerMoveView[] {
 export function setHomeServer(playerId: number, serverId: number): void {
   execute("UPDATE players SET home_server_id = ?, updated_at = ? WHERE id = ?", serverId, new Date().toISOString(), playerId);
 }
+
+/** Define o servidor casa de vários jogadores de uma vez. Retorna quantos foram alterados. */
+export function bulkSetHomeServer(playerIds: number[], serverId: number): number {
+  if (playerIds.length === 0) return 0;
+  const now = new Date().toISOString();
+  return transaction(() => {
+    let changed = 0;
+    for (const playerId of playerIds) {
+      changed += execute(
+        "UPDATE players SET home_server_id = ?, updated_at = ? WHERE id = ?",
+        serverId,
+        now,
+        playerId,
+      ).changes;
+    }
+    return changed;
+  });
+}
+
+export function playersByIds(playerIds: number[]): PlayerRow[] {
+  if (playerIds.length === 0) return [];
+  return queryAll<PlayerRow>(
+    `SELECT * FROM players WHERE id IN (${playerIds.map(() => "?").join(",")})`,
+    ...playerIds,
+  );
+}
+
+/** Personagem de um jogador que tem servidor casa definido, com clã e time no servidor em que está. */
+export type HomeServerMemberRow = {
+  player_id: number;
+  player_name: string;
+  home_server_id: number;
+  character_id: number;
+  character_name: string;
+  server_id: number;
+  server_code: string;
+  server_label: string;
+  clan_id: number | null;
+  clan_name: string | null;
+  team_id: number | null;
+  team_name: string | null;
+  team_color: string | null;
+  power_score: number;
+  rank_position: number | null;
+  last_seen_at: string | null;
+  /** 1 quando o personagem está no próprio servidor casa. */
+  in_home_server: number;
+};
+
+/**
+ * Todos os personagens dos jogadores cujo servidor casa é o informado,
+ * inclusive os que estão em outros servidores, com clã, time e poder de cada um.
+ */
+export function homeServerMembers(serverId: number, search = "", limit = 500): HomeServerMemberRow[] {
+  const filters = ["p.home_server_id = ?"];
+  const params: (string | number)[] = [serverId];
+
+  if (search) {
+    filters.push("(p.display_name LIKE ? OR c.name LIKE ?)");
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  return queryAll<HomeServerMemberRow>(
+    `SELECT p.id AS player_id,
+            p.display_name AS player_name,
+            p.home_server_id,
+            c.id AS character_id,
+            c.name AS character_name,
+            s.id AS server_id,
+            s.code AS server_code,
+            s.label AS server_label,
+            c.clan_id,
+            cl.name AS clan_name,
+            ct.team_id,
+            t.name AS team_name,
+            t.color AS team_color,
+            c.power_score,
+            c.rank_position,
+            c.last_seen_at,
+            CASE WHEN c.server_id = p.home_server_id THEN 1 ELSE 0 END AS in_home_server
+     FROM players p
+     JOIN characters c ON c.player_id = p.id
+     JOIN servers s ON s.id = c.server_id
+     LEFT JOIN clans cl ON cl.id = c.clan_id
+     LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
+     LEFT JOIN teams t ON t.id = ct.team_id
+     WHERE ${filters.join(" AND ")}
+     ORDER BY p.display_name COLLATE NOCASE ASC, c.power_score DESC
+     LIMIT ?`,
+    ...params,
+    limit,
+  );
+}
+
+export type HomeServerCandidateRow = {
+  player_id: number;
+  player_name: string;
+  home_label: string | null;
+  home_code: string | null;
+  characters_here: number;
+  power_here: number;
+};
+
+/** Jogadores com personagem no servidor que ainda não têm este servidor como casa. */
+export function homeServerCandidates(serverId: number, search = "", limit = 200): HomeServerCandidateRow[] {
+  const filters = ["c.server_id = ?", "(p.home_server_id IS NULL OR p.home_server_id <> ?)"];
+  const params: (string | number)[] = [serverId, serverId];
+
+  if (search) {
+    filters.push("(p.display_name LIKE ? OR c.name LIKE ?)");
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  return queryAll<HomeServerCandidateRow>(
+    `SELECT p.id AS player_id,
+            p.display_name AS player_name,
+            hs.label AS home_label,
+            hs.code AS home_code,
+            COUNT(c.id) AS characters_here,
+            MAX(c.power_score) AS power_here
+     FROM players p
+     JOIN characters c ON c.player_id = p.id
+     LEFT JOIN servers hs ON hs.id = p.home_server_id
+     WHERE ${filters.join(" AND ")}
+     GROUP BY p.id
+     ORDER BY (p.home_server_id IS NOT NULL), power_here DESC
+     LIMIT ?`,
+    ...params,
+    limit,
+  );
+}

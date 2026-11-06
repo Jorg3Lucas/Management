@@ -226,6 +226,56 @@ function migrate(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_clan_teams_team ON clan_teams (team_id);
 
+    CREATE TABLE IF NOT EXISTS salary_periods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      label TEXT,
+      starts_on TEXT NOT NULL,
+      ends_on TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (server_id, starts_on)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_salary_periods_server ON salary_periods (server_id, starts_on DESC);
+
+    CREATE TABLE IF NOT EXISTS salary_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      period_id INTEGER NOT NULL REFERENCES salary_periods(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('production', 'fixed')),
+      slot INTEGER,
+      name TEXT NOT NULL,
+      amount INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_salary_entries_period ON salary_entries (period_id, kind);
+
+    CREATE TABLE IF NOT EXISTS salary_members (
+      period_id INTEGER NOT NULL REFERENCES salary_periods(id) ON DELETE CASCADE,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      tier TEXT NOT NULL DEFAULT 'A',
+      share_percent INTEGER NOT NULL DEFAULT 100,
+      attended_heist INTEGER NOT NULL DEFAULT 0,
+      attended_altar INTEGER NOT NULL DEFAULT 0,
+      attended_vale INTEGER NOT NULL DEFAULT 0,
+      preference TEXT NOT NULL DEFAULT 'darksteel',
+      note TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (period_id, character_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_salary_members_character ON salary_members (character_id);
+
+    CREATE TABLE IF NOT EXISTS salary_tiers (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      tier TEXT NOT NULL,
+      weight REAL NOT NULL,
+      min_power INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (server_id, tier)
+    );
+
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name_key TEXT NOT NULL UNIQUE,
@@ -271,10 +321,32 @@ function migrate(db: DatabaseSync) {
   ensureColumn(db, "characters", "clan_id", "INTEGER REFERENCES clans(id)");
   ensureColumn(db, "characters", "player_id", "INTEGER REFERENCES players(id)");
   ensureColumn(db, "user_servers", "role", "TEXT NOT NULL DEFAULT 'editor'");
+  ensureColumn(db, "salary_entries", "slot", "INTEGER");
+  ensureColumn(db, "salary_members", "preference", "TEXT NOT NULL DEFAULT 'darksteel'");
+  ensureColumn(db, "salary_members", "attended_heist", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "salary_members", "attended_altar", "INTEGER NOT NULL DEFAULT 0");
+  const valeAdded = ensureColumn(db, "salary_members", "attended_vale", "INTEGER NOT NULL DEFAULT 0");
+  const powerAdded = ensureColumn(db, "salary_tiers", "min_power", "INTEGER NOT NULL DEFAULT 0");
+
+  // Presença única antiga vira presença no vale; faixas criadas antes ganham o poder mínimo padrão.
+  if (valeAdded && hasColumn(db, "salary_members", "attended")) {
+    db.exec("UPDATE salary_members SET attended_vale = attended");
+  }
+  if (powerAdded) {
+    db.exec("UPDATE salary_tiers SET min_power = 500000 WHERE tier = 'A'");
+    db.exec("UPDATE salary_tiers SET min_power = 450000 WHERE tier = 'B'");
+    db.exec("UPDATE salary_tiers SET min_power = 390000 WHERE tier = 'C'");
+    db.exec("UPDATE salary_tiers SET min_power = 350000 WHERE tier = 'D'");
+    db.exec("UPDATE salary_tiers SET min_power = 0 WHERE tier = 'E'");
+  }
 
   db.exec("CREATE INDEX IF NOT EXISTS idx_characters_clan ON characters (server_id, clan_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_characters_player ON characters (player_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_clan_relations_server ON clan_relations (server_id, stance)");
+  db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_salary_entries_slot ON salary_entries (period_id, slot) WHERE slot IS NOT NULL",
+  );
+  backfillSalarySlots(db);
 
   // Transferência não passa mais por aprovação: pendências antigas são aplicadas agora.
   confirmLegacyPendingMoves(db);
@@ -295,10 +367,43 @@ function confirmLegacyPendingMoves(db: DatabaseSync): void {
   }
 }
 
-function ensureColumn(db: DatabaseSync, table: string, column: string, definition: string): void {
+/** Lançamentos de produção antigos (antes dos três vales) recebem os espaços livres. */
+function backfillSalarySlots(db: DatabaseSync): void {
+  const rows = db
+    .prepare(
+      "SELECT id, period_id FROM salary_entries WHERE kind = 'production' AND slot IS NULL ORDER BY period_id, id",
+    )
+    .all() as unknown as { id: number; period_id: number }[];
+  if (rows.length === 0) return;
+
+  const update = db.prepare("UPDATE salary_entries SET slot = ? WHERE id = ?");
+  const used = new Map<number, Set<number>>();
+  for (const row of rows) {
+    let taken = used.get(row.period_id);
+    if (!taken) {
+      const existing = db
+        .prepare("SELECT slot FROM salary_entries WHERE period_id = ? AND slot IS NOT NULL")
+        .all(row.period_id) as unknown as { slot: number }[];
+      taken = new Set(existing.map((entry) => entry.slot));
+      used.set(row.period_id, taken);
+    }
+    const slot = [1, 2, 3].find((candidate) => !taken.has(candidate));
+    if (slot === undefined) continue;
+    taken.add(slot);
+    update.run(slot, row.id);
+  }
+}
+
+function hasColumn(db: DatabaseSync, table: string, column: string): boolean {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[];
-  if (columns.some((entry) => entry.name === column)) return;
+  return columns.some((entry) => entry.name === column);
+}
+
+/** Adiciona a coluna se faltar; retorna true quando ela acabou de ser criada. */
+function ensureColumn(db: DatabaseSync, table: string, column: string, definition: string): boolean {
+  if (hasColumn(db, table, column)) return false;
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  return true;
 }
 
 function seed(db: DatabaseSync) {

@@ -129,6 +129,18 @@ export function IconShield(props: Props) {
   );
 }
 
+export function IconCoins(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <ellipse cx="9" cy="7" rx="6" ry="3" />
+      <path d="M3 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7" />
+      <path d="M3 12v5c0 1.7 2.7 3 6 3 1.1 0 2.2-.1 3.1-.4" />
+      <circle cx="17.5" cy="15.5" r="4.5" />
+      <path d="M17.5 13.5v4M16.2 14.4h2.2a.9.9 0 0 1 0 1.8h-1.8a.9.9 0 0 0 0 1.8h2.2" />
+    </svg>
+  );
+}
+
 export function IconHistory(props: Props) {
   return (
     <svg {...base} {...props}>

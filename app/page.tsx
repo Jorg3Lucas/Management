@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { accessibleServerIds, accessibleServers, isAdmin, requireUser } from "@/lib/auth";
+import { accessibleServerIds, accessibleServers, canAdminServer, isAdmin, requireUser } from "@/lib/auth";
 import { formatDuration, formatPower } from "@/lib/format";
 import {
   countCharactersForServers,
@@ -238,7 +238,18 @@ export default async function DashboardPage({
                           <Link className="player-name" href={`/players/${character.id}`}>
                             {character.name}
                           </Link>
-                          <div className="player-clan">{character.clan ?? "sem clã"}</div>
+                          <div className="player-clan">
+                            {character.clan && character.clan_id && canAdminServer(user, character.server_id) ? (
+                              <Link
+                                className="clan-link"
+                                href={`/clans/${character.clan_id}?server=${character.server_code}`}
+                              >
+                                {character.clan}
+                              </Link>
+                            ) : (
+                              (character.clan ?? "sem clã")
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>

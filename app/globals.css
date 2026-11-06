@@ -604,6 +604,15 @@ td.nowrap {
   color: var(--muted-2);
 }
 
+.clan-link {
+  color: inherit;
+}
+
+.clan-link:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
 .muted {
   color: var(--muted-2);
 }

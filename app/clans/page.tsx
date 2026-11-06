@@ -108,7 +108,13 @@ export default async function ClansPage({
                     {clans.map((clan) => (
                       <tr key={clan.clan_id}>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{clan.clan_name}</div>
+                          <Link
+                            className="player-name"
+                            href={`/clans/${clan.clan_id}?server=${selected.code}`}
+                            style={{ fontWeight: 600 }}
+                          >
+                            {clan.clan_name}
+                          </Link>
                           <div className="player-clan">{clan.stance ? stanceLabel(clan.stance) : "não classificada"}</div>
                         </td>
                         <td>
@@ -139,8 +145,8 @@ export default async function ClansPage({
                         </td>
                         <td>
                           <div className="row" style={{ justifyContent: "flex-end" }}>
-                            <Link className="btn sm ghost" href={`/players?server=${selected.code}&q=${encodeURIComponent(clan.clan_name)}`}>
-                              Jogadores
+                            <Link className="btn sm ghost" href={`/clans/${clan.clan_id}?server=${selected.code}`}>
+                              Abrir clã
                             </Link>
                           </div>
                         </td>

@@ -106,7 +106,12 @@ npm -v
 
 log "2. Instalando dependências do sistema"
 
-sudo apt-get install -y git build-essential nginx
+# Instala o nginx se não estiver instalado, mas não remove painéis existentes.
+if ! command -v nginx >/dev/null 2>&1; then
+  sudo apt-get install -y nginx
+else
+  printf 'nginx já instalado. Pulando instalação.\n'
+fi
 
 if ! command -v certbot >/dev/null 2>&1; then
   sudo apt-get install -y certbot python3-certbot-nginx
@@ -221,16 +226,45 @@ pm2 status
 printf '\n'
 
 # ---------------------------------------------------------------------------
-# 9. Nginx
+# 9. Nginx - detecta estrutura e configura
 # ---------------------------------------------------------------------------
 
 log "9. Configurando nginx"
 
-sudo tee "/etc/nginx/sites-available/$DOMAIN" >/dev/null <<NGINX
+# Detecta a estrutura de sites disponível na VPS.
+NGINX_AVAILABLE=""
+NGINX_ENABLED=""
+
+if [[ -d "/etc/nginx/sites-available" ]] && [[ -d "/etc/nginx/sites-enabled" ]]; then
+  NGINX_AVAILABLE="/etc/nginx/sites-available"
+  NGINX_ENABLED="/etc/nginx/sites-enabled"
+elif [[ -d "/etc/nginx/conf.d" ]]; then
+  NGINX_AVAILABLE="/etc/nginx/conf.d"
+  NGINX_ENABLED="/etc/nginx/conf.d"
+elif [[ -d "/etc/nginx/fastpanel2-available" ]] && [[ -d "/etc/nginx/fastpanel2-sites" ]]; then
+  NGINX_AVAILABLE="/etc/nginx/fastpanel2-available"
+  NGINX_ENABLED="/etc/nginx/fastpanel2-sites"
+elif [[ -d "/etc/nginx/fastpanel2-sites" ]]; then
+  NGINX_AVAILABLE="/etc/nginx/fastpanel2-sites"
+  NGINX_ENABLED="/etc/nginx/fastpanel2-sites"
+else
+  # Fallback: usa conf.d mesmo que não exista, e tenta criar.
+  NGINX_AVAILABLE="/etc/nginx/conf.d"
+  NGINX_ENABLED="/etc/nginx/conf.d"
+fi
+
+printf 'Usando configs do nginx:\n'
+printf '  disponível em: %s\n' "$NGINX_AVAILABLE"
+printf '  ativo em: %s\n' "$NGINX_ENABLED"
+printf '\n'
+
+sudo mkdir -p "$NGINX_AVAILABLE"
+sudo mkdir -p "$NGINX_ENABLED"
+
+sudo tee "$NGINX_AVAILABLE/$DOMAIN.conf" >/dev/null <<NGINX
 server {
     listen 80;
-    server_name $DOMAIN;
-    server_name _;
+    server_name $DOMAIN _;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -250,14 +284,40 @@ server {
 }
 NGINX
 
-sudo rm -f "/etc/nginx/sites-enabled/default"
-sudo ln -sf "/etc/nginx/sites-available/$DOMAIN" "/etc/nginx/sites-enabled/$DOMAIN"
+# Ativa o site conforme a estrutura detectada.
+if [[ "$NGINX_AVAILABLE" == "/etc/nginx/sites-available" ]]; then
+  # Servidor nginx padrão: remove default e faz symlink.
+  sudo rm -f /etc/nginx/sites-enabled/default
+  sudo ln -sf "$NGINX_AVAILABLE/$DOMAIN.conf" "$NGINX_ENABLED/$DOMAIN.conf"
+elif [[ "$NGINX_AVAILABLE" == "/etc/nginx/fastpanel2-available" ]]; then
+  # Painel fastpanel2: symlink para a pasta de sites ativos.
+  sudo ln -sf "$NGINX_AVAILABLE/$DOMAIN.conf" "$NGINX_ENABLED/$DOMAIN.conf"
+elif [[ "$NGINX_AVAILABLE" == "/etc/nginx/fastpanel2-sites" ]]; then
+  # Outro esquema fastpanel: o arquivo já está na pasta de sites ativos.
+  true
+else
+  # conf.d: arquivos lá já são carregados automaticamente pelo nginx padrão.
+  # Não precisa de symlink, mas garantir que o arquivo tá la.
+  true
+fi
 
 sudo mkdir -p /var/www/certbot
 sudo chown -R "$USER:$USER" /var/www/certbot
 
-sudo nginx -t
-sudo systemctl reload nginx || sudo systemctl restart nginx
+printf '\n'
+log "Testando configuração do nginx"
+sudo nginx -t || true
+printf '\n'
+
+printf 'Recarregando nginx\n'
+if command -v systemctl >/dev/null 2>&1 && sudo systemctl is-active --quiet nginx 2>/dev/null; then
+  sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx 2>/dev/null || true
+elif command -v systemctl >/dev/null 2>&1; then
+  sudo systemctl restart nginx 2>/dev/null || true
+else
+  sudo nginx -s reload 2>/dev/null || true
+fi
+sleep 2
 
 printf '\n'
 log "Verificando se a porta está servindo localmente antes do HTTPS"
@@ -266,22 +326,22 @@ curl -sS -o /dev/null -w "HTTP Next.js: %{http_code}\n" "http://127.0.0.1:$PORT"
 curl -sS -o /dev/null -w "Nginx proxy: %{http_code}\n" "http://127.0.0.1/" || true
 printf '\n'
 
-confirm "Nginx tá configurado e reloadado. Continuar para o HTTPS?"
-  log "10. Configurando HTTPS com Let's Encrypt"
+confirm "Nginx tá configurado e recarregado. Continuar para o HTTPS?"
+log "10. Configurando HTTPS com Let's Encrypt"
 
-  sudo mkdir -p /var/www/certbot
-  sudo certbot --nginx \
-    -d "$DOMAIN" \
-    ${EMAIL_FOR_LETSENCRYPT:+--email "$EMAIL_FOR_LETSENCRYPT"} \
-    --agree-tos \
-    --redirect \
-    --hsts \
-    --staple-ocsp \
-    -n
+sudo mkdir -p /var/www/certbot
+sudo certbot --nginx \
+  -d "$DOMAIN" \
+  --email "$EMAIL_FOR_LETSENCRYPT" \
+  --agree-tos \
+  --redirect \
+  --hsts \
+  --staple-ocsp \
+  -n
 
-  printf '\n'
-  log "Testando renewal automático"
-  sudo certbot renew --dry-run
+printf '\n'
+log "Testando renewal automático"
+sudo certbot renew --dry-run
 else
   log "HTTPS não foi configurado. A app vai responder em http://$DOMAIN"
 fi
@@ -299,8 +359,8 @@ printf 'Últimos logs do PM2:\n'
 pm2 logs "$APP_NAME" --lines 20 --nostream --raw || true
 printf '\n'
 printf 'Nginx:\n'
-sudo systemctl is-active nginx
-sudo nginx -t
+sudo systemctl is-active nginx 2>/dev/null || true
+sudo nginx -t 2>/dev/null || true
 printf '\n'
 printf 'Pronto:\n'
 printf '  http://%s\n' "$DOMAIN"

@@ -31,7 +31,7 @@ DOMAIN="resistancemir4.online"
 VPS_IP="23.94.95.198"
 ADMIN_PASSWORD="admin123"
 SYNC_TOKEN="um_token_secreto_aqui"
-EMAIL_FOR_LETSENCRYPT="" # ex: voce@exemplo.com
+EMAIL_FOR_LETSENCRYPT="jorgelucas.sd@gmail.com"
 
 # Caminho do repositório na VPS. Ajuste se você clonou em outro lugar.
 APP_DIR="/home/yudengs/management"

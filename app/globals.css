@@ -502,6 +502,47 @@ p {
   border-color: #293654;
 }
 
+details.card {
+  overflow: hidden;
+}
+
+details.card > summary.card-head {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  flex-wrap: wrap;
+  transition: background 0.16s ease;
+}
+
+details.card > summary.card-head::-webkit-details-marker {
+  display: none;
+}
+
+details.card > summary.card-head:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+details.card:not([open]) > summary.card-head {
+  border-bottom: none;
+}
+
+details.card > summary.card-head::after {
+  content: "▾";
+  color: var(--muted-2);
+  font-size: 11px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+details.card:not([open]) > summary.card-head::after {
+  transform: rotate(-90deg);
+}
+
+details.card > summary.card-head .card-title,
+details.card > summary.card-head .card-sub {
+  display: block;
+}
+
 .card-head {
   display: flex;
   align-items: center;
@@ -862,6 +903,84 @@ td.nowrap {
   color: var(--gold);
   border-color: var(--gold-line);
   background: var(--gold-soft);
+}
+
+/* Raridades do prêmio do castelo */
+.prize-key {
+  display: inline-flex;
+  align-items: center;
+  padding: 2.5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.prize-key.legendary {
+  color: var(--gold-strong);
+  border-color: var(--gold-line);
+  background: var(--gold-soft);
+}
+
+.prize-key.epic {
+  color: var(--violet);
+  border-color: rgba(192, 132, 252, 0.32);
+  background: rgba(192, 132, 252, 0.1);
+}
+
+.prize-key.rare {
+  color: var(--cyan);
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.prize-key.uncommon {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.09);
+}
+
+.prize-meter {
+  height: 5px;
+  margin-top: 9px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.prize-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--muted);
+}
+
+.prize-meter.legendary > span {
+  background: var(--gold-strong);
+}
+
+.prize-meter.epic > span {
+  background: var(--violet);
+}
+
+.prize-meter.rare > span {
+  background: var(--cyan);
+}
+
+.prize-meter.uncommon > span {
+  background: var(--ok);
+}
+
+/* CE: plano e doações lado a lado em telas largas */
+.ce-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .badge.ok {
@@ -1650,6 +1769,9 @@ details.panel > .panel-body {
 @media (max-width: 1180px) {
   .main {
     padding: 32px 28px 70px;
+  }
+  .ce-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
   .grid.cols-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));

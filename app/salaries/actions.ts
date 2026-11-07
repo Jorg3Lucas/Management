@@ -6,6 +6,7 @@ import { canAdminServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { getServerById } from "@/lib/queries";
 import {
+  addAlliedSalaryMembers,
   addSalaryEntry,
   addSalaryMembers,
   createSalaryPeriod,
@@ -105,17 +106,26 @@ export async function createSalaryPeriodAction(formData: FormData): Promise<void
     );
   }
 
+  // A semana já nasce com o elenco dos clãs aliados; o admin só marca as presenças.
+  const added = addAlliedSalaryMembers(periodId, serverId);
+
   logAudit({
     user,
     action: "salary.period",
     entity: "salary_period",
     entityId: periodId,
     serverId,
-    detail: `${server.label}: semana ${startsOn} a ${endsOn}`,
+    detail: `${server.label}: semana ${startsOn} a ${endsOn} (${added} membro(s) aliados no elenco)`,
   });
 
   revalidatePath("/salaries");
-  redirect(`/salaries?server=${server.code}&period=${periodId}&ok=${encodeURIComponent("Semana criada.")}`);
+  redirect(
+    `/salaries?server=${server.code}&period=${periodId}&ok=${encodeURIComponent(
+      added > 0
+        ? `Semana criada com ${added} jogador(es) dos clãs aliados no elenco.`
+        : "Semana criada. Nenhum jogador aliado encontrado para o elenco.",
+    )}`,
+  );
 }
 
 export async function deleteSalaryPeriodAction(formData: FormData): Promise<void> {
@@ -194,7 +204,8 @@ export async function setSalaryProductionSlotAction(formData: FormData): Promise
   if (!vale) redirect(back(periodPath(period), "error", "Vale inválido."));
 
   const clear = formData.get("clear") === "1";
-  const name = cleanText(formData.get("name"), 60);
+  // A origem do vale é fixa (Redmoon, Snake, Bicheon); só o valor é lançado.
+  const name = vale.label;
   const amount = parseAmount(formData.get("amount"));
 
   if (clear) {
@@ -211,7 +222,6 @@ export async function setSalaryProductionSlotAction(formData: FormData): Promise
     redirect(back(periodPath(period), "ok", `${vale.label} limpo.`));
   }
 
-  if (!name) redirect(back(periodPath(period), "error", `Informe a origem do ${vale.label}.`));
   if (amount === null) redirect(back(periodPath(period), "error", `Informe o valor do ${vale.label}.`));
 
   setSalaryProductionSlot({ periodId: period.id, slot: vale.slot, name, amount });
@@ -222,11 +232,11 @@ export async function setSalaryProductionSlotAction(formData: FormData): Promise
     entity: "salary_period",
     entityId: period.id,
     serverId: period.server_id,
-    detail: `${vale.label}: ${name} ${amount}`,
+    detail: `${vale.label}: ${amount}`,
   });
 
   revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", `${vale.label} salvo: ${name}.`));
+  redirect(back(periodPath(period), "ok", `${vale.label} salvo.`));
 }
 
 export async function deleteSalaryEntryAction(formData: FormData): Promise<void> {
@@ -290,6 +300,36 @@ export async function addSalaryMembersAction(formData: FormData): Promise<void> 
   );
 }
 
+export async function addAlliedSalaryMembersAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const periodId = Number(formData.get("periodId"));
+  const period = await requirePeriod(
+    user,
+    periodId,
+    safePath(formData.get("redirectTo"), "/salaries"),
+  );
+
+  const added = addAlliedSalaryMembers(period.id, period.server_id);
+
+  logAudit({
+    user,
+    action: "salary.member",
+    entity: "salary_period",
+    entityId: period.id,
+    serverId: period.server_id,
+    detail: `${added} membro(s) aliados adicionados ao elenco da semana`,
+  });
+
+  revalidatePath("/salaries");
+  redirect(
+    back(
+      periodPath(period),
+      added > 0 ? "ok" : "error",
+      added > 0 ? `${added} jogador(es) aliados adicionado(s) ao elenco.` : "Todos os aliados já estão no elenco.",
+    ),
+  );
+}
+
 export async function updateSalaryMemberAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const periodId = Number(formData.get("periodId"));
@@ -303,9 +343,11 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
   const tierRaw = String(formData.get("tier") ?? "");
   if (!isSalaryTier(tierRaw)) redirect(back(periodPath(period), "error", "Coeficiente inválido."));
 
-  const percentRaw = Number(formData.get("sharePercent"));
-  if (!Number.isFinite(percentRaw)) redirect(back(periodPath(period), "error", "Percentual inválido."));
-  const sharePercent = Math.max(0, Math.min(100, Math.round(percentRaw)));
+  // A tela informa a penalidade; guardamos quanto sobra do salário (100 − penalidade).
+  const penaltyRaw = Number(formData.get("penaltyPercent") ?? 0);
+  if (!Number.isFinite(penaltyRaw)) redirect(back(periodPath(period), "error", "Percentual inválido."));
+  const penaltyPercent = Math.max(0, Math.min(100, Math.round(penaltyRaw)));
+  const sharePercent = 100 - penaltyPercent;
 
   const preferenceRaw = String(formData.get("preference") ?? "darksteel");
   if (!isSalaryPreference(preferenceRaw)) {
@@ -342,7 +384,7 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
     entity: "salary_period",
     entityId: period.id,
     serverId: period.server_id,
-    detail: `Personagem ${characterId}: ${tierRaw}, ${sharePercent}%, presenças ${attendedCount}/3, ${
+    detail: `Personagem ${characterId}: ${tierRaw}, penalidade ${penaltyPercent}%, presenças ${attendedCount}/3, ${
       preferenceRaw === "stone" ? `pedra (${stoneSplitLabel(stoneSplitRaw)})` : preferenceRaw
     }`,
   });

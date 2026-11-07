@@ -120,6 +120,17 @@ export function IconCastle(props: Props) {
   );
 }
 
+export function IconGift(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 11h16v10H4z" />
+      <path d="M2 7h20v4H2z" />
+      <path d="M12 7v14" />
+      <path d="M12 7c-1.2-2.4-2.5-4-4.5-4a2.5 2.5 0 0 0 0 5H12Zm0 0c1.2-2.4 2.5-4 4.5-4a2.5 2.5 0 0 1 0 5H12Z" />
+    </svg>
+  );
+}
+
 export function IconShield(props: Props) {
   return (
     <svg {...base} {...props}>
@@ -137,6 +148,15 @@ export function IconCoins(props: Props) {
       <path d="M3 12v5c0 1.7 2.7 3 6 3 1.1 0 2.2-.1 3.1-.4" />
       <circle cx="17.5" cy="15.5" r="4.5" />
       <path d="M17.5 13.5v4M16.2 14.4h2.2a.9.9 0 0 1 0 1.8h-1.8a.9.9 0 0 0 0 1.8h2.2" />
+    </svg>
+  );
+}
+
+export function IconExpedition(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m3 20 6.5-11 4 6 2.5-4L21 20Z" />
+      <path d="M16 4v6M16 4l4 1.5L16 7" />
     </svg>
   );
 }

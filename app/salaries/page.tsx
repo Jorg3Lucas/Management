@@ -8,6 +8,7 @@ import {
   listSalaryPeriods,
   periodTitle,
   SALARY_ACTIVITIES,
+  SALARY_MEMBER_CAP,
   SALARY_PREFERENCES,
   SALARY_STONE_SPLITS,
   SALARY_TIERS,
@@ -25,6 +26,7 @@ import {
 import type { SalarySummary, StonePurchase } from "@/lib/salaries";
 import { APP_TIMEZONE } from "@/lib/time";
 import {
+  addAlliedSalaryMembersAction,
   addSalaryEntryAction,
   addSalaryMembersAction,
   createSalaryPeriodAction,
@@ -258,7 +260,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                   <button className="btn primary" type="submit">
                     Criar semana
                   </button>
-                  <span className="small muted">A produção e os custos são lançados na semana criada.</span>
+                  <span className="small muted">
+                    A semana já nasce com todo o elenco dos clãs aliados; a produção e os custos são lançados nela e
+                    você só marca as presenças.
+                  </span>
                 </div>
               </form>
             </div>
@@ -304,7 +309,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                   <div className="card-head">
                     <div>
                       <div className="card-title">Vales da semana</div>
-                      <div className="card-sub">Um espaço para cada vale: origem e valor coletado</div>
+                      <div className="card-sub">Redmoon, Snake e Bicheon são fixos; lance só o valor da produção</div>
                     </div>
                     <span className="badge">{formatNumber(summary.production)}</span>
                   </div>
@@ -326,22 +331,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                             <input type="hidden" name="slot" value={vale.slot} />
                             <input type="hidden" name="redirectTo" value={returnTo} />
                             <input
-                              name="name"
-                              type="text"
-                              maxLength={60}
-                              defaultValue={entry?.name ?? ""}
-                              placeholder="Origem (REDMOON)"
-                              aria-label={`Origem do ${vale.label}`}
-                              style={{ flex: "1 1 130px" }}
-                            />
-                            <input
                               name="amount"
                               type="text"
                               inputMode="numeric"
                               defaultValue={entry ? String(entry.amount) : ""}
                               placeholder="Valor"
                               aria-label={`Valor do ${vale.label}`}
-                              style={{ flex: "1 1 110px" }}
+                              style={{ flex: "1 1 160px" }}
                             />
                             <button className="btn sm" type="submit">
                               Salvar
@@ -497,7 +493,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       Salvar coeficientes
                     </button>
                     <span className="small muted">
-                      Prêmio por ponto = (vales − custos) ÷ soma dos coeficientes ponderados pelas presenças.
+                      Prêmio por ponto = (vales − custos) ÷ soma dos coeficientes ponderados pelas presenças. Cada membro
+                      recebe no máximo {formatNumber(SALARY_MEMBER_CAP)} DS; o excedente vai para os demais,
+                      proporcionalmente aos pontos. A penalidade de um membro sai do salário dele e também é
+                      redistribuída entre quem não tem penalidade.
                     </span>
                   </div>
                 </form>
@@ -677,14 +676,14 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                   </select>
                                 </label>
                                 <label className="mini-field narrow">
-                                  <span>% pago</span>
+                                  <span>Penalidade %</span>
                                   <input
-                                    name="sharePercent"
+                                    name="penaltyPercent"
                                     type="number"
                                     min={0}
                                     max={100}
                                     step={5}
-                                    defaultValue={member.share_percent}
+                                    defaultValue={100 - member.share_percent}
                                   />
                                 </label>
                                 <div className="mini-field">
@@ -738,7 +737,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                   {formatNumber(member.salary)}
                                   <div className="small muted">
                                     {member.attendedCount}/3
-                                    {member.share_percent !== 100 ? ` · ${member.share_percent}%` : ""}
+                                    {member.share_percent !== 100
+                                      ? ` · −${100 - member.share_percent}% de penalidade`
+                                      : ""}
                                   </div>
                                 </>
                               ) : (
@@ -789,6 +790,17 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     Só aparecem jogadores dos clãs aliados de {selected.label} ({alliedClans} clã(s) marcado(s)).
                     Ajuste a postura dos clãs em <Link href="/clans">Clãs</Link>.
                   </p>
+
+                  <form action={addAlliedSalaryMembersAction} className="row">
+                    <input type="hidden" name="periodId" value={period.id} />
+                    <input type="hidden" name="redirectTo" value={returnTo} />
+                    <button className="btn primary" type="submit">
+                      Adicionar todos os aliados
+                    </button>
+                    <span className="small muted">
+                      Coloca no elenco, de uma vez, todos os jogadores dos clãs aliados que ainda não estão na semana.
+                    </span>
+                  </form>
 
                   <form className="filters" action="/salaries" method="get">
                     <input type="hidden" name="server" value={selected.code} />

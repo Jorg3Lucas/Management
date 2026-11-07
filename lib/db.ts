@@ -3,6 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { hashPassword } from "./password";
 import { FOCUS_CODES, FORUM_SERVERS, serverLabel } from "./mir4/servers";
+import { APP_TIMEZONE } from "./time";
 
 type Param = string | number | null;
 
@@ -277,6 +278,41 @@ function migrate(db: DatabaseSync) {
       PRIMARY KEY (server_id, tier)
     );
 
+    CREATE TABLE IF NOT EXISTS ce_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+      week_start TEXT NOT NULL,
+      runs TEXT NOT NULL DEFAULT '{}',
+      participants INTEGER NOT NULL DEFAULT 0,
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (server_id, week_start, clan_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ce_plans_server ON ce_plans (server_id, week_start DESC);
+
+    CREATE TABLE IF NOT EXISTS ce_donations (
+      plan_id INTEGER NOT NULL REFERENCES ce_plans(id) ON DELETE CASCADE,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      gold_done INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (plan_id, character_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS castle_prize_awards (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      week_start TEXT NOT NULL,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      prize TEXT NOT NULL CHECK (prize IN ('legendary', 'epic', 'rare', 'uncommon', 'common')),
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (server_id, week_start, character_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_castle_prizes_server
+      ON castle_prize_awards (server_id, week_start);
+
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name_key TEXT NOT NULL UNIQUE,
@@ -317,6 +353,181 @@ function migrate(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log (created_at DESC);
   `);
+
+  // A primeira versão do plano de CE era única por servidor; vira a semana atual.
+  if (!hasColumn(db, "ce_plans", "week_start")) {
+    const legacy = db
+      .prepare("SELECT server_id, main_runs, ally_runs, participants, updated_by, updated_at FROM ce_plans")
+      .all() as unknown as {
+      server_id: number;
+      main_runs: string;
+      ally_runs: string;
+      participants: number;
+      updated_by: number | null;
+      updated_at: string;
+    }[];
+
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("DROP TABLE ce_plans");
+    db.exec(`
+      CREATE TABLE ce_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        week_start TEXT NOT NULL,
+        main_runs TEXT NOT NULL DEFAULT '{}',
+        ally_runs TEXT NOT NULL DEFAULT '{}',
+        participants INTEGER NOT NULL DEFAULT 0,
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (server_id, week_start)
+      )
+    `);
+    const week = currentWeekStart();
+    const insert = db.prepare(
+      `INSERT INTO ce_plans (server_id, week_start, main_runs, ally_runs, participants, updated_by, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    for (const row of legacy) {
+      insert.run(
+        row.server_id,
+        week,
+        row.main_runs,
+        row.ally_runs,
+        row.participants,
+        row.updated_by,
+        row.updated_at,
+      );
+    }
+    db.exec("PRAGMA foreign_keys = ON");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_ce_plans_server ON ce_plans (server_id, week_start DESC)");
+  }
+
+  // Agora cada clã aliado tem o próprio plano na semana. O plano antigo
+  // guardava principal + aliado juntos; vira um plano para cada um dos dois
+  // primeiros clãs aliados, preservando runs e doações.
+  if (!hasColumn(db, "ce_plans", "clan_id")) {
+    const legacyPlans = db
+      .prepare(
+        `SELECT id, server_id, week_start, main_runs, ally_runs, participants, updated_by, updated_at
+         FROM ce_plans`,
+      )
+      .all() as unknown as {
+      id: number;
+      server_id: number;
+      week_start: string;
+      main_runs: string;
+      ally_runs: string;
+      participants: number;
+      updated_by: number | null;
+      updated_at: string;
+    }[];
+    const legacyDonations = db
+      .prepare("SELECT plan_id, character_id, gold_done, updated_at FROM ce_donations")
+      .all() as unknown as {
+      plan_id: number;
+      character_id: number;
+      gold_done: number;
+      updated_at: string;
+    }[];
+    const alliedClans = db.prepare(
+      `SELECT cl.id, COUNT(c.id) AS members
+       FROM clan_relations r
+       JOIN clans cl ON cl.id = r.clan_id
+       LEFT JOIN characters c ON c.clan_id = cl.id AND c.server_id = r.server_id
+       WHERE r.server_id = ? AND r.stance = 'ally'
+       GROUP BY cl.id
+       ORDER BY members DESC, cl.name COLLATE NOCASE ASC`,
+    );
+    const characterClan = db.prepare("SELECT clan_id FROM characters WHERE id = ?");
+
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("DROP TABLE ce_donations");
+    db.exec("DROP TABLE ce_plans");
+    db.exec(`
+      CREATE TABLE ce_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        week_start TEXT NOT NULL,
+        runs TEXT NOT NULL DEFAULT '{}',
+        participants INTEGER NOT NULL DEFAULT 0,
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (server_id, week_start, clan_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ce_plans_server ON ce_plans (server_id, week_start DESC);
+
+      CREATE TABLE ce_donations (
+        plan_id INTEGER NOT NULL REFERENCES ce_plans(id) ON DELETE CASCADE,
+        character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+        gold_done INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (plan_id, character_id)
+      );
+    `);
+
+    const insertPlan = db.prepare(
+      `INSERT INTO ce_plans (server_id, clan_id, week_start, runs, participants, updated_by, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertDonation = db.prepare(
+      `INSERT OR IGNORE INTO ce_donations (plan_id, character_id, gold_done, updated_at)
+       VALUES (?, ?, ?, ?)`,
+    );
+    const migrated = new Map<
+      number,
+      { mainPlanId: number; allyPlanId: number | null; allyClanId: number | null }
+    >();
+
+    for (const plan of legacyPlans) {
+      const clans = alliedClans.all(plan.server_id) as unknown as { id: number; members: number }[];
+      const [mainClan, allyClan] = clans;
+      if (!mainClan) continue;
+
+      const mainPlanId = Number(
+        insertPlan.run(
+          plan.server_id,
+          mainClan.id,
+          plan.week_start,
+          plan.main_runs,
+          mainClan.members,
+          plan.updated_by,
+          plan.updated_at,
+        ).lastInsertRowid,
+      );
+      const allyPlanId = allyClan
+        ? Number(
+            insertPlan.run(
+              plan.server_id,
+              allyClan.id,
+              plan.week_start,
+              plan.ally_runs,
+              allyClan.members,
+              plan.updated_by,
+              plan.updated_at,
+            ).lastInsertRowid,
+          )
+        : null;
+
+      migrated.set(plan.id, { mainPlanId, allyPlanId, allyClanId: allyClan?.id ?? null });
+    }
+
+    for (const donation of legacyDonations) {
+      const target = migrated.get(donation.plan_id);
+      if (!target) continue;
+      const character = characterClan.get(donation.character_id) as
+        | { clan_id: number | null }
+        | undefined;
+      const planId =
+        target.allyPlanId !== null && character?.clan_id === target.allyClanId
+          ? target.allyPlanId
+          : target.mainPlanId;
+      insertDonation.run(planId, donation.character_id, donation.gold_done, donation.updated_at);
+    }
+
+    db.exec("PRAGMA foreign_keys = ON");
+  }
 
   // Colunas adicionadas depois da primeira versão do schema.
   ensureColumn(db, "characters", "clan_id", "INTEGER REFERENCES clans(id)");
@@ -395,6 +606,19 @@ function backfillSalarySlots(db: DatabaseSync): void {
     taken.add(slot);
     update.run(slot, row.id);
   }
+}
+
+/** Segunda-feira da semana atual, no fuso da app. */
+function currentWeekStart(): string {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return date.toISOString().slice(0, 10);
 }
 
 function hasColumn(db: DatabaseSync, table: string, column: string): boolean {

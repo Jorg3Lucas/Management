@@ -27,12 +27,15 @@ export const DEFAULT_SALARY_MIN_POWER: Record<SalaryTier, number> = {
   E: 0,
 };
 
-/** Os três vales da semana ocupam espaços fixos. */
+/** Os três vales da semana são fixos: só o valor da produção muda. */
 export const SALARY_VALES = [
-  { slot: 1, label: "1º vale" },
-  { slot: 2, label: "2º vale" },
-  { slot: 3, label: "3º vale" },
+  { slot: 1, label: "Redmoon" },
+  { slot: 2, label: "Snake" },
+  { slot: 3, label: "Bicheon" },
 ] as const;
+
+/** Teto de salário por membro na semana; o excedente é redistribuído aos demais. */
+export const SALARY_MEMBER_CAP = 20_000_000;
 
 /** Atividades que contam presença; cada uma paga 1/3 da faixa. */
 export const SALARY_ACTIVITIES = [
@@ -443,6 +446,24 @@ export function addSalaryMembers(periodId: number, serverId: number, characterId
   });
 }
 
+/**
+ * Coloca no elenco todos os jogadores dos clãs aliados do servidor de uma vez,
+ * já na faixa do poder de cada um e com as presenças vazias.
+ */
+export function addAlliedSalaryMembers(periodId: number, serverId: number): number {
+  const ids = queryAll<{ id: number }>(
+    `SELECT c.id
+     FROM characters c
+     JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
+     WHERE c.server_id = ?
+     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
+     LIMIT 300`,
+    serverId,
+  ).map((row) => row.id);
+
+  return addSalaryMembers(periodId, serverId, ids);
+}
+
 export function updateSalaryMember(input: {
   periodId: number;
   characterId: number;
@@ -607,16 +628,69 @@ export function salarySummary(periodId: number, tiers: SalaryTierSetting[]): Sal
     preferences[member.preference] += 1;
   }
 
-  const priced = members.map((member) => {
+  // Salário cheio: pontos do membro sobre os pontos de todos, sem penalidade.
+  const pricedWeights = members.map((member) => {
     const weight = weightByTier.get(member.tier) ?? 0;
-    const salary =
+    const full =
       totalWeight > 0 && member.attendedCount > 0
-        ? Math.floor(
-            (weight * pool * member.share_percent * member.attendedCount) / (totalWeight * 100 * 3),
-          )
+        ? (pool * weight * member.attendedCount) / (3 * totalWeight)
         : 0;
-    return { ...member, weight, salary };
+    const penalty = 1 - Math.max(0, Math.min(100, member.share_percent)) / 100;
+    return { ...member, weight, full, penalty };
   });
+
+  const salaryById = new Map<number, number>(
+    pricedWeights.map((member) => [member.character_id, member.full * (1 - member.penalty)]),
+  );
+
+  const fullSum = (list: typeof pricedWeights) => list.reduce((sum, member) => sum + member.full, 0);
+
+  /** Reparte um valor entre os membros da lista, na proporção do salário cheio de cada um. */
+  const spread = (amount: number, list: typeof pricedWeights) => {
+    const weightSum = fullSum(list);
+    if (amount <= 0 || weightSum <= 0) return;
+    for (const member of list) {
+      salaryById.set(
+        member.character_id,
+        (salaryById.get(member.character_id) ?? 0) + (amount * member.full) / weightSum,
+      );
+    }
+  };
+
+  // Penalidade: o percentual perdido sai do salário do membro e vai para os
+  // demais que não têm penalidade, na mesma proporção dos pontos.
+  const penalized = pricedWeights.filter((member) => member.full > 0 && member.penalty > 0);
+  const penaltyPool = penalized.reduce((sum, member) => sum + member.full * member.penalty, 0);
+  const clean = pricedWeights.filter((member) => member.full > 0 && member.penalty === 0);
+  spread(penaltyPool, clean);
+
+  // Teto por membro: quem passaria do limite recebe o limite e o excedente
+  // volta para os demais que ainda estão abaixo dele.
+  const cappedIds = new Set<number>();
+  for (;;) {
+    let surplus = 0;
+    for (const member of pricedWeights) {
+      if (cappedIds.has(member.character_id)) continue;
+      const value = salaryById.get(member.character_id) ?? 0;
+      if (value <= SALARY_MEMBER_CAP) continue;
+      salaryById.set(member.character_id, SALARY_MEMBER_CAP);
+      cappedIds.add(member.character_id);
+      surplus += value - SALARY_MEMBER_CAP;
+    }
+    if (surplus <= 0) break;
+
+    const eligible = pricedWeights.filter(
+      (member) => !cappedIds.has(member.character_id) && member.full > 0,
+    );
+    if (eligible.length === 0) break;
+    spread(surplus, eligible);
+  }
+
+  const priced = pricedWeights.map(({ full, penalty, weight, ...member }) => ({
+    ...member,
+    weight,
+    salary: Math.floor(salaryById.get(member.character_id) ?? 0),
+  }));
 
   const paid = priced.reduce((sum, member) => sum + member.salary, 0);
 

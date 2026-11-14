@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconArrowRight,
+  IconBoss,
   IconCastle,
   IconCoins,
   IconDashboard,
@@ -38,6 +39,7 @@ const groups = [
       { href: "/castle", label: "Prêmio do castelo", icon: IconGift, adminOnly: false, managerOnly: true },
       { href: "/salaries", label: "Salários", icon: IconCoins, adminOnly: false, managerOnly: true },
       { href: "/ce", label: "CE", icon: IconExpedition, adminOnly: false, managerOnly: true },
+      { href: "/world-boss", label: "World Boss", icon: IconBoss, adminOnly: false, managerOnly: true },
     ],
   },
   {

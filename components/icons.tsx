@@ -161,6 +161,16 @@ export function IconExpedition(props: Props) {
   );
 }
 
+export function IconBoss(props: Props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 9 2 4l5 2h10l5-2-2 5v6a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6Z" />
+      <path d="M8 12h.01M16 12h.01" strokeWidth="2.6" />
+      <path d="M9 17h6" />
+    </svg>
+  );
+}
+
 export function IconHistory(props: Props) {
   return (
     <svg {...base} {...props}>

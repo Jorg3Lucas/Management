@@ -313,6 +313,30 @@ function migrate(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_castle_prizes_server
       ON castle_prize_awards (server_id, week_start);
 
+    CREATE TABLE IF NOT EXISTS world_boss_fights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      fought_on TEXT NOT NULL,
+      fought_at TEXT NOT NULL,
+      label TEXT,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (server_id, fought_on, fought_at)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_world_boss_fights_server
+      ON world_boss_fights (server_id, fought_on);
+
+    CREATE TABLE IF NOT EXISTS world_boss_attendance (
+      fight_id INTEGER NOT NULL REFERENCES world_boss_fights(id) ON DELETE CASCADE,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (fight_id, character_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_world_boss_attendance_character
+      ON world_boss_attendance (character_id);
+
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name_key TEXT NOT NULL UNIQUE,

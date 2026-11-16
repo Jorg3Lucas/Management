@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { hashPassword } from "./password";
-import { FOCUS_CODES, FORUM_SERVERS, serverLabel } from "./mir4/servers";
+import { FORUM_SERVERS, serverLabel } from "./mir4/servers";
 import { APP_TIMEZONE } from "./time";
 
 type Param = string | number | null;
@@ -38,7 +38,6 @@ function migrate(db: DatabaseSync) {
       group_name TEXT NOT NULL,
       worldgroup_id INTEGER NOT NULL,
       world_id INTEGER NOT NULL,
-      is_focus INTEGER NOT NULL DEFAULT 0,
       sync_enabled INTEGER NOT NULL DEFAULT 0,
       last_sync_at TEXT,
       last_sync_status TEXT,
@@ -660,9 +659,11 @@ function ensureColumn(db: DatabaseSync, table: string, column: string, definitio
 function seed(db: DatabaseSync) {
   const now = new Date().toISOString();
 
+  // Todos os servidores publicados nascem com a coleta ativa; o ON CONFLICT
+  // preserva o que o admin desativou depois.
   const upsertServer = db.prepare(`
-    INSERT INTO servers (code, label, group_name, worldgroup_id, world_id, is_focus, sync_enabled, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO servers (code, label, group_name, worldgroup_id, world_id, sync_enabled, created_at)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
     ON CONFLICT(code) DO UPDATE SET
       label = excluded.label,
       group_name = excluded.group_name,
@@ -671,15 +672,12 @@ function seed(db: DatabaseSync) {
   `);
 
   for (const server of FORUM_SERVERS) {
-    const focused = FOCUS_CODES.includes(server.code) ? 1 : 0;
     upsertServer.run(
       server.code,
       serverLabel(server.code),
       server.groupName,
       server.worldgroupId,
       server.worldId,
-      focused,
-      focused,
       now,
     );
   }

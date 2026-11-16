@@ -328,24 +328,6 @@ p {
   gap: 12px;
 }
 
-.focus-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 0 2px;
-}
-
-.focus-chip {
-  font-size: 10.5px;
-  font-weight: 650;
-  padding: 3px 9px;
-  border-radius: 99px;
-  color: var(--gold);
-  background: var(--gold-soft);
-  border: 1px solid var(--gold-line);
-  letter-spacing: 0.03em;
-}
-
 .user-box {
   display: flex;
   align-items: center;
@@ -1831,8 +1813,7 @@ details.panel > .panel-body {
   .nav::-webkit-scrollbar {
     display: none;
   }
-  .nav-label,
-  .focus-chips {
+  .nav-label {
     display: none;
   }
   .nav-link {

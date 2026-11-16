@@ -19,7 +19,7 @@ export function getServerByCode(code: string): ServerRow | undefined {
 export function listServers(): ServerRow[] {
   return queryAll<ServerRow>(
     `SELECT * FROM servers
-     ORDER BY is_focus DESC, CASE WHEN group_name = 'EU1' THEN 0 ELSE 1 END, group_name, code`,
+     ORDER BY CASE WHEN group_name = 'EU1' THEN 0 ELSE 1 END, group_name, code`,
   );
 }
 
@@ -28,7 +28,7 @@ export function serversByIds(ids: number[]): ServerRow[] {
   const placeholders = ids.map(() => "?").join(",");
   return queryAll<ServerRow>(
     `SELECT * FROM servers WHERE id IN (${placeholders})
-     ORDER BY is_focus DESC, CASE WHEN group_name = 'EU1' THEN 0 ELSE 1 END, group_name, code`,
+     ORDER BY CASE WHEN group_name = 'EU1' THEN 0 ELSE 1 END, group_name, code`,
     ...ids,
   );
 }

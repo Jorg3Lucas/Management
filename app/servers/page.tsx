@@ -22,7 +22,6 @@ export default async function ServersPage({
   const counts = serverPlayerCounts();
   const groups = groupServers(servers);
   const territoryByServer = territoryOwnersByServer(servers.map((server) => server.id));
-  const focusCount = servers.filter((server) => server.is_focus).length;
   const enabledCount = servers.filter((server) => server.sync_enabled).length;
 
   return (
@@ -32,12 +31,11 @@ export default async function ServersPage({
           <p className="eyebrow">Administração</p>
           <h1 className="page-title">Servidores</h1>
           <p className="page-sub">
-            Todos os servidores publicados no fórum do MIR4. Ative a coleta apenas nos que você acompanha — EU11 e EU21
-            vêm como foco.
+            Todos os servidores publicados no fórum do MIR4, com a coleta ativa por padrão. Desative os que não
+            acompanha.
           </p>
         </div>
         <div className="head-actions">
-          <span className="badge gold">{focusCount} em foco</span>
           <span className="badge ok">{enabledCount} sincronizando</span>
         </div>
       </div>
@@ -78,7 +76,6 @@ export default async function ServersPage({
                         <div className="row" style={{ gap: 7 }}>
                           <span style={{ fontWeight: 650 }}>{server.label}</span>
                           <span className="small muted">{server.code}</span>
-                          {server.is_focus ? <span className="badge gold">foco</span> : null}
                         </div>
                         {server.last_sync_message ? (
                           <div className="player-clan" title={server.last_sync_message}>
@@ -126,14 +123,6 @@ export default async function ServersPage({
                       </td>
                       <td>
                         <div className="row" style={{ justifyContent: "flex-end" }}>
-                          <form action={toggleServerFlagAction} className="inline-form">
-                            <input type="hidden" name="serverId" value={server.id} />
-                            <input type="hidden" name="field" value="is_focus" />
-                            <input type="hidden" name="redirectTo" value="/servers" />
-                            <button className="btn sm ghost" type="submit">
-                              {server.is_focus ? "Tirar do foco" : "Marcar foco"}
-                            </button>
-                          </form>
                           <form action={syncServerAction} className="inline-form">
                             <input type="hidden" name="serverId" value={server.id} />
                             <input type="hidden" name="redirectTo" value="/servers" />

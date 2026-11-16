@@ -341,7 +341,7 @@ export async function syncServer(
 
 export function enabledServers(): ServerRow[] {
   return queryAll<ServerRow>(
-    "SELECT * FROM servers WHERE sync_enabled = 1 ORDER BY is_focus DESC, code",
+    "SELECT * FROM servers WHERE sync_enabled = 1 ORDER BY code",
   );
 }
 
@@ -354,7 +354,7 @@ export async function syncEnabledServers(source = "agendado"): Promise<SyncResul
 }
 
 export function allServers(): ServerRow[] {
-  return queryAll<ServerRow>("SELECT * FROM servers ORDER BY is_focus DESC, code");
+  return queryAll<ServerRow>("SELECT * FROM servers ORDER BY code");
 }
 
 /** Sincroniza todos os servidores publicados, habilitados ou não. */

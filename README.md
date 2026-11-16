@@ -1,15 +1,14 @@
 # MIR4 Ranking Ops
 
 Painel administrativo para sincronizar o ranking do fórum oficial do MIR4, acompanhar guerras e deslocamentos entre
-servidores e controlar quem acessa cada servidor. Foco operacional em **EU11** e **EU21**, com os demais servidores
-disponíveis para ativação.
+servidores e controlar quem acessa cada servidor. Todos os servidores vêm com a coleta ativa por padrão.
 
 ## O que está implementado
 
 - **Sincronização real do fórum** (`forum.mir4global.com/rank`): poder, posição, personagem e clã, por servidor, com
   paginação de 100 jogadores. Cada execução fica registrada em `sync_runs`.
-- **Servidores**: todos os 68 servidores publicados no ranking, com chave de grupo e mundo corretas. EU11 e EU21 vêm
-  habilitados e marcados como foco; qualquer outro pode ser ativado.
+- **Servidores**: todos os 68 servidores publicados no ranking, com chave de grupo e mundo corretas, e a coleta ativa
+  por padrão; qualquer um pode ser desativado.
 - **Usuários e acesso**: admin cria contas, define papel (administrador/operador) e marca servidor por servidor. O
   operador só vê ranking, guerras e edições dos servidores liberados; as consultas e as ações validam o acesso no
   servidor.
@@ -167,6 +166,28 @@ lib/            banco, autenticação, consultas, sincronizador e parser do fór
 scripts/        CLI de sincronização
 data/           SQLite local (fora do git)
 ```
+
+## Armazenamento na VPS
+
+O que ocupa espaço, medido neste repositório: `node_modules` ~390 MB, `.next` ~410 MB (347 MB disso é cache do
+`next dev`), banco ~50 MB com ~195 mil linhas de histórico. O banco é o único item que cresce sozinho, porque cada
+rodada grava o poder de quem mudou e uma linha de execução por servidor.
+
+```bash
+npm run clean     # apaga .next/cache, .next/dev e tsconfig.tsbuildinfo (recriados no próximo build)
+npm run compact   # poda o histórico antigo e roda VACUUM no banco
+```
+
+- `npm run clean` só precisa de novo `npm run build` depois; nada do app é afetado.
+- `npm run compact` precisa de acesso exclusivo ao banco: pare o app antes
+  (`pm2 stop mir4-ranking && npm run compact && pm2 start mir4-ranking`).
+- A poda também roda automática no boot e ao fim de cada rodada diária; as páginas liberadas são reaproveitadas pelos
+  próximos syncs, então o arquivo para de crescer em vez de continuar subindo.
+- Retenção configurável: `HISTORY_RETENTION_DAYS` (padrão 180) para `power_history` e `SYNC_RUNS_RETENTION_DAYS`
+  (padrão 60) para `sync_runs`; `0` mantém tudo. Personagens, guerras, territórios, times e auditoria não são
+  podados.
+- Em VPS apertada, rode o build e apague `node_modules/.cache` e `.next/cache` depois; se precisar de mais, o build
+  pode ser feito fora da VPS e enviado com `rsync` (`.next`, `package.json`, `package-lock.json` e `public`).
 
 ## Limitações
 

@@ -1,14 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { accessibleServers, isAdmin, ownedServerIds } from "@/lib/auth";
+import { isAdmin, ownedServerIds } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import { logoutAction } from "@/app/login/actions";
 import { SideNav } from "./SideNav";
 
 export function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
-  const focusServers = accessibleServers(user)
-    .filter((server) => server.is_focus)
-    .slice(0, 2);
   const ownedServers = isAdmin(user) ? [] : ownedServerIds(user);
   const canManageClans = isAdmin(user) || ownedServers.length > 0;
 
@@ -28,17 +25,6 @@ export function Shell({ user, children }: { user: SessionUser; children: ReactNo
         <SideNav isAdmin={isAdmin(user)} canManageClans={canManageClans} />
 
         <div className="sidebar-foot">
-          <div className="focus-chips">
-            {focusServers.length > 0 ? (
-              focusServers.map((server) => (
-                <span key={server.id} className="focus-chip">
-                  {server.label}
-                </span>
-              ))
-            ) : (
-              <span className="focus-chip">sem foco</span>
-            )}
-          </div>
           <div className="user-box">
             <div className="avatar">{initials}</div>
             <div className="user-meta">

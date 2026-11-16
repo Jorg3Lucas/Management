@@ -25,11 +25,11 @@ export async function toggleServerFlagAction(formData: FormData): Promise<void> 
   const server = getServerById(serverId);
 
   if (!server) redirect(back(returnTo, "error", "Servidor não encontrado."));
-  if (field !== "sync_enabled" && field !== "is_focus") {
+  if (field !== "sync_enabled") {
     redirect(back(returnTo, "error", "Ação inválida."));
   }
 
-  execute(`UPDATE servers SET ${field} = 1 - ${field} WHERE id = ?`, serverId);
+  execute("UPDATE servers SET sync_enabled = 1 - sync_enabled WHERE id = ?", serverId);
 
   logAudit({
     user: admin,
@@ -37,18 +37,12 @@ export async function toggleServerFlagAction(formData: FormData): Promise<void> 
     entity: "server",
     entityId: serverId,
     serverId,
-    detail:
-      field === "sync_enabled"
-        ? `${server.label}: sincronização ${server.sync_enabled ? "desativada" : "ativada"}`
-        : `${server.label}: ${server.is_focus ? "fora do foco" : "em foco"}`,
+    detail: `${server.label}: sincronização ${server.sync_enabled ? "desativada" : "ativada"}`,
   });
 
   revalidatePath("/servers");
   revalidatePath("/");
-  const message =
-    field === "sync_enabled"
-      ? `${server.label}: sincronização ${server.sync_enabled ? "desativada" : "ativada"}.`
-      : `${server.label}: ${server.is_focus ? "removido do" : "adicionado ao"} foco.`;
+  const message = `${server.label}: sincronização ${server.sync_enabled ? "desativada" : "ativada"}.`;
   redirect(back(returnTo, "ok", message));
 }
 

@@ -19,7 +19,7 @@ export default async function UsersPage({
   const flash = await searchParams;
   const users = listUsers();
   const servers = listServers();
-  const defaultAccess = servers.filter((server) => server.is_focus).map((server) => server.id);
+  const defaultAccess = servers.map((server) => server.id);
 
   return (
     <>

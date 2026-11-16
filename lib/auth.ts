@@ -98,14 +98,14 @@ export function accessibleServers(user: SessionUser): ServerRow[] {
   if (user.role === "ADMIN") {
     return queryAll<ServerRow>(
       `SELECT * FROM servers
-       ORDER BY is_focus DESC, CASE WHEN group_name = 'EU1' THEN 0 ELSE 1 END, group_name, code`,
+       ORDER BY CASE WHEN group_name = 'EU1' THEN 0 ELSE 1 END, group_name, code`,
     );
   }
   return queryAll<ServerRow>(
     `SELECT s.* FROM servers s
      JOIN user_servers us ON us.server_id = s.id
      WHERE us.user_id = ?
-     ORDER BY s.is_focus DESC, CASE WHEN s.group_name = 'EU1' THEN 0 ELSE 1 END, s.group_name, s.code`,
+     ORDER BY CASE WHEN s.group_name = 'EU1' THEN 0 ELSE 1 END, s.group_name, s.code`,
     user.id,
   );
 }

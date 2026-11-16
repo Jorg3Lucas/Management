@@ -26,7 +26,6 @@ export default async function DashboardPage({
 
   const ids = accessibleServerIds(user);
   const servers = accessibleServers(user);
-  const focusServers = servers.filter((server) => server.is_focus);
   const now = Date.now();
 
   const sessions = warSessionsForServers(ids, 5000);
@@ -37,10 +36,10 @@ export default async function DashboardPage({
   const totalPlayers = countCharactersForServers(ids);
   const runs = recentSyncRuns(6, ids);
   const daily = lastDailySyncRun(ids);
-  const territoryByServer = territoryOwnersByServer(focusServers.map((server) => server.id));
-  const canManageTerritories = focusServers.some((server) => canAdminServer(user, server.id));
+  const territoryByServer = territoryOwnersByServer(servers.map((server) => server.id));
+  const canManageTerritories = servers.some((server) => canAdminServer(user, server.id));
 
-  const focusCards = focusServers.map((server) => {
+  const serverCards = servers.map((server) => {
     const war = warByServer.get(server.id);
     const top = topCharacters(server.id, 5);
     return {
@@ -73,15 +72,14 @@ export default async function DashboardPage({
 
       <Flash ok={flash.ok} error={flash.error} />
 
-      {focusCards.length === 0 ? (
+      {serverCards.length === 0 ? (
         <div className="alert warn">
-          Nenhum dos servidores foco (EU11 / EU21) está liberado para o seu usuário. Peça ao administrador para ajustar
-          seu acesso.
+          Nenhum servidor liberado para o seu usuário. Peça ao administrador para ajustar seu acesso.
         </div>
       ) : null}
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
-        {focusCards.map(({ server, players, topPlayer, warSeconds, activeWars }) => (
+        {serverCards.map(({ server, players, topPlayer, warSeconds, activeWars }) => (
           <section key={server.id} className="card server-card highlight">
             <div className="server-head">
               <div>
@@ -127,12 +125,12 @@ export default async function DashboardPage({
         ))}
       </div>
 
-      {focusCards.length > 0 ? (
+      {serverCards.length > 0 ? (
         <section className="card" style={{ marginBottom: 16 }}>
           <div className="card-head">
             <div>
-              <div className="card-title">Territórios em foco</div>
-              <div className="card-sub">Clã que domina o castelo e os vales dos servidores em foco</div>
+              <div className="card-title">Territórios</div>
+              <div className="card-sub">Clã que domina o castelo e os vales dos servidores liberados</div>
             </div>
             {canManageTerritories ? (
               <Link className="btn sm ghost" href="/territories">
@@ -151,7 +149,7 @@ export default async function DashboardPage({
                 </tr>
               </thead>
               <tbody>
-                {focusCards.map(({ server }) => (
+                {serverCards.map(({ server }) => (
                   <tr key={server.id}>
                     <td>
                       <span style={{ fontWeight: 650 }}>{server.label}</span>
@@ -263,7 +261,7 @@ export default async function DashboardPage({
       </div>
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
-        {focusCards.map(({ server, top }) => (
+        {serverCards.map(({ server, top }) => (
           <section key={server.id} className="card">
             <div className="card-head">
               <div>

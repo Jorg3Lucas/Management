@@ -1,4 +1,5 @@
 import { queryOne } from "./db";
+import { runMaintenance } from "./maintenance";
 import { syncAllServers } from "./sync";
 
 /** O horário pedido é sempre o de Brasília, independente do fuso do servidor. */
@@ -134,6 +135,7 @@ async function runDailySync(reason: string): Promise<void> {
     console.error("[sync] falha na rodada diária:", error);
   } finally {
     scheduler.running = false;
+    runMaintenance("pós-rodada diária");
     scheduleNext();
   }
 }
@@ -146,6 +148,8 @@ export function startDailySyncScheduler(): void {
   const scheduler = state();
   if (scheduler.started) return;
   scheduler.started = true;
+
+  runMaintenance("inicialização");
 
   if (!schedulerEnabled()) {
     console.log("[sync] agendador diário desativado (SYNC_DAILY_ENABLED).");

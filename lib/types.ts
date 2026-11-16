@@ -19,7 +19,6 @@ export type ServerRow = {
   group_name: string;
   worldgroup_id: number;
   world_id: number;
-  is_focus: number;
   sync_enabled: number;
   last_sync_at: string | null;
   last_sync_status: string | null;

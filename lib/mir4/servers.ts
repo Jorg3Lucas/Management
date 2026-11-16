@@ -81,9 +81,6 @@ export const FORUM_SERVERS: ServerSeed[] = [
   { worldgroupId: 9, groupName: "BW", worldId: 254, code: "BINMENA031" },
 ];
 
-/** Servidores foco da operação: exibidos primeiro e sincronizados por padrão. */
-export const FOCUS_CODES = ["EU011", "EU021"];
-
 export function serverLabel(code: string): string {
   if (code === "EU011") return "EU11";
   if (code === "EU021") return "EU21";

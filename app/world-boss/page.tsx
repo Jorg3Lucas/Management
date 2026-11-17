@@ -4,7 +4,15 @@ import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { WorldBossBoard } from "@/components/WorldBossBoard";
 import { Flash, StatCard } from "@/components/ui";
-import { ceWeekEnd, ceWeekStart, ceWeekTitle, shiftWeek, shortDay } from "@/lib/ce";
+import {
+  ceWeekEnd,
+  ceWeekStart,
+  ceWeekTitle,
+  shiftWeek,
+  shortDay,
+  shortWeekday,
+  weekDays,
+} from "@/lib/ce";
 import { formatNumber } from "@/lib/format";
 import { getT } from "@/lib/i18n";
 import { APP_TIMEZONE } from "@/lib/time";
@@ -81,6 +89,7 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
   const returnTo = weekHref(weekStart);
   const today = todayInApp();
   const defaultDate = today >= weekStart && today <= weekEnd ? today : weekStart;
+  const days = weekDays(weekStart);
 
   return (
     <>
@@ -204,48 +213,68 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
             </div>
 
             <div className="card-body tight">
-              {fights.length === 0 ? (
-                <div className="empty">{t("boss.noFights")}</div>
-              ) : (
-                <div className="list">
-                  {fights.map((fight) => (
-                    <div key={fight.id} className="list-row">
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {t("boss.fightLine", {
-                            date: shortDay(fight.fought_on, locale),
-                            time: fight.fought_at,
-                          })}
-                          {fight.label ? (
-                            <span className="badge" style={{ marginLeft: 8 }}>
-                              {fight.label}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="small muted">
-                          {t("boss.fightMarks", {
-                            count: formatNumber(fight.attended, locale),
-                            total: formatNumber(members.length, locale),
-                          })}
-                        </div>
+              <div className="week-grid">
+                {days.map((day) => {
+                  const dayFights = fights.filter((fight) => fight.fought_on === day);
+                  return (
+                    <div key={day} className={`week-day${day === today ? " today" : ""}`}>
+                      <div className="week-day-head">
+                        <span className="week-day-name">{shortWeekday(day, locale)}</span>
+                        <span className="week-day-date">{shortDay(day, locale)}</span>
                       </div>
-                      <form action={deleteWorldBossFightAction} className="inline-form">
-                        <input type="hidden" name="fightId" value={fight.id} />
-                        <input type="hidden" name="serverId" value={selected.id} />
-                        <input type="hidden" name="redirectTo" value={returnTo} />
-                        <ConfirmButton
-                          message={t("boss.deleteConfirm", {
-                            date: shortDay(fight.fought_on, locale),
-                            time: fight.fought_at,
-                          })}
-                        >
-                          {t("common.remove")}
-                        </ConfirmButton>
-                      </form>
+                      <div className="week-day-body">
+                        {dayFights.length === 0 ? (
+                          <span className="week-day-empty">{t("boss.dayEmpty")}</span>
+                        ) : (
+                          dayFights.map((fight) => (
+                            <div key={fight.id} className="week-fight">
+                              <span className="week-fight-time">{fight.fought_at}</span>
+                              <div className="week-fight-meta">
+                                {fight.label ? <span className="week-fight-label">{fight.label}</span> : null}
+                                <span className="week-fight-count">
+                                  {t("boss.fightMarks", {
+                                    count: formatNumber(fight.attended, locale),
+                                    total: formatNumber(members.length, locale),
+                                  })}
+                                </span>
+                              </div>
+                              <form action={deleteWorldBossFightAction} className="week-fight-del">
+                                <input type="hidden" name="fightId" value={fight.id} />
+                                <input type="hidden" name="serverId" value={selected.id} />
+                                <input type="hidden" name="redirectTo" value={returnTo} />
+                                <ConfirmButton
+                                  className="week-fight-del-btn"
+                                  message={t("boss.deleteConfirm", {
+                                    date: shortDay(fight.fought_on, locale),
+                                    time: fight.fought_at,
+                                  })}
+                                >
+                                  ×
+                                </ConfirmButton>
+                              </form>
+                            </div>
+                          ))
+                        )}
+                        <form action={addWorldBossFightAction} className="week-quick">
+                          <input type="hidden" name="serverId" value={selected.id} />
+                          <input type="hidden" name="redirectTo" value={returnTo} />
+                          <input type="hidden" name="foughtOn" value={day} />
+                          <input
+                            type="time"
+                            name="foughtAt"
+                            defaultValue="20:00"
+                            required
+                            aria-label={t("boss.quickAria", { date: shortDay(day, locale) })}
+                          />
+                          <button className="btn sm ghost" type="submit" title={t("boss.quickAdd")}>
+                            +
+                          </button>
+                        </form>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
           </section>
 

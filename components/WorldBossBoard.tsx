@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { saveWorldBossAttendanceAction } from "@/app/world-boss/actions";
 import { useT } from "@/components/I18nProvider";
 import { KeepScroll } from "@/components/KeepScroll";
-import { shortDay } from "@/lib/ce-dates";
+import { shortDay, shortWeekday } from "@/lib/ce-dates";
 import { formatNumber, formatPower } from "@/lib/format";
 import { INTL_LOCALE } from "@/lib/i18n/locales";
 
@@ -93,6 +93,17 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
     }
     return result;
   }, [selection, fights]);
+
+  // Encontros agrupados por dia: a tabela mostra o dia por cima e os horários abaixo.
+  const dayGroups = useMemo(() => {
+    const groups: { day: string; fights: Fight[] }[] = [];
+    for (const fight of fights) {
+      const last = groups[groups.length - 1];
+      if (last && last.day === fight.fought_on) last.fights.push(fight);
+      else groups.push({ day: fight.fought_on, fights: [fight] });
+    }
+    return groups;
+  }, [fights]);
 
   const clanStats = useMemo(() => {
     const stats = new Map<number, { id: number; name: string; total: number; attended: number }>();
@@ -232,9 +243,24 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
           <table className="data">
             <thead>
               <tr>
-                <th>{t("common.player")}</th>
-                <th>{t("common.clan")}</th>
-                <th className="num">{t("players.colPower")}</th>
+                <th rowSpan={2}>{t("common.player")}</th>
+                <th rowSpan={2}>{t("common.clan")}</th>
+                <th rowSpan={2} className="num">
+                  {t("players.colPower")}
+                </th>
+                {dayGroups.map((group) => (
+                  <th key={group.day} colSpan={group.fights.length} className="day-head">
+                    {shortWeekday(group.day, locale)} · {shortDay(group.day, locale)}
+                  </th>
+                ))}
+                <th rowSpan={2} className="num">
+                  {t("bossBoard.colMarks")}
+                </th>
+                <th rowSpan={2} className="num">
+                  %
+                </th>
+              </tr>
+              <tr>
                 {fights.map((fight) => {
                   const allMarked =
                     visible.length > 0 &&
@@ -244,18 +270,15 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                     0,
                   );
                   return (
-                    <th key={fight.id} style={{ textAlign: "center", whiteSpace: "nowrap" }}>
-                      <div>
-                        {shortDay(fight.fought_on, locale)} · {fight.fought_at}
+                    <th key={fight.id} className="time-head">
+                      <div className="time-head-top">
+                        <span>{fight.fought_at}</span>
+                        <span className="small muted">
+                          {formatNumber(attended, locale)}/{formatNumber(visible.length, locale)}
+                        </span>
                       </div>
-                      <div className="small muted" style={{ fontWeight: 400 }}>
-                        {fight.label ? `${fight.label} · ` : ""}
-                        {formatNumber(attended, locale)}/{formatNumber(visible.length, locale)}
-                      </div>
-                      <label
-                        className="small muted"
-                        style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 400 }}
-                      >
+                      {fight.label ? <div className="time-head-label">{fight.label}</div> : null}
+                      <label className="small muted time-head-all">
                         <input
                           type="checkbox"
                           checked={allMarked}
@@ -270,8 +293,6 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                     </th>
                   );
                 })}
-                <th className="num">{t("bossBoard.colMarks")}</th>
-                <th className="num">%</th>
               </tr>
             </thead>
             <tbody>

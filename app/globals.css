@@ -1497,6 +1497,198 @@ table.data th a.th-sort.active {
   box-shadow: none;
 }
 
+/* ---------- World Boss: grade da semana ---------- */
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  padding: 4px 0 6px;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.week-day.today {
+  border-color: var(--gold-line);
+  background: rgba(234, 197, 119, 0.045);
+}
+
+.week-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.week-day-name {
+  color: var(--gold-strong);
+  font-weight: 650;
+}
+
+.week-day-date {
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-day-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.week-day-empty {
+  font-size: 11px;
+  color: var(--muted-2);
+  padding: 2px 0 4px;
+}
+
+.week-fight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.week-fight-time {
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.week-fight-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.2;
+}
+
+.week-fight-label {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.week-fight-count {
+  font-size: 10px;
+  color: var(--muted-2);
+}
+
+.week-fight-del {
+  margin: 0;
+}
+
+.week-fight-del-btn {
+  background: none;
+  border: none;
+  color: var(--muted-2);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.week-fight-del-btn:hover {
+  color: var(--err);
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.week-quick {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+}
+
+.week-quick input[type="time"] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+
+.week-quick .btn {
+  padding: 4px 8px;
+  min-height: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Cabeçalho da tabela de presenças: dia por cima, horários abaixo. */
+.data thead th.day-head {
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--gold-strong);
+  border-left: 1px solid var(--border-soft);
+}
+
+.data thead th.time-head {
+  text-align: center;
+  white-space: nowrap;
+  font-weight: 500;
+  border-left: 1px solid var(--border-soft);
+}
+
+.data thead th.time-head .time-head-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.data thead th.time-head .time-head-label {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted-2);
+}
+
+.data thead th.time-head .time-head-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+@media (max-width: 1180px) {
+  .week-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* ---------- Lists / misc ---------- */
 
 .list {

@@ -50,3 +50,23 @@ export function shortDay(value: string, locale: Locale = DEFAULT_LOCALE): string
 export function ceWeekTitle(start: string, locale: Locale = DEFAULT_LOCALE): string {
   return `${shortDay(start, locale)} – ${shortDay(ceWeekEnd(start), locale)}`;
 }
+
+export function addDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Nome curto do dia da semana (seg., Mon, 월…). */
+export function shortWeekday(value: string, locale: Locale = DEFAULT_LOCALE): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    timeZone: "UTC",
+    weekday: "short",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
+/** Os sete dias (segunda a domingo) da semana que começa em `start`. */
+export function weekDays(start: string): string[] {
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}

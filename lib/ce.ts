@@ -1,7 +1,16 @@
 import { execute, queryAll, queryOne } from "./db";
 import { DEFAULT_LOCALE, type Locale } from "./i18n/locales";
 
-export { ceWeekEnd, ceWeekStart, ceWeekTitle, shiftWeek, shortDay } from "./ce-dates";
+export {
+  addDays,
+  ceWeekEnd,
+  ceWeekStart,
+  ceWeekTitle,
+  shiftWeek,
+  shortDay,
+  shortWeekday,
+  weekDays,
+} from "./ce-dates";
 import { ceWeekStart } from "./ce-dates";
 
 /**

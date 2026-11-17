@@ -314,6 +314,29 @@ function migrate(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_world_boss_attendance_character
       ON world_boss_attendance (character_id);
 
+    -- Bloco custom da presença: membros que lutam em outros servidores, com o
+    -- nome digitado à mão, porque não existem no elenco deste servidor.
+    CREATE TABLE IF NOT EXISTS world_boss_custom_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      name TEXT NOT NULL COLLATE NOCASE,
+      created_at TEXT NOT NULL,
+      UNIQUE (server_id, name)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_world_boss_custom_members_server
+      ON world_boss_custom_members (server_id);
+
+    CREATE TABLE IF NOT EXISTS world_boss_custom_attendance (
+      fight_id INTEGER NOT NULL REFERENCES world_boss_fights(id) ON DELETE CASCADE,
+      custom_member_id INTEGER NOT NULL REFERENCES world_boss_custom_members(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (fight_id, custom_member_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_world_boss_custom_attendance_member
+      ON world_boss_custom_attendance (custom_member_id);
+
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name_key TEXT NOT NULL UNIQUE,

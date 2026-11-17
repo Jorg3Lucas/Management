@@ -20,6 +20,8 @@ import {
   WORLD_BOSS_SLOTS,
   ensureWorldBossWeek,
   worldBossAttendance,
+  worldBossCustomAttendance,
+  worldBossCustomMembers,
   worldBossFights,
   worldBossMembers,
 } from "@/lib/world-boss";
@@ -69,6 +71,9 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
   const fights = selected ? worldBossFights(selected.id, weekStart, weekEnd) : [];
   const members = selected ? worldBossMembers(selected.id) : [];
   const attendance = selected ? worldBossAttendance(selected.id, weekStart, weekEnd) : [];
+  // Bloco custom: membros que lutam em outros servidores, sem personagem aqui.
+  const customMembers = selected ? worldBossCustomMembers(selected.id) : [];
+  const customAttendance = selected ? worldBossCustomAttendance(selected.id, weekStart, weekEnd) : [];
 
   const initial: Record<number, number[]> = {};
   for (const fight of fights) initial[fight.id] = [];
@@ -78,6 +83,14 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
     if (!memberIds.has(row.character_id)) continue;
     (initial[row.fight_id] ??= []).push(row.character_id);
     counts.set(row.character_id, (counts.get(row.character_id) ?? 0) + 1);
+  }
+
+  const initialCustom: Record<number, number[]> = {};
+  for (const fight of fights) initialCustom[fight.id] = [];
+  const customIds = new Set(customMembers.map((member) => member.id));
+  for (const row of customAttendance) {
+    if (!customIds.has(row.custom_member_id)) continue;
+    (initialCustom[row.fight_id] ??= []).push(row.custom_member_id);
   }
 
   const totalMarks = Array.from(counts.values()).reduce((total, count) => total + count, 0);
@@ -296,7 +309,7 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
           </section>
 
           {members.length === 0 ? (
-            <div className="alert warn">
+            <div className="alert warn" style={{ marginBottom: 16 }}>
               <div className="spread" style={{ gap: 10, flexWrap: "wrap" }}>
                 <span>{t("boss.noMembers", { server: selected.label })}</span>
                 <Link className="btn sm" href="/clans">
@@ -304,7 +317,9 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                 </Link>
               </div>
             </div>
-          ) : fights.length === 0 ? (
+          ) : null}
+
+          {fights.length === 0 ? (
             <div className="alert">{t("boss.needFight")}</div>
           ) : (
             <WorldBossBoard
@@ -315,6 +330,8 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
               members={members}
               fights={fights}
               initial={initial}
+              customMembers={customMembers}
+              initialCustom={initialCustom}
             />
           )}
         </>

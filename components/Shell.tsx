@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/types";
 import { logoutAction } from "@/app/login/actions";
 import { getT } from "@/lib/i18n";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ScrollKeeper } from "./ScrollKeeper";
 import { SideNav } from "./SideNav";
 
 export async function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
@@ -17,6 +18,7 @@ export async function Shell({ user, children }: { user: SessionUser; children: R
 
   return (
     <div className="app">
+      <ScrollKeeper />
       <aside className="sidebar">
         <Link href="/" className="brand">
           <div className="brand-mark">M4</div>

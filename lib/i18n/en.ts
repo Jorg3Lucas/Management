@@ -776,6 +776,16 @@ const en: Record<MessageKey, string> = {
   "bossBoard.all": "all",
   "bossBoard.memberAria": "{name} on {date} at {time}",
   "bossBoard.colMarks": "Attendance",
+  "bossCustom.title": "Members on other servers",
+  "bossCustom.sub":
+    "Players fighting on other servers are not in this server's roster: add the name here and mark their attendance on the same weekly encounters.",
+  "bossCustom.placeholder": "Member name",
+  "bossCustom.add": "Add",
+  "bossCustom.empty": "No member from another server yet. Type a name above to start.",
+  "bossCustom.badge": "{marks} of {capacity} marks",
+  "bossCustom.removeAria": "Remove {name} from the block",
+  "bossCustom.removeConfirm": "Remove {name} from the custom block? Their attendance will be deleted too.",
+  "bossCustom.removeColumn": "Remove",
 
   "player.metadata": "Player",
   "player.noClass": "class not reported",

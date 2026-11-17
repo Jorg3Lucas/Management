@@ -49,6 +49,8 @@ export type WorldBossAttendanceRow = {
   character_id: number;
 };
 
+export const WORLD_BOSS_CUSTOM_NAME_MAX = 40;
+
 /** Membros dos clãs aliados do servidor, que são quem conta presença. */
 export function worldBossMembers(serverId: number, limit = 300): WorldBossMember[] {
   const rows = queryAll<WorldBossMember>(
@@ -71,6 +73,82 @@ export function worldBossMembers(serverId: number, limit = 300): WorldBossMember
   // O driver do SQLite devolve objetos com protótipo nulo; o client component
   // só aceita objetos simples, então normalizamos as linhas antes de enviar.
   return rows.map((row) => ({ ...row }));
+}
+
+/**
+ * Membros do bloco custom: quem luta em outros servidores e por isso não está
+ * no elenco deste servidor, mas a presença ainda precisa ser acompanhada.
+ */
+export type WorldBossCustomMember = {
+  id: number;
+  name: string;
+};
+
+export type WorldBossCustomAttendanceRow = {
+  fight_id: number;
+  custom_member_id: number;
+};
+
+/** Nomes do bloco custom do servidor, em ordem alfabética. */
+export function worldBossCustomMembers(serverId: number): WorldBossCustomMember[] {
+  return queryAll<WorldBossCustomMember>(
+    `SELECT id, name FROM world_boss_custom_members WHERE server_id = ? ORDER BY name COLLATE NOCASE ASC`,
+    serverId,
+  ).map((row) => ({ ...row }));
+}
+
+/** Presenças do bloco custom nos encontros do servidor no intervalo. */
+export function worldBossCustomAttendance(
+  serverId: number,
+  from: string,
+  to: string,
+): WorldBossCustomAttendanceRow[] {
+  return queryAll<WorldBossCustomAttendanceRow>(
+    `SELECT a.fight_id, a.custom_member_id
+     FROM world_boss_custom_attendance a
+     JOIN world_boss_fights f ON f.id = a.fight_id
+     WHERE f.server_id = ? AND f.fought_on BETWEEN ? AND ?
+     ORDER BY a.fight_id ASC, a.custom_member_id ASC`,
+    serverId,
+    from,
+    to,
+  ).map((row) => ({ ...row }));
+}
+
+export type WorldBossCustomMemberResult = { ok: true; id: number } | { ok: false; error: string };
+
+/** Adiciona um nome ao bloco custom do servidor. */
+export function addWorldBossCustomMember(input: {
+  serverId: number;
+  name: string;
+}): WorldBossCustomMemberResult {
+  const name = input.name.replace(/\s+/g, " ").trim().slice(0, WORLD_BOSS_CUSTOM_NAME_MAX);
+  if (name.length < 2) {
+    return { ok: false, error: "Informe o nome do membro com pelo menos 2 caracteres." };
+  }
+
+  try {
+    const result = execute(
+      "INSERT INTO world_boss_custom_members (server_id, name, created_at) VALUES (?, ?, ?)",
+      input.serverId,
+      name,
+      new Date().toISOString(),
+    );
+    return { ok: true, id: result.lastInsertRowid };
+  } catch (error) {
+    const duplicate = error instanceof Error && error.message.includes("UNIQUE");
+    return {
+      ok: false,
+      error: duplicate ? "Esse nome já está no bloco custom." : "Não foi possível adicionar o membro.",
+    };
+  }
+}
+
+/** Remove um nome do bloco custom (as presenças dele saem junto). */
+export function deleteWorldBossCustomMember(id: number, serverId: number): boolean {
+  return (
+    execute("DELETE FROM world_boss_custom_members WHERE id = ? AND server_id = ?", id, serverId).changes > 0
+  );
 }
 
 /** Encontros do servidor no intervalo (inclusive), com quantas presenças cada um tem. */
@@ -235,6 +313,56 @@ export function saveWorldBossAttendance(input: {
         );
       }
       marks += entry.characterIds.length;
+    }
+  });
+
+  return { ok: true, fights: entries.length, marks };
+}
+
+/** Substitui as presenças do bloco custom dos encontros da semana. */
+export function saveWorldBossCustomAttendance(input: {
+  serverId: number;
+  weekStart: string;
+  attendance: Record<string, number[] | undefined>;
+}): WorldBossAttendanceSaveResult {
+  const fights = worldBossFights(input.serverId, input.weekStart, ceWeekEnd(input.weekStart));
+  const fightIds = new Set(fights.map((fight) => fight.id));
+  const eligible = new Set(worldBossCustomMembers(input.serverId).map((member) => member.id));
+
+  const entries: { fightId: number; customIds: number[] }[] = [];
+  for (const [rawFightId, rawIds] of Object.entries(input.attendance)) {
+    const fightId = Number(rawFightId);
+    if (!Number.isInteger(fightId) || !fightIds.has(fightId)) {
+      return { ok: false, error: "A seleção inclui um encontro que não é desta semana do servidor." };
+    }
+
+    const customIds: number[] = [];
+    for (const rawId of Array.isArray(rawIds) ? rawIds : []) {
+      const customId = Number(rawId);
+      if (!Number.isInteger(customId) || customId <= 0 || !eligible.has(customId)) {
+        return { ok: false, error: "A seleção inclui um membro que não está no bloco custom deste servidor." };
+      }
+      if (!customIds.includes(customId)) customIds.push(customId);
+    }
+
+    entries.push({ fightId, customIds });
+  }
+
+  const now = new Date().toISOString();
+  let marks = 0;
+
+  transaction(() => {
+    for (const entry of entries) {
+      execute("DELETE FROM world_boss_custom_attendance WHERE fight_id = ?", entry.fightId);
+      for (const customId of entry.customIds) {
+        execute(
+          "INSERT INTO world_boss_custom_attendance (fight_id, custom_member_id, created_at) VALUES (?, ?, ?)",
+          entry.fightId,
+          customId,
+          now,
+        );
+      }
+      marks += entry.customIds.length;
     }
   });
 

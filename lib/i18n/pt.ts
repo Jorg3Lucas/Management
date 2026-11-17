@@ -797,6 +797,16 @@ const pt = {
   "bossBoard.all": "todos",
   "bossBoard.memberAria": "{name} em {date} às {time}",
   "bossBoard.colMarks": "Presenças",
+  "bossCustom.title": "Membros em outros servidores",
+  "bossCustom.sub":
+    "Quem luta em outros servidores não aparece no elenco deste servidor: adicione o nome aqui e marque a presença dele nos mesmos encontros da semana.",
+  "bossCustom.placeholder": "Nome do membro",
+  "bossCustom.add": "Adicionar",
+  "bossCustom.empty": "Nenhum membro de outro servidor no bloco ainda. Digite um nome acima para começar.",
+  "bossCustom.badge": "{marks} de {capacity} presenças",
+  "bossCustom.removeAria": "Remover {name} do bloco",
+  "bossCustom.removeConfirm": "Remover {name} do bloco custom? As presenças dele também serão apagadas.",
+  "bossCustom.removeColumn": "Remover",
 
   // Ficha do jogador
   "player.metadata": "Jogador",

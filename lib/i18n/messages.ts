@@ -173,6 +173,21 @@ const en: Record<string, string> = {
     "{label}: {read} players read, {created} new, {updated} updated.",
   "Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.":
     "Servers synced: {count} · new: {created} · updated: {updated}.",
+  "Informe o nome do membro com pelo menos 2 caracteres.": "Enter the member name with at least 2 characters.",
+  "Esse nome já está no bloco custom.": "That name is already in the custom block.",
+  "Não foi possível adicionar o membro.": "Could not add the member.",
+  "Servidor inválido ou sem permissão para montar o bloco custom.":
+    "Invalid server or no permission to build the custom block.",
+  "Sem permissão para mexer no bloco custom deste servidor.":
+    "No permission to change this server's custom block.",
+  "Membro inválido ou sem permissão para removê-lo.": "Invalid member or no permission to remove it.",
+  "Membro removido do bloco custom junto com as presenças dele.":
+    "Member removed from the custom block along with their attendance.",
+  "{name} entrou no bloco custom.": "{name} joined the custom block.",
+  "Presenças do bloco custom salvas: {marks} em {fights} encontro(s).":
+    "Custom block attendance saved: {marks} in {fights} encounter(s).",
+  "A seleção inclui um membro que não está no bloco custom deste servidor.":
+    "The selection includes a member that is not in this server's custom block.",
 };
 
 const es: Record<string, string> = {
@@ -348,6 +363,22 @@ const es: Record<string, string> = {
     "{label}: {read} jugadores leídos, {created} nuevos, {updated} actualizados.",
   "Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.":
     "Servidores sincronizados: {count} · nuevos: {created} · actualizados: {updated}.",
+  "Informe o nome do membro com pelo menos 2 caracteres.":
+    "Escribe el nombre del miembro con al menos 2 caracteres.",
+  "Esse nome já está no bloco custom.": "Ese nombre ya está en el bloque custom.",
+  "Não foi possível adicionar o membro.": "No fue posible añadir al miembro.",
+  "Servidor inválido ou sem permissão para montar o bloco custom.":
+    "Servidor inválido o sin permiso para armar el bloque custom.",
+  "Sem permissão para mexer no bloco custom deste servidor.":
+    "Sin permiso para tocar el bloque custom de este servidor.",
+  "Membro inválido ou sem permissão para removê-lo.": "Miembro inválido o sin permiso para quitarlo.",
+  "Membro removido do bloco custom junto com as presenças dele.":
+    "Miembro quitado del bloque custom junto con sus presencias.",
+  "{name} entrou no bloco custom.": "{name} entró en el bloque custom.",
+  "Presenças do bloco custom salvas: {marks} em {fights} encontro(s).":
+    "Presencias del bloque custom guardadas: {marks} en {fights} encuentro(s).",
+  "A seleção inclui um membro que não está no bloco custom deste servidor.":
+    "La selección incluye un miembro que no está en el bloque custom de este servidor.",
 };
 
 const ko: Record<string, string> = {
@@ -522,6 +553,21 @@ const ko: Record<string, string> = {
     "{label}: {read}명 조회, 신규 {created}명, 업데이트 {updated}명.",
   "Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.":
     "동기화된 서버: {count} · 신규: {created} · 업데이트: {updated}.",
+  "Informe o nome do membro com pelo menos 2 caracteres.": "멤버 이름을 2자 이상 입력하세요.",
+  "Esse nome já está no bloco custom.": "이미 커스텀 블록에 있는 이름입니다.",
+  "Não foi possível adicionar o membro.": "멤버를 추가하지 못했습니다.",
+  "Servidor inválido ou sem permissão para montar o bloco custom.":
+    "서버가 잘못되었거나 커스텀 블록을 만들 권한이 없습니다.",
+  "Sem permissão para mexer no bloco custom deste servidor.":
+    "이 서버의 커스텀 블록을 변경할 권한이 없습니다.",
+  "Membro inválido ou sem permissão para removê-lo.": "멤버가 잘못되었거나 제거할 권한이 없습니다.",
+  "Membro removido do bloco custom junto com as presenças dele.":
+    "멤버와 해당 참석 기록이 커스텀 블록에서 제거되었습니다.",
+  "{name} entrou no bloco custom.": "{name}님이 커스텀 블록에 추가되었습니다.",
+  "Presenças do bloco custom salvas: {marks} em {fights} encontro(s).":
+    "커스텀 블록 참석 저장됨: {marks}건 · {fights}개 일정.",
+  "A seleção inclui um membro que não está no bloco custom deste servidor.":
+    "선택에 이 서버의 커스텀 블록에 없는 멤버가 포함되어 있습니다.",
 };
 
 const tables: Record<Locale, Record<string, string>> = { pt: {}, en, es, ko };

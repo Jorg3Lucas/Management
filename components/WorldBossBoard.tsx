@@ -24,6 +24,11 @@ type Member = {
   clan_name: string;
 };
 
+type CustomMember = {
+  id: number;
+  name: string;
+};
+
 type Selection = Record<number, Record<number, true>>;
 
 type Props = {
@@ -33,6 +38,8 @@ type Props = {
   members: Member[];
   fights: Fight[];
   initial: Record<number, number[]>;
+  customMembers: CustomMember[];
+  initialCustom: Record<number, number[]>;
 };
 
 function selectionFrom(initial: Record<number, number[]>, fights: Fight[]): Selection {
@@ -58,9 +65,19 @@ function signature(selection: Selection, fights: Fight[]): string {
     .join("|");
 }
 
-export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fights, initial }: Props) {
+export function WorldBossBoard({
+  serverId,
+  weekStart,
+  redirectTo,
+  members,
+  fights,
+  initial,
+  customMembers,
+  initialCustom,
+}: Props) {
   const { locale, t } = useT();
   const [selection, setSelection] = useState<Selection>(() => selectionFrom(initial, fights));
+  const [customSelection, setCustomSelection] = useState<Selection>(() => selectionFrom(initialCustom, fights));
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
   const [onlyAttended, setOnlyAttended] = useState(false);
@@ -69,7 +86,15 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
   const currentSignature = useMemo(() => signature(selection, fights), [selection, fights]);
   const dirty = initialSignature !== currentSignature;
 
+  const initialCustomSignature = useMemo(
+    () => signature(selectionFrom(initialCustom, fights), fights),
+    [initialCustom, fights],
+  );
+  const customSignatureValue = useMemo(() => signature(customSelection, fights), [customSelection, fights]);
+  const dirtyCustom = initialCustomSignature !== customSignatureValue;
+
   const formRef = useRef<HTMLFormElement>(null);
+  const customFormRef = useRef<HTMLFormElement>(null);
   const collator = useMemo(() => new Intl.Collator(INTL_LOCALE[locale], { sensitivity: "base" }), [locale]);
 
   // Salva sozinho pouco depois da última presença marcada.
@@ -77,7 +102,11 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
     if (!dirty) return;
     const timer = window.setTimeout(() => formRef.current?.requestSubmit(), 900);
     return () => window.clearTimeout(timer);
-  }, [dirty, selection]);
+  }, [dirty, selection]);  useEffect(() => {
+    if (!dirtyCustom) return;
+    const timer = window.setTimeout(() => customFormRef.current?.requestSubmit(), 900);
+    return () => window.clearTimeout(timer);
+  }, [dirtyCustom, customSelection]);
 
   const marks = useMemo(
     () =>
@@ -93,6 +122,19 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
     }
     return result;
   }, [selection, fights]);
+
+  const customMarks = useMemo(
+    () =>
+      fights.reduce((total, fight) => total + Object.keys(customSelection[fight.id] ?? {}).length, 0),
+    [customSelection, fights],
+  );
+  const customPayload = useMemo(() => {
+    const result: Record<number, number[]> = {};
+    for (const fight of fights) {
+      result[fight.id] = Object.keys(customSelection[fight.id] ?? {}).map(Number);
+    }
+    return result;
+  }, [customSelection, fights]);
 
   // Encontros agrupados por dia: a tabela mostra o dia por cima e os horários abaixo.
   const dayGroups = useMemo(() => {
@@ -149,7 +191,30 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
     });
   }
 
+  function toggleCustom(fightId: number, customId: number) {
+    setCustomSelection((previous) => {
+      const next = { ...previous, [fightId]: { ...(previous[fightId] ?? {}) } };
+      if (next[fightId][customId]) delete next[fightId][customId];
+      else next[fightId][customId] = true;
+      return next;
+    });
+  }
+
+  function toggleCustomColumn(fightId: number) {
+    const ids = customMembers.map((member) => member.id);
+    const allMarked = ids.length > 0 && ids.every((id) => customSelection[fightId]?.[id]);
+    setCustomSelection((previous) => {
+      const next = { ...previous, [fightId]: { ...(previous[fightId] ?? {}) } };
+      for (const id of ids) {
+        if (allMarked) delete next[fightId][id];
+        else next[fightId][id] = true;
+      }
+      return next;
+    });
+  }
+
   return (
+    <>
     <form ref={formRef} action={saveWorldBossAttendanceAction}>
       <KeepScroll />
       <input type="hidden" name="serverId" value={serverId} />
@@ -163,14 +228,131 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
             <div className="card-title">{t("bossBoard.title")}</div>
             <div className="card-sub">{t("bossBoard.sub")}</div>
           </div>
-          <div className="row">
-            {dirty ? <span className="badge warn">{t("castleBoard.unsaved")}</span> : null}
+          <div className="row">          {dirty ? <span className="badge warn">{t("castleBoard.unsaved")}</span> : null}
             <span className="badge gold">
               {t("bossBoard.marks", {
                 marks: formatNumber(marks, locale),
                 capacity: formatNumber(capacity, locale),
               })}
-            </span>
+          </span>
+        </div>
+      </div>
+        <div className="card-body tight">
+          <span className="small muted">{t("bossCustom.empty")}</span>
+        </div>
+      ) : (
+        <form ref={customFormRef} action={saveWorldBossCustomAttendanceAction}>
+          <input type="hidden" name="serverId" value={serverId} />
+          <input type="hidden" name="week" value={weekStart} />
+          <input type="hidden" name="redirectTo" value={redirectTo} />
+          <input type="hidden" name="customAttendance" value={JSON.stringify(customPayload)} />
+
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th rowSpan={2}>{t("common.player")}</th>
+                  {dayGroups.map((group) => (
+                    <th key={group.day} colSpan={group.fights.length} className="day-head">
+                      {shortWeekday(group.day, locale)} · {shortDay(group.day, locale)}
+                    </th>
+                  ))}
+                  <th rowSpan={2} className="num">
+                    {t("bossBoard.colMarks")}
+                  </th>
+                  <th rowSpan={2} className="num">
+                    %
+                  </th>
+                  <th rowSpan={2} aria-label={t("bossCustom.removeColumn")} />
+                </tr>
+                <tr>
+                  {fights.map((fight) => {
+                    const allMarked =
+                      customMembers.length > 0 &&
+                      customMembers.every((member) => customSelection[fight.id]?.[member.id]);
+                    const attended = customMembers.reduce(
+                      (total, member) => total + (customSelection[fight.id]?.[member.id] ? 1 : 0),
+                      0,
+                    );
+                    return (
+                      <th key={fight.id} className="time-head">
+                        <div className="time-head-top">
+                          <span>{fight.fought_at}</span>
+                          <span className="small muted">
+                            {formatNumber(attended, locale)}/{formatNumber(customMembers.length, locale)}
+                          </span>
+                        </div>
+                        {fight.label ? <div className="time-head-label">{fight.label}</div> : null}
+                        <label className="small muted time-head-all">
+                          <input
+                            type="checkbox"
+                            checked={allMarked}
+                            onChange={() => toggleCustomColumn(fight.id)}
+                            aria-label={t("bossBoard.markAllAria", {
+                              date: shortDay(fight.fought_on, locale),
+                              time: fight.fought_at,
+                            })}
+                          />
+                          {t("bossBoard.all")}
+                        </label>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {customMembers.map((member) => {
+                  const attended = fights.reduce(
+                    (total, fight) => total + (customSelection[fight.id]?.[member.id] ? 1 : 0),
+                    0,
+                  );
+                  const percent = fights.length > 0 ? Math.round((attended / fights.length) * 100) : 0;
+                  return (
+                    <tr key={member.id}>
+                      <td>{member.name}</td>
+                      {fights.map((fight) => (
+                        <td key={fight.id} style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(customSelection[fight.id]?.[member.id])}
+                            onChange={() => toggleCustom(fight.id, member.id)}
+                            aria-label={t("bossBoard.memberAria", {
+                              name: member.name,
+                              date: shortDay(fight.fought_on, locale),
+                              time: fight.fought_at,
+                            })}
+                          />
+                        </td>
+                      ))}
+                      <td className="num">{formatNumber(attended, locale)}</td>
+                      <td className="num">{percent}%</td>
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          type="submit"
+                          formAction={deleteWorldBossCustomMemberAction}
+                          name="customId"
+                          value={member.id}
+                          className="week-fight-del-btn"
+                          aria-label={t("bossCustom.removeAria", { name: member.name })}
+                          title={t("bossCustom.removeAria", { name: member.name })}
+                          onClick={(event) => {
+                            if (!window.confirm(t("bossCustom.removeConfirm", { name: member.name }))) {
+                              event.preventDefault();
+                            }
+                          }}
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </form>
+      )}
+    </section>
           </div>
         </div>
 
@@ -343,5 +525,144 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
         </div>
       </section>
     </form>
+
+    <section className="card" style={{ marginTop: 16 }}>
+      <div className="card-head">
+        <div>
+          <div className="card-title">{t("bossCustom.title")}</div>
+          <div className="card-sub">{t("bossCustom.sub")}</div>
+        </div>
+        <div className="row">
+          {dirtyCustom ? <span className="badge warn">{t("castleBoard.unsaved")}</span> : null}
+          <span className="badge">
+            {t("bossCustom.badge", {
+              marks: formatNumber(customMarks, locale),
+              capacity: formatNumber(customCapacity, locale),
+            })}
+          </span>
+        </div>
+      </div>
+
+      <div className="card-body" style={{ paddingTop: 0 }}>
+      </div>
+
+      {customMembers.length === 0 ? (
+        <div className="card-body tight">
+          <span className="small muted">{t("bossCustom.empty")}</span>
+        </div>
+      ) : (
+        <form ref={customFormRef} action={saveWorldBossCustomAttendanceAction}>
+          <input type="hidden" name="serverId" value={serverId} />
+          <input type="hidden" name="week" value={weekStart} />
+          <input type="hidden" name="redirectTo" value={redirectTo} />
+          <input type="hidden" name="customAttendance" value={JSON.stringify(customPayload)} />
+
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th rowSpan={2}>{t("common.player")}</th>
+                  {dayGroups.map((group) => (
+                    <th key={group.day} colSpan={group.fights.length} className="day-head">
+                      {shortWeekday(group.day, locale)} · {shortDay(group.day, locale)}
+                    </th>
+                  ))}
+                  <th rowSpan={2} className="num">
+                    {t("bossBoard.colMarks")}
+                  </th>
+                  <th rowSpan={2} className="num">
+                    %
+                  </th>
+                  <th rowSpan={2} aria-label={t("bossCustom.removeColumn")} />
+                </tr>
+                <tr>
+                  {fights.map((fight) => {
+                    const allMarked =
+                      customMembers.length > 0 &&
+                      customMembers.every((member) => customSelection[fight.id]?.[member.id]);
+                    const attended = customMembers.reduce(
+                      (total, member) => total + (customSelection[fight.id]?.[member.id] ? 1 : 0),
+                      0,
+                    );
+                    return (
+                      <th key={fight.id} className="time-head">
+                        <div className="time-head-top">
+                          <span>{fight.fought_at}</span>
+                          <span className="small muted">
+                            {formatNumber(attended, locale)}/{formatNumber(customMembers.length, locale)}
+                          </span>
+                        </div>
+                        {fight.label ? <div className="time-head-label">{fight.label}</div> : null}
+                        <label className="small muted time-head-all">
+                          <input
+                            type="checkbox"
+                            checked={allMarked}
+                            onChange={() => toggleCustomColumn(fight.id)}
+                            aria-label={t("bossBoard.markAllAria", {
+                              date: shortDay(fight.fought_on, locale),
+                              time: fight.fought_at,
+                            })}
+                          />
+                          {t("bossBoard.all")}
+                        </label>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {customMembers.map((member) => {
+                  const attended = fights.reduce(
+                    (total, fight) => total + (customSelection[fight.id]?.[member.id] ? 1 : 0),
+                    0,
+                  );
+                  const percent = fights.length > 0 ? Math.round((attended / fights.length) * 100) : 0;
+                  return (
+                    <tr key={member.id}>
+                      <td>{member.name}</td>
+                      {fights.map((fight) => (
+                        <td key={fight.id} style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(customSelection[fight.id]?.[member.id])}
+                            onChange={() => toggleCustom(fight.id, member.id)}
+                            aria-label={t("bossBoard.memberAria", {
+                              name: member.name,
+                              date: shortDay(fight.fought_on, locale),
+                              time: fight.fought_at,
+                            })}
+                          />
+                        </td>
+                      ))}
+                      <td className="num">{formatNumber(attended, locale)}</td>
+                      <td className="num">{percent}%</td>
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          type="submit"
+                          formAction={deleteWorldBossCustomMemberAction}
+                          name="customId"
+                          value={member.id}
+                          className="week-fight-del-btn"
+                          aria-label={t("bossCustom.removeAria", { name: member.name })}
+                          title={t("bossCustom.removeAria", { name: member.name })}
+                          onClick={(event) => {
+                            if (!window.confirm(t("bossCustom.removeConfirm", { name: member.name }))) {
+                              event.preventDefault();
+                            }
+                          }}
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </form>
+      )}
+    </section>
+    </>
   );
 }

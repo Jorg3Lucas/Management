@@ -41,7 +41,9 @@ export function KeepScroll() {
     const started = performance.now();
     const restore = () => {
       if (stopped) return;
-      window.scrollTo(0, y);
+      // `html` tem scroll-behavior: smooth; aqui precisamos pular direto, senão
+      // cada frame reinicia a animação e a página fica no topo.
+      window.scrollTo({ top: y, left: 0, behavior: "instant" });
       if (performance.now() - started < RESTORE_WINDOW_MS) frame = requestAnimationFrame(restore);
     };
     frame = requestAnimationFrame(restore);

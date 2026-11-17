@@ -776,6 +776,16 @@ const es: Record<MessageKey, string> = {
   "bossBoard.all": "todos",
   "bossBoard.memberAria": "{name} el {date} a las {time}",
   "bossBoard.colMarks": "Presencias",
+  "bossCustom.title": "Miembros en otros servidores",
+  "bossCustom.sub":
+    "Quien lucha en otros servidores no aparece en la plantilla de este servidor: añade el nombre aquí y marca su presencia en los mismos encuentros de la semana.",
+  "bossCustom.placeholder": "Nombre del miembro",
+  "bossCustom.add": "Añadir",
+  "bossCustom.empty": "Todavía no hay miembros de otro servidor en el bloque. Escribe un nombre arriba para empezar.",
+  "bossCustom.badge": "{marks} de {capacity} presencias",
+  "bossCustom.removeAria": "Quitar a {name} del bloque",
+  "bossCustom.removeConfirm": "¿Quitar a {name} del bloque custom? Sus presencias también se borrarán.",
+  "bossCustom.removeColumn": "Quitar",
 
   "player.metadata": "Jugador",
   "player.noClass": "clase no informada",

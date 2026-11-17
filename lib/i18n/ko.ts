@@ -776,6 +776,16 @@ const ko: Record<MessageKey, string> = {
   "bossBoard.all": "전체",
   "bossBoard.memberAria": "{name} · {date} {time}",
   "bossBoard.colMarks": "참석",
+  "bossCustom.title": "다른 서버 멤버",
+  "bossCustom.sub":
+    "다른 서버에서 활동하는 멤버는 이 서버 명단에 없습니다. 이름을 추가하고 같은 주간 일정에 참석을 표시하세요.",
+  "bossCustom.placeholder": "멤버 이름",
+  "bossCustom.add": "추가",
+  "bossCustom.empty": "아직 다른 서버 멤버가 없습니다. 위에 이름을 입력해 시작하세요.",
+  "bossCustom.badge": "참석 {marks}/{capacity}",
+  "bossCustom.removeAria": "{name} 블록에서 제거",
+  "bossCustom.removeConfirm": "{name}을(를) 커스텀 블록에서 제거할까요? 참석 기록도 함께 삭제됩니다.",
+  "bossCustom.removeColumn": "제거",
 
   "player.metadata": "플레이어",
   "player.noClass": "클래스 미입력",

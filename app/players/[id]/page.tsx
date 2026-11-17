@@ -13,6 +13,7 @@ import {
 } from "@/lib/queries";
 import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
 import { sessionSeconds, summarizeByCharacter, summarizeByWarServer, totalWarSeconds } from "@/lib/wars";
+import { AutoSave } from "@/components/AutoSave";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Flash, SyncBadge } from "@/components/ui";
 import { getTeam, listTeams, teamForClan } from "@/lib/teams";
@@ -167,6 +168,7 @@ export default async function PlayerDetailPage({
           </div>
           <div className="card-body">
             <form action={updateCharacterAction} className="form-grid">
+              <AutoSave enabled={editable} />
               <input type="hidden" name="characterId" value={character.id} />
               <div className="field">
                 <label htmlFor="name">Nome</label>
@@ -231,9 +233,6 @@ export default async function PlayerDetailPage({
                 </label>
               </div>
               <div className="full row">
-                <button className="btn primary" type="submit" disabled={!editable}>
-                  Salvar alterações
-                </button>
                 <span className="small muted">Cada mudança de poder entra no histórico com origem manual.</span>
               </div>
             </form>
@@ -335,6 +334,7 @@ export default async function PlayerDetailPage({
               </p>
             ) : (
               <form action={assignCharacterTeamAction} className="filters" style={{ margin: 0 }}>
+                <AutoSave delay={400} />
                 <input type="hidden" name="characterId" value={character.id} />
                 <input type="hidden" name="redirectTo" value={path} />
                 <div className="field" style={{ flex: "1 1 240px" }}>
@@ -350,9 +350,6 @@ export default async function PlayerDetailPage({
                     ))}
                   </select>
                 </div>
-                <button className="btn primary" type="submit">
-                  Salvar time
-                </button>
                 {canManageClanTeams ? (
                   <Link className="btn ghost" href={`/teams?server=${character.server_code}`}>
                     Gerenciar times
@@ -468,6 +465,7 @@ export default async function PlayerDetailPage({
               </div>
               {editable ? (
                 <form action={setHomeServerAction} className="inline-form">
+                  <AutoSave delay={400} />
                   <input type="hidden" name="characterId" value={character.id} />
                   <input type="hidden" name="redirectTo" value={path} />
                   <select
@@ -481,9 +479,6 @@ export default async function PlayerDetailPage({
                       </option>
                     ))}
                   </select>
-                  <button className="btn sm" type="submit">
-                    Salvar casa
-                  </button>
                 </form>
               ) : null}
             </div>

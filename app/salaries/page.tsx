@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canAdminServer, requireUser } from "@/lib/auth";
+import { AutoSave } from "@/components/AutoSave";
+import { ClearValueButton } from "@/components/ClearValueButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EmptyState, Flash, StatCard } from "@/components/ui";
 import { formatNumber, formatPower } from "@/lib/format";
@@ -327,6 +329,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                             className="filters"
                             style={{ margin: 0 }}
                           >
+                            <AutoSave delay={500} />
                             <input type="hidden" name="periodId" value={period.id} />
                             <input type="hidden" name="slot" value={vale.slot} />
                             <input type="hidden" name="redirectTo" value={returnTo} />
@@ -339,14 +342,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                               aria-label={`Valor do ${vale.label}`}
                               style={{ flex: "1 1 160px" }}
                             />
-                            <button className="btn sm" type="submit">
-                              Salvar
-                            </button>
-                            {entry ? (
-                              <button className="btn sm ghost" type="submit" name="clear" value="1" formNoValidate>
-                                Limpar
-                              </button>
-                            ) : null}
+                            <input type="hidden" name="clear" value="" />
+                            {entry ? <ClearValueButton>Limpar</ClearValueButton> : null}
                           </form>
                         </div>
                       );
@@ -426,6 +423,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                   {summary.pool < 0 ? <span className="badge err">custos maiores que a produção</span> : null}
                 </div>
                 <form action={setSalaryWeightsAction}>
+                  <AutoSave />
                   <input type="hidden" name="serverId" value={selected.id} />
                   <input type="hidden" name="redirectTo" value={returnTo} />
                   <p className="table-hint">Deslize a tabela para o lado para ver todas as colunas →</p>
@@ -489,9 +487,6 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     </table>
                   </div>
                   <div className="panel-body row">
-                    <button className="btn" type="submit">
-                      Salvar coeficientes
-                    </button>
                     <span className="small muted">
                       Prêmio por ponto = (vales − custos) ÷ soma dos coeficientes ponderados pelas presenças. Cada membro
                       recebe no máximo {formatNumber(SALARY_MEMBER_CAP)} DS; o excedente vai para os demais,
@@ -662,6 +657,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                             </td>
                             <td className="cell-wide" data-label="Ajustes da semana">
                               <form action={updateSalaryMemberAction} className="salary-controls">
+                                <AutoSave delay={500} />
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
                                 <input type="hidden" name="redirectTo" value={returnTo} />
@@ -726,9 +722,6 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 ) : (
                                   <input type="hidden" name="stoneSplit" value={member.stone_split} />
                                 )}
-                                <button className="btn sm" type="submit">
-                                  Salvar
-                                </button>
                               </form>
                             </td>
                             <td className="num mono" data-label="Salário">

@@ -10,6 +10,7 @@ import {
   teamIndividualMembers,
   unassignedClans,
 } from "@/lib/teams";
+import { AutoSave } from "@/components/AutoSave";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Flash, StatCard } from "@/components/ui";
 import {
@@ -264,6 +265,7 @@ export default async function TeamsPage({
 
                   <div className="list-row" style={{ borderTop: "1px solid var(--border-soft)", flexWrap: "wrap" }}>
                     <form action={updateTeamAction} className="inline-form" style={{ flexWrap: "wrap" }}>
+                      <AutoSave delay={400} />
                       <input type="hidden" name="teamId" value={team.team_id} />
                       <input type="hidden" name="serverId" value={selected.id} />
                       <input type="hidden" name="redirectTo" value={returnTo} />
@@ -283,9 +285,6 @@ export default async function TeamsPage({
                           </option>
                         ))}
                       </select>
-                      <button className="btn sm" type="submit">
-                        Salvar time
-                      </button>
                     </form>
                   </div>
                 </div>

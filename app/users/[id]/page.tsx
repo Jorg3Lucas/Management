@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getUserById, requireAdmin, userOwnerServerIds, userServerIds } from "@/lib/auth";
 import { listServers } from "@/lib/queries";
 import { formatDate } from "@/lib/time";
+import { AutoSave } from "@/components/AutoSave";
 import { Flash } from "@/components/ui";
 import { ServerAccessGrid } from "@/components/ServerAccessGrid";
 import {
@@ -82,6 +83,7 @@ export default async function UserDetailPage({
           </div>
           <div className="card-body">
             <form action={updateUserProfileAction} className="form-grid">
+              <AutoSave delay={400} />
               <input type="hidden" name="userId" value={account.id} />
               <div className="field">
                 <label htmlFor="displayName">Nome de exibição</label>
@@ -104,9 +106,6 @@ export default async function UserDetailPage({
                 {isSelf ? <span className="small muted">Você não pode mudar o seu próprio papel.</span> : null}
               </div>
               <div className="full row">
-                <button className="btn primary" type="submit">
-                  Salvar perfil
-                </button>
                 <span className="small muted">Usuário de login não pode ser alterado.</span>
               </div>
             </form>
@@ -159,12 +158,10 @@ export default async function UserDetailPage({
         </div>
         <div className="card-body">
           <form action={updateUserAccessAction}>
+            <AutoSave delay={300} />
             <input type="hidden" name="userId" value={account.id} />
             <ServerAccessGrid servers={servers} selectedIds={access} />
             <div className="row" style={{ marginTop: 18 }}>
-              <button className="btn primary" type="submit">
-                Salvar acessos
-              </button>
               <Link className="btn ghost" href="/users">
                 Voltar
               </Link>
@@ -176,6 +173,7 @@ export default async function UserDetailPage({
               action={updateUserOwnersAction}
               style={{ marginTop: 18, borderTop: "1px solid var(--border-soft)", paddingTop: 18 }}
             >
+              <AutoSave delay={300} />
               <input type="hidden" name="userId" value={account.id} />
               <div className="field-label" style={{ marginBottom: 8 }}>
                 Donos de servidor
@@ -184,7 +182,7 @@ export default async function UserDetailPage({
                 Dono administra a diplomacia de clãs do servidor. Só vale para servidores já liberados.
               </p>
               {access.length === 0 ? (
-                <p className="small muted">Marque os servidores liberados e salve antes de definir donos.</p>
+                <p className="small muted">Marque os servidores liberados para poder definir donos.</p>
               ) : (
                 <>
                   <div className="access-grid">
@@ -206,9 +204,6 @@ export default async function UserDetailPage({
                       ))}
                   </div>
                   <div className="row" style={{ marginTop: 14 }}>
-                    <button className="btn" type="submit">
-                      Salvar donos
-                    </button>
                     <span className="small muted">{owners.length} servidor(es) com dono</span>
                   </div>
                 </>

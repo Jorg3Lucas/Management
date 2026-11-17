@@ -2477,3 +2477,41 @@ details.panel > .panel-body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Auto-save: pílula flutuante disparada pelos formulários de edição. */
+.autosave-status {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(13, 19, 34, 0.95);
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.autosave-status .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: currentColor;
+}
+
+.autosave-status.busy {
+  color: var(--warn);
+  border-color: rgba(251, 191, 36, 0.42);
+}
+
+.autosave-status.saved {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.42);
+}

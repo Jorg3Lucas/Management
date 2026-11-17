@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { saveCastlePrizesAction } from "@/app/castle/actions";
 import {
   CASTLE_PRIZES,
@@ -27,12 +27,21 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
   const [clan, setClan] = useState("all");
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
 
+  const formRef = useRef<HTMLFormElement>(null);
+
   const counts = useMemo(() => castlePrizeCounts(Object.values(awards)), [awards]);
   const assigned = Object.keys(awards).length;
   const dirty = useMemo(() => {
     if (Object.keys(initial).length !== assigned) return true;
     return Object.entries(initial).some(([id, prize]) => awards[Number(id)] !== prize);
   }, [initial, awards, assigned]);
+
+  // Salva sozinho pouco depois da última mudança de prêmio.
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = window.setTimeout(() => formRef.current?.requestSubmit(), 900);
+    return () => window.clearTimeout(timer);
+  }, [dirty, awards]);
 
   const clanStats = useMemo(() => {
     const stats = new Map<number, { id: number; name: string; total: number; assigned: number }>();
@@ -69,7 +78,7 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
   }
 
   return (
-    <form action={saveCastlePrizesAction}>
+    <form ref={formRef} action={saveCastlePrizesAction}>
       <input type="hidden" name="serverId" value={serverId} />
       <input type="hidden" name="week" value={weekStart} />
       <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -88,9 +97,6 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
             <span className="badge gold">
               {formatNumber(assigned)}/{formatNumber(CASTLE_PRIZE_TOTAL)} distribuídos
             </span>
-            <button className="btn primary" type="submit">
-              Salvar distribuição
-            </button>
           </div>
         </div>
 
@@ -262,9 +268,6 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
             {formatNumber(assigned)} de {formatNumber(CASTLE_PRIZE_TOTAL)} prêmio(s) do baú usados ·{" "}
             {formatNumber(members.length)} membro(s) elegível(is)
           </span>
-          <button className="btn primary" type="submit">
-            Salvar distribuição
-          </button>
         </div>
       </section>
     </form>

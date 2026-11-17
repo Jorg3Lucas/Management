@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { saveWorldBossAttendanceAction } from "@/app/world-boss/actions";
 import { formatNumber, formatPower } from "@/lib/format";
 
@@ -70,6 +70,15 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
   const currentSignature = useMemo(() => signature(selection, fights), [selection, fights]);
   const dirty = initialSignature !== currentSignature;
 
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Salva sozinho pouco depois da última presença marcada.
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = window.setTimeout(() => formRef.current?.requestSubmit(), 900);
+    return () => window.clearTimeout(timer);
+  }, [dirty, selection]);
+
   const marks = useMemo(
     () =>
       fights.reduce((total, fight) => total + Object.keys(selection[fight.id] ?? {}).length, 0),
@@ -132,7 +141,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
   }
 
   return (
-    <form action={saveWorldBossAttendanceAction}>
+    <form ref={formRef} action={saveWorldBossAttendanceAction}>
       <input type="hidden" name="serverId" value={serverId} />
       <input type="hidden" name="week" value={weekStart} />
       <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -151,9 +160,6 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
             <span className="badge gold">
               {formatNumber(marks)} de {formatNumber(capacity)} presenças
             </span>
-            <button className="btn primary" type="submit">
-              Salvar presenças
-            </button>
           </div>
         </div>
 

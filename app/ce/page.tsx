@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
+import { AutoSave } from "@/components/AutoSave";
 import { Flash, StatCard } from "@/components/ui";
 import { formatNumber } from "@/lib/format";
 import { formatDateTime } from "@/lib/time";
@@ -257,6 +258,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                       </div>
 
                       <form action={saveCePlanAction}>
+                        <AutoSave />
                         <input type="hidden" name="serverId" value={selected.id} />
                         <input type="hidden" name="clanId" value={activeClan.clan.id} />
                         <input type="hidden" name="week" value={weekStart} />
@@ -324,9 +326,6 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                         </div>
 
                         <div className="panel-body spread" style={{ gap: 12 }}>
-                          <button className="btn primary" type="submit">
-                            Salvar plano do clã
-                          </button>
                           <span className="small muted">
                             Estátuas {formatNumber(activeClan.summary.statues)} · DS{" "}
                             {formatNumber(activeClan.summary.darksteel)} · energia{" "}
@@ -384,6 +383,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                   </td>
                                   <td data-label="Ouro">
                                     <form action={saveCeDonationAction} className="row" style={{ gap: 8 }}>
+                                      <AutoSave delay={300} />
                                       <input type="hidden" name="serverId" value={selected.id} />
                                       <input type="hidden" name="clanId" value={activeClan.clan.id} />
                                       <input type="hidden" name="week" value={weekStart} />
@@ -399,9 +399,6 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                         />{" "}
                                         Já doou
                                       </label>
-                                      <button className="btn sm" type="submit">
-                                        Salvar
-                                      </button>
                                     </form>
                                   </td>
                                 </tr>
@@ -449,8 +446,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                     ) : (
                       <div className="panel-body">
                         <p className="small muted" style={{ margin: 0 }}>
-                          Nenhum plano salvo para este clã ainda. Preencha as runs acima e salve para começar o
-                          histórico.
+                          Nenhum plano salvo para este clã ainda. Preencha as runs acima para começar o histórico.
                         </p>
                       </div>
                     )}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/clans";
 import { formatPower } from "@/lib/format";
 import { formatDateTime } from "@/lib/time";
+import { AutoSave } from "@/components/AutoSave";
 import { EmptyState, Flash, StatCard } from "@/components/ui";
 import { mergeClansAction, setClanStanceAction } from "./actions";
 
@@ -119,6 +120,7 @@ export default async function ClansPage({
                         </td>
                         <td>
                           <form action={setClanStanceAction} className="inline-form">
+                            <AutoSave delay={400} />
                             <input type="hidden" name="serverId" value={selected.id} />
                             <input type="hidden" name="clanId" value={clan.clan_id} />
                             <input type="hidden" name="redirectTo" value={returnTo} />
@@ -132,9 +134,6 @@ export default async function ClansPage({
                               <option value="neutral">Neutro</option>
                               <option value="enemy">Inimigo</option>
                             </select>
-                            <button className="btn sm" type="submit">
-                              Salvar
-                            </button>
                           </form>
                         </td>
                         <td className="num mono">{clan.members}</td>

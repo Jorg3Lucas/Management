@@ -12,6 +12,7 @@ import {
   type TerritoryOwner,
 } from "@/lib/territories";
 import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
+import { AutoSave } from "@/components/AutoSave";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { Flash } from "@/components/ui";
 import { deleteSabukWinAction, recordSabukWinAction, setTerritoryOwnerAction } from "./actions";
@@ -126,6 +127,7 @@ export default async function TerritoriesPage({
                     </div>
 
                     <form action={setTerritoryOwnerAction} className="inline-form" style={{ flexWrap: "wrap" }}>
+                      <AutoSave delay={400} />
                       <input type="hidden" name="serverId" value={selected.id} />
                       <input type="hidden" name="territory" value={territory.key} />
                       <input type="hidden" name="redirectTo" value={returnTo} />
@@ -137,9 +139,6 @@ export default async function TerritoriesPage({
                           </option>
                         ))}
                       </select>
-                      <button className="btn sm primary" type="submit">
-                        Salvar
-                      </button>
                     </form>
 
                     {owner ? (

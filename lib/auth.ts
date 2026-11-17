@@ -261,6 +261,19 @@ export function resetUserPassword(userId: number, password: string): void {
   execute("DELETE FROM sessions WHERE user_id = ?", userId);
 }
 
+export function verifyUserPassword(userId: number, password: string): boolean {
+  const row = queryOne<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", userId);
+  return row ? verifyPassword(password, row.password_hash) : false;
+}
+
+/** Troca a senha do próprio usuário; a sessão atual continua válida. */
+export async function changeOwnPassword(userId: number, password: string): Promise<void> {
+  execute("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(password), userId);
+  const store = await cookies();
+  const token = store.get(COOKIE_NAME)?.value ?? "";
+  execute("DELETE FROM sessions WHERE user_id = ? AND token <> ?", userId, token);
+}
+
 export function setUserActive(userId: number, active: boolean): void {
   execute("UPDATE users SET active = ? WHERE id = ?", active ? 1 : 0, userId);
   if (!active) execute("DELETE FROM sessions WHERE user_id = ?", userId);

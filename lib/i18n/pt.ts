@@ -60,6 +60,32 @@ const pt = {
   "shell.roleOwner": "Dono de servidor",
   "shell.roleOperator": "Operador",
   "shell.logout": "Sair da conta",
+  "shell.changePassword": "Alterar senha",
+  "shell.account": "Minha conta",
+
+  // Minha conta
+  "account.metadata": "Minha conta — MIR4 Ranking Ops",
+  "account.title": "Minha conta",
+  "account.sub": "Seus dados de acesso e a senha deste painel.",
+  "account.profile": "Perfil",
+  "account.username": "Usuário",
+  "account.role": "Papel",
+  "account.eyebrow": "Conta",
+  "account.passwordTitle": "Alterar senha",
+  "account.passwordSub": "Ao trocar a senha, as outras sessões deste usuário são encerradas.",
+  "account.current": "Senha atual",
+  "account.new": "Nova senha",
+  "account.confirm": "Confirmar nova senha",
+  "account.submit": "Salvar nova senha",
+  "account.passwordPlaceholder": "Pelo menos 8 caracteres",
+  "account.session": "Sessão",
+  "account.sessionSub": "Encerrar a sessão neste navegador.",
+  "account.passwordChanged": "Senha alterada.",
+
+  "err.accountFields": "Preencha a senha atual e a nova senha.",
+  "err.passwordCurrent": "Senha atual incorreta.",
+  "err.passwordMismatch": "A nova senha e a confirmação não conferem.",
+  "err.passwordSame": "A nova senha precisa ser diferente da atual.",
 
   // Login
   "login.metadataTitle": "Entrar — MIR4 Ranking Ops",

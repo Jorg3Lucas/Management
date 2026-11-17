@@ -30,7 +30,7 @@ export async function Shell({ user, children }: { user: SessionUser; children: R
 
         <div className="sidebar-foot">
           <LanguageSwitcher />
-          <div className="user-box">
+          <Link href="/account" className="user-box user-box-link" title={t("shell.account")}>
             <div className="avatar">{initials}</div>
             <div className="user-meta">
               <div className="user-name">{user.displayName}</div>
@@ -42,12 +42,17 @@ export async function Shell({ user, children }: { user: SessionUser; children: R
                     : t("shell.roleOperator")}
               </div>
             </div>
+          </Link>
+          <div className="foot-actions">
+            <Link href="/account" className="logout account foot-account">
+              {t("shell.changePassword")}
+            </Link>
+            <form action={logoutAction}>
+              <button className="logout" type="submit">
+                {t("shell.logout")}
+              </button>
+            </form>
           </div>
-          <form action={logoutAction}>
-            <button className="logout" type="submit">
-              {t("shell.logout")}
-            </button>
-          </form>
         </div>
       </aside>
 

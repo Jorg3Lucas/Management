@@ -381,6 +381,11 @@ p {
   cursor: pointer;
   width: 100%;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
   transition: 0.18s ease;
 }
 
@@ -388,6 +393,33 @@ p {
   color: var(--err);
   border-color: rgba(251, 113, 133, 0.45);
   background: rgba(251, 113, 133, 0.08);
+}
+
+.logout.account:hover {
+  color: var(--gold-strong);
+  border-color: var(--gold-line);
+  background: rgba(234, 197, 119, 0.08);
+}
+
+.foot-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.foot-actions form {
+  margin: 0;
+}
+
+.user-box-link {
+  text-decoration: none;
+  color: inherit;
+  transition: 0.18s ease;
+}
+
+.user-box-link:hover {
+  border-color: var(--gold-line);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .lang-switch {
@@ -1895,6 +1927,14 @@ details.panel > .panel-body {
     flex-direction: row;
     align-items: center;
     gap: 7px;
+  }
+  /* No celular a conta já abre pelo bloco do usuário; sobra espaço só para sair. */
+  .foot-actions {
+    display: flex;
+    gap: 7px;
+  }
+  .foot-actions .foot-account {
+    display: none;
   }
   .user-box {
     padding: 0;

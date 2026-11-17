@@ -1,4 +1,5 @@
 import { execute, queryAll, queryOne, transaction } from "./db";
+import { APP_TIMEZONE } from "./time";
 
 /**
  * Distribuição semanal do vale, no formato da planilha EU11 Masterfile:
@@ -192,6 +193,27 @@ export type SalarySummary = {
   paid: number;
   leftover: number;
 };
+
+/**
+ * Semana do salário: começa na quinta e fecha na quarta seguinte, dia da guerra
+ * do vale e do pagamento. A referência é o dia de hoje no fuso da app.
+ */
+export function salaryWeekRange(reference: Date = new Date()): { startsOn: string; endsOn: string } {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(reference);
+
+  // Quinta é o dia 4; recua até a quinta mais recente.
+  const start = new Date(`${today}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 3) % 7));
+  const end = new Date(start.getTime());
+  end.setUTCDate(end.getUTCDate() + 6);
+
+  return { startsOn: start.toISOString().slice(0, 10), endsOn: end.toISOString().slice(0, 10) };
+}
 
 /** "2026-11-03" → "03/11" — datas de semana são só dia, sem fuso. */
 export function shortDay(value: string): string {

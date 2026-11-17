@@ -21,12 +21,12 @@ import {
   salarySummary,
   salaryTiers,
   salaryValeEntries,
+  salaryWeekRange,
   STONE_PRICES,
   stonePurchase,
   stoneSplitValues,
 } from "@/lib/salaries";
 import type { SalarySummary, StonePurchase } from "@/lib/salaries";
-import { APP_TIMEZONE } from "@/lib/time";
 import {
   addAlliedSalaryMembersAction,
   addSalaryEntryAction,
@@ -62,16 +62,6 @@ function isRosterSort(value: string | undefined): value is RosterSort {
   return value === "name" || value === "power" || value === "salary" || value === "presence";
 }
 
-/** Data de hoje (ou do dia somado) no fuso da app, para os campos de semana. */
-function dayInput(offsetDays = 0): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: APP_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(Date.now() + offsetDays * 86_400_000));
-}
-
 /** Pontos podem ter fração de 1/3; mostra até duas casas. */
 function decimal(value: number): string {
   return value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -96,6 +86,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const fixedEntries = period ? salaryEntries(period.id, "fixed") : [];
   const candidates = selected ? salaryCandidates(selected.id, search) : [];
   const alliedClans = selected ? salaryAlliedClans(selected.id) : 0;
+  // Semana do salário por padrão: quinta a quarta (vale e pagamento).
+  const weekDefaults = salaryWeekRange();
 
   const presence: PresenceFilter =
     params.presence === "with" || params.presence === "without" ? params.presence : "all";
@@ -247,12 +239,12 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <input type="hidden" name="serverId" value={selected.id} />
                 <input type="hidden" name="redirectTo" value={`/salaries?server=${selected.code}`} />
                 <div className="field">
-                  <label htmlFor="startsOn">Início da semana</label>
-                  <input id="startsOn" name="startsOn" type="date" required defaultValue={dayInput()} />
+                  <label htmlFor="startsOn">Início da semana (quinta)</label>
+                  <input id="startsOn" name="startsOn" type="date" required defaultValue={weekDefaults.startsOn} />
                 </div>
                 <div className="field">
-                  <label htmlFor="endsOn">Fim da semana</label>
-                  <input id="endsOn" name="endsOn" type="date" required defaultValue={dayInput(6)} />
+                  <label htmlFor="endsOn">Fim da semana (quarta)</label>
+                  <input id="endsOn" name="endsOn" type="date" required defaultValue={weekDefaults.endsOn} />
                 </div>
                 <div className="field">
                   <label htmlFor="label">Nome (opcional)</label>
@@ -263,8 +255,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     Criar semana
                   </button>
                   <span className="small muted">
-                    A semana já nasce com todo o elenco dos clãs aliados; a produção e os custos são lançados nela e
-                    você só marca as presenças.
+                    A semana vai de quinta a quarta, dia da guerra do vale e do pagamento. Ela já nasce com todo o
+                    elenco dos clãs aliados; a produção e os custos são lançados nela e você só marca as presenças.
                   </span>
                 </div>
               </form>

@@ -36,15 +36,13 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
   const weekStart = ceWeekStart(params.week ?? currentWeek);
 
   const members = selected ? castlePrizeMembers(selected.id, weekStart) : [];
-  const initial: Record<number, CastlePrizeKey> = {};
+  const initial: Record<number, CastlePrizeKey[]> = {};
   for (const member of members) {
-    if (member.prize) initial[member.character_id] = member.prize;
+    if (member.prizes.length > 0) initial[member.character_id] = member.prizes;
   }
 
-  const counts = castlePrizeCounts(
-    members.flatMap((member) => (member.prize ? [member.prize] : [])),
-  );
-  const assigned = members.reduce((total, member) => total + (member.prize ? 1 : 0), 0);
+  const counts = castlePrizeCounts(members.flatMap((member) => member.prizes));
+  const assigned = members.reduce((total, member) => total + (member.prizes.length > 0 ? 1 : 0), 0);
   const usedTotal = CASTLE_PRIZES.reduce((total, prize) => total + counts[prize.key], 0);
   const clanCount = new Set(members.map((member) => member.clan_id)).size;
   const updatedAt = selected ? castlePrizeUpdatedAt(selected.id, weekStart) : null;
@@ -60,7 +58,7 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
           <h1 className="page-title">Prêmio do castelo</h1>
           <p className="page-sub">
             Distribua o baú do castelo entre os clãs aliados: 1 lendário, 3 épicos, 5 raros, 10 incomuns
-            e 50 comuns por semana.
+            e 50 comuns por semana. Cada membro pode receber vários baús, mas só um de cada raridade.
           </p>
         </div>
         <div className="head-actions">

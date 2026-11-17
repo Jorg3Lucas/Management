@@ -40,17 +40,26 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
     redirect(back(redirectTo, "error", "Seleção inválida."));
   }
 
-  const awards: Record<number, CastlePrizeKey> = {};
+  const awards: Record<number, CastlePrizeKey[]> = {};
   for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
     const characterId = Number(key);
     if (!Number.isInteger(characterId) || characterId <= 0) {
       redirect(back(redirectTo, "error", "Seleção inválida."));
     }
-    if (value === "" || value === null || value === undefined) continue;
-    if (!isCastlePrizeKey(value)) {
-      redirect(back(redirectTo, "error", "Há um prêmio inválido na seleção."));
+    if (value === null || value === undefined) continue;
+    if (!Array.isArray(value)) {
+      redirect(back(redirectTo, "error", "Seleção inválida."));
     }
-    awards[characterId] = value;
+
+    const prizes: CastlePrizeKey[] = [];
+    for (const prize of value) {
+      if (prize === "" || prize === null || prize === undefined) continue;
+      if (!isCastlePrizeKey(prize)) {
+        redirect(back(redirectTo, "error", "Há um prêmio inválido na seleção."));
+      }
+      prizes.push(prize);
+    }
+    if (prizes.length > 0) awards[characterId] = prizes;
   }
 
   const result = saveCastlePrizeDistribution({ serverId, weekStart, userId: user.id, awards });
@@ -66,9 +75,11 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
     entity: "server",
     entityId: serverId,
     serverId,
-    detail: `Semana ${weekStart} · ${result.assigned} prêmio(s) distribuído(s): ${detail}`,
+    detail: `Semana ${weekStart} · ${result.assigned} baú(s) para ${result.members} membro(s): ${detail}`,
   });
 
   revalidatePath("/castle");
-  redirect(back(redirectTo, "ok", `Distribuição salva: ${result.assigned} membro(s) com prêmio.`));
+  redirect(
+    back(redirectTo, "ok", `Distribuição salva: ${result.assigned} baú(s) para ${result.members} membro(s).`),
+  );
 }

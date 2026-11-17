@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveWorldBossAttendanceAction } from "@/app/world-boss/actions";
+import { KeepScroll } from "@/components/KeepScroll";
 import { formatNumber, formatPower } from "@/lib/format";
 
 type Fight = {
@@ -142,6 +143,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
 
   return (
     <form ref={formRef} action={saveWorldBossAttendanceAction}>
+      <KeepScroll />
       <input type="hidden" name="serverId" value={serverId} />
       <input type="hidden" name="week" value={weekStart} />
       <input type="hidden" name="redirectTo" value={redirectTo} />

@@ -2515,3 +2515,106 @@ details.panel > .panel-body {
   color: var(--ok);
   border-color: rgba(52, 211, 153, 0.42);
 }
+
+/* Seletores de prêmio do castelo: um baú de cada raridade por membro */
+.prize-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.prize-pick {
+  padding: 3px 9px;
+  border: 1px dashed var(--border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.prize-pick:hover:not(:disabled) {
+  border-style: solid;
+  color: var(--text);
+}
+
+.prize-pick:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.prize-pick.on {
+  border-style: solid;
+}
+
+.prize-pick.on.legendary {
+  color: var(--gold-strong);
+  border-color: var(--gold-line);
+  background: var(--gold-soft);
+}
+
+.prize-pick.on.epic {
+  color: var(--violet);
+  border-color: rgba(192, 132, 252, 0.32);
+  background: rgba(192, 132, 252, 0.1);
+}
+
+.prize-pick.on.rare {
+  color: var(--cyan);
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.prize-pick.on.uncommon {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.09);
+}
+
+.prize-pick.on.common {
+  color: var(--text);
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Resumo do prêmio por jogador: número da raridade no tom do baú */
+.prize-count {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.prize-count.legendary {
+  color: var(--gold-strong);
+}
+
+.prize-count.epic {
+  color: var(--violet);
+}
+
+.prize-count.rare {
+  color: var(--cyan);
+}
+
+.prize-count.uncommon {
+  color: var(--ok);
+}
+
+table.data tfoot td {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+table.data tfoot td.num {
+  font-size: 12px;
+  color: var(--text);
+}

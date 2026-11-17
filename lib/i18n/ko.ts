@@ -753,7 +753,7 @@ const ko: Record<MessageKey, string> = {
   "boss.statTopFoot": "{fights}개 중 {count}개",
   "boss.statTopNone": "참석 없음",
   "boss.fightsTitle": "주간 일정",
-  "boss.fightsSub": "일정은 날짜·시간별로 구분되며, 참석은 일정마다 따로 저장됩니다.",
+  "boss.fightsSub": "주간 일정은 고정입니다: 00시 Mirage, 10시 Lab, 12시 Valley, 20시 Lab, 22시 Valley. 필요하면 추가 일정을 등록하세요.",
   "boss.fightsBadge": "일정: {fights} · 동맹 멤버: {members}",
   "boss.date": "날짜",
   "boss.time": "시간",

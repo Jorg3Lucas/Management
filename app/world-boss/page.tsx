@@ -17,6 +17,8 @@ import { formatNumber } from "@/lib/format";
 import { getT } from "@/lib/i18n";
 import { APP_TIMEZONE } from "@/lib/time";
 import {
+  WORLD_BOSS_SLOTS,
+  ensureWorldBossWeek,
   worldBossAttendance,
   worldBossFights,
   worldBossMembers,
@@ -60,6 +62,10 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
   const weekStart = ceWeekStart(params.week ?? currentWeek);
   const weekEnd = ceWeekEnd(weekStart);
 
+  // A grade fixa de encontros nasce junto com a semana: as caixas de presença
+  // já aparecem prontas. Semanas passadas ficam como foram registradas.
+  if (selected && weekStart >= currentWeek) ensureWorldBossWeek(selected.id, weekStart);
+
   const fights = selected ? worldBossFights(selected.id, weekStart, weekEnd) : [];
   const members = selected ? worldBossMembers(selected.id) : [];
   const attendance = selected ? worldBossAttendance(selected.id, weekStart, weekEnd) : [];
@@ -90,6 +96,11 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
   const today = todayInApp();
   const defaultDate = today >= weekStart && today <= weekEnd ? today : weekStart;
   const days = weekDays(weekStart);
+  // Horário livre para um encontro extra (fora da grade fixa) do dia padrão.
+  const extraTime =
+    WORLD_BOSS_SLOTS.map((slot) => slot.at).find(
+      (at) => !fights.some((fight) => fight.fought_on === defaultDate && fight.fought_at === at),
+    ) ?? "23:00";
 
   return (
     <>
@@ -192,7 +203,7 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                 </div>
                 <div className="field">
                   <label htmlFor="foughtAt">{t("boss.time")}</label>
-                  <input id="foughtAt" name="foughtAt" type="time" required defaultValue="20:00" />
+                  <input id="foughtAt" name="foughtAt" type="time" required defaultValue={extraTime} />
                 </div>
                 <div className="field">
                   <label htmlFor="label">{t("salary.labelOptional")}</label>
@@ -216,6 +227,10 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
               <div className="week-grid">
                 {days.map((day) => {
                   const dayFights = fights.filter((fight) => fight.fought_on === day);
+                  const dayExtraTime =
+                    WORLD_BOSS_SLOTS.map((slot) => slot.at).find(
+                      (at) => !dayFights.some((fight) => fight.fought_at === at),
+                    ) ?? "23:00";
                   return (
                     <div key={day} className={`week-day${day === today ? " today" : ""}`}>
                       <div className="week-day-head">
@@ -238,20 +253,22 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                                   })}
                                 </span>
                               </div>
-                              <form action={deleteWorldBossFightAction} className="week-fight-del">
-                                <input type="hidden" name="fightId" value={fight.id} />
-                                <input type="hidden" name="serverId" value={selected.id} />
-                                <input type="hidden" name="redirectTo" value={returnTo} />
-                                <ConfirmButton
-                                  className="week-fight-del-btn"
-                                  message={t("boss.deleteConfirm", {
-                                    date: shortDay(fight.fought_on, locale),
-                                    time: fight.fought_at,
-                                  })}
-                                >
-                                  ×
-                                </ConfirmButton>
-                              </form>
+                              {fight.created_by !== null ? (
+                                <form action={deleteWorldBossFightAction} className="week-fight-del">
+                                  <input type="hidden" name="fightId" value={fight.id} />
+                                  <input type="hidden" name="serverId" value={selected.id} />
+                                  <input type="hidden" name="redirectTo" value={returnTo} />
+                                  <ConfirmButton
+                                    className="week-fight-del-btn"
+                                    message={t("boss.deleteConfirm", {
+                                      date: shortDay(fight.fought_on, locale),
+                                      time: fight.fought_at,
+                                    })}
+                                  >
+                                    ×
+                                  </ConfirmButton>
+                                </form>
+                              ) : null}
                             </div>
                           ))
                         )}
@@ -262,7 +279,7 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                           <input
                             type="time"
                             name="foughtAt"
-                            defaultValue="20:00"
+                            defaultValue={dayExtraTime}
                             required
                             aria-label={t("boss.quickAria", { date: shortDay(day, locale) })}
                           />

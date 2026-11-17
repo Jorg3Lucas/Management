@@ -753,7 +753,7 @@ const en: Record<MessageKey, string> = {
   "boss.statTopFoot": "{count} of {fights} encounters",
   "boss.statTopNone": "no attendance",
   "boss.fightsTitle": "Week encounters",
-  "boss.fightsSub": "Each encounter is unique per day and time; attendance is stored separately for each one.",
+  "boss.fightsSub": "The week already comes with the fixed grid: 00:00 Mirage, 10:00 Lab, 12:00 Valley, 20:00 Lab and 22:00 Valley. Add an extra when needed.",
   "boss.fightsBadge": "Encounters: {fights} · allied members: {members}",
   "boss.date": "Date",
   "boss.time": "Time",

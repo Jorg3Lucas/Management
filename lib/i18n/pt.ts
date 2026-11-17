@@ -774,7 +774,7 @@ const pt = {
   "boss.statTopFoot": "{count} de {fights} encontros",
   "boss.statTopNone": "sem presenças",
   "boss.fightsTitle": "Encontros da semana",
-  "boss.fightsSub": "Cada encontro é único por dia e horário; as presenças ficam salvas separadamente em cada um.",
+  "boss.fightsSub": "A semana já vem com a grade fixa: 00h Mirage, 10h Lab, 12h Valley, 20h Lab e 22h Valley. Cadastre um extra quando precisar.",
   "boss.fightsBadge": "Encontros: {fights} · membros aliados: {members}",
   "boss.date": "Data",
   "boss.time": "Horário",

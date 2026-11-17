@@ -753,7 +753,7 @@ const es: Record<MessageKey, string> = {
   "boss.statTopFoot": "{count} de {fights} encuentros",
   "boss.statTopNone": "sin presencias",
   "boss.fightsTitle": "Encuentros de la semana",
-  "boss.fightsSub": "Cada encuentro es único por día y hora; las presencias se guardan por separado en cada uno.",
+  "boss.fightsSub": "La semana ya trae la parrilla fija: 00:00 Mirage, 10:00 Lab, 12:00 Valley, 20:00 Lab y 22:00 Valley. Añade uno extra cuando haga falta.",
   "boss.fightsBadge": "Encuentros: {fights} · miembros aliados: {members}",
   "boss.date": "Fecha",
   "boss.time": "Hora",

@@ -1,10 +1,23 @@
-import { ceWeekEnd } from "./ce";
+import { ceWeekEnd, weekDays } from "./ce";
 import { execute, queryAll, queryOne, transaction } from "./db";
 
 /**
  * Presença de World Boss: cada encontro tem data e horário, e a presença é
  * marcada por personagem. O painel acompanha a semana inteira de uma vez.
  */
+
+/**
+ * Grade fixa dos world bosses do dia (horário local da app). A semana nasce
+ * com esses encontros já criados, então as caixas de presença de cada membro
+ * ficam prontas sem precisar cadastrar encontro por encontro.
+ */
+export const WORLD_BOSS_SLOTS = [
+  { at: "00:00", label: "Mirage" },
+  { at: "10:00", label: "Lab" },
+  { at: "12:00", label: "Valley" },
+  { at: "20:00", label: "Lab" },
+  { at: "22:00", label: "Valley" },
+] as const;
 
 export const WORLD_BOSS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export const WORLD_BOSS_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -91,6 +104,34 @@ export function worldBossAttendance(
     from,
     to,
   );
+}
+
+/**
+ * Cria os encontros da grade fixa para todos os dias da semana, ignorando os
+ * que já existem (inclusive os cadastrados à mão no mesmo dia e horário).
+ * Retorna quantos encontros nasceram agora.
+ */
+export function ensureWorldBossWeek(serverId: number, weekStart: string): number {
+  const createdAt = new Date().toISOString();
+  let created = 0;
+
+  transaction(() => {
+    for (const day of weekDays(weekStart)) {
+      for (const slot of WORLD_BOSS_SLOTS) {
+        created += execute(
+          `INSERT OR IGNORE INTO world_boss_fights (server_id, fought_on, fought_at, label, created_by, created_at)
+           VALUES (?, ?, ?, ?, NULL, ?)`,
+          serverId,
+          day,
+          slot.at,
+          slot.label,
+          createdAt,
+        ).changes;
+      }
+    }
+  });
+
+  return created;
 }
 
 export function getWorldBossFight(id: number): WorldBossFightRow | undefined {

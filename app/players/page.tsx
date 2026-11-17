@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { accessibleServers, canAdminServer, editableServerIds, requireUser } from "@/lib/auth";
+import { accessibleServers, canEditServer, editableServerIds, requireUser } from "@/lib/auth";
 import { stanceIndex } from "@/lib/clans";
 import { formatDuration, formatPower } from "@/lib/format";
 import { listCharacters, warSessionsForCharacters } from "@/lib/queries";
@@ -234,7 +234,7 @@ export default async function PlayersPage({
                               {character.name}
                             </Link>
                             <div className="player-clan">
-                              {character.clan && character.clan_id && canAdminServer(user, character.server_id) ? (
+                              {character.clan && character.clan_id && canEditServer(user, character.server_id) ? (
                                 <Link
                                   className="clan-link"
                                   href={`/clans/${character.clan_id}?server=${character.server_code}`}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { accessibleServers, canAdminServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import {
   clanCandidates,
   clanMembers,
@@ -40,7 +40,7 @@ export default async function ClanDetailPage({
   const clan = getClan(clanId);
   if (!clan) notFound();
 
-  const managed = accessibleServers(user).filter((server) => canAdminServer(user, server.id));
+  const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
   if (managed.length === 0) redirect("/clans");
 
   const requested = (query.server ?? "").toUpperCase();

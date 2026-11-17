@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canAdminServer, requireUser } from "@/lib/auth";
+import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { getServerById } from "@/lib/queries";
 import {
@@ -70,7 +70,7 @@ function periodPath(period: Pick<SalaryPeriodRow, "id" | "server_id">): string {
 async function requirePeriod(user: SessionUser, periodId: number, path: string): Promise<SalaryPeriodRow> {
   const period = getSalaryPeriod(periodId);
   if (!period) redirect(back(path, "error", "Semana não encontrada."));
-  if (!canAdminServer(user, period.server_id)) {
+  if (!canEditServer(user, period.server_id)) {
     redirect(back(path, "error", "Apenas quem administra o servidor pode mexer nos salários."));
   }
   return period;
@@ -82,7 +82,7 @@ export async function createSalaryPeriodAction(formData: FormData): Promise<void
   const redirectTo = safePath(formData.get("redirectTo"), "/salaries");
   const server = getServerById(serverId);
 
-  if (!server || !canAdminServer(user, serverId)) {
+  if (!server || !canEditServer(user, serverId)) {
     redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para administrá-lo."));
   }
 
@@ -424,7 +424,7 @@ export async function setSalaryWeightsAction(formData: FormData): Promise<void> 
   const redirectTo = safePath(formData.get("redirectTo"), "/salaries");
   const server = getServerById(serverId);
 
-  if (!server || !canAdminServer(user, serverId)) {
+  if (!server || !canEditServer(user, serverId)) {
     redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para administrá-lo."));
   }
 

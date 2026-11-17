@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { accessibleServers, canAdminServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { AutoSave } from "@/components/AutoSave";
 import { ClearValueButton } from "@/components/ClearValueButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -71,7 +71,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const user = await requireUser();
   const params = await searchParams;
 
-  const managed = accessibleServers(user).filter((server) => canAdminServer(user, server.id));
+  const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
   const requested = (params.server ?? "").toUpperCase();
   const selected = managed.find((server) => server.code === requested) ?? managed[0] ?? null;
   const search = (params.q ?? "").trim().slice(0, 60);
@@ -191,7 +191,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
 
       {managed.length === 0 ? (
         <div className="alert warn">
-          Você não administra nenhum servidor. Peça ao administrador para marcar você como dono de um servidor em
+          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um servidor em
           Usuários.
         </div>
       ) : null}

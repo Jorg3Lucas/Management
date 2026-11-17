@@ -1,13 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { isAdmin, ownedServerIds } from "@/lib/auth";
+import { editableServerIds, isAdmin, ownedServerIds } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import { logoutAction } from "@/app/login/actions";
 import { SideNav } from "./SideNav";
 
 export function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
   const ownedServers = isAdmin(user) ? [] : ownedServerIds(user);
-  const canManageClans = isAdmin(user) || ownedServers.length > 0;
+  // Dono ou editor de servidor também usa as ferramentas de gestão, sempre preso aos servidores dele.
+  const canManageServers = isAdmin(user) || editableServerIds(user).length > 0;
 
   const initials = Array.from(user.displayName.trim() || user.username)[0]?.toUpperCase() ?? "?";
 
@@ -22,7 +23,7 @@ export function Shell({ user, children }: { user: SessionUser; children: ReactNo
           </div>
         </Link>
 
-        <SideNav isAdmin={isAdmin(user)} canManageClans={canManageClans} />
+        <SideNav isAdmin={isAdmin(user)} canManageServers={canManageServers} />
 
         <div className="sidebar-foot">
           <div className="user-box">

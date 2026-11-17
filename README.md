@@ -10,8 +10,8 @@ servidores e controlar quem acessa cada servidor. Todos os servidores vêm com a
 - **Servidores**: todos os 68 servidores publicados no ranking, com chave de grupo e mundo corretas, e a coleta ativa
   por padrão; qualquer um pode ser desativado.
 - **Usuários e acesso**: admin cria contas, define papel (administrador/operador) e marca servidor por servidor. O
-  operador só vê ranking, guerras e edições dos servidores liberados; as consultas e as ações validam o acesso no
-  servidor.
+  operador é administrador dos servidores liberados: escolhe um deles nas páginas de gestão e trabalha só dentro dele;
+  as consultas e as ações validam o acesso no servidor.
 - **Edição manual**: poder atual, nome, clã, classe, nível, observações. Toda mudança entra no histórico de poder. A
   opção **proteger contra sincronização** impede que o coletor sobrescreva o registro.
 - **Guerras**: registre início/fim e o servidor onde a batalha aconteceu (pode ser diferente do servidor do jogador).
@@ -26,8 +26,8 @@ servidores e controlar quem acessa cada servidor. Todos os servidores vêm com a
   semana.
 - **Servidor casa e transferências**: o mesmo nome em servidores diferentes é o mesmo jogador; a troca de servidor é
   confirmada na sincronização (sem aprovação) e o tempo de guerra é somado entre os personagens.
-- **Administração por servidor e auditoria**: o usuário pode ser dono de um servidor liberado (administra a
-  diplomacia local) e toda alteração administrativa é registrada em `/audit`.
+- **Administração por servidor e auditoria**: quem tem um servidor liberado administra as ferramentas daquele servidor
+  (clãs, times, castelo, salários, CE, World Boss) e toda alteração administrativa é registrada em `/audit`.
 - **Poder máximo**: o pico é mantido em `characters.peak_power` (sync ou edição manual) e cada variação é registrada
   em `power_history`.
 - **Automação**: rodada diária de **todos os servidores às 17h (horário de Brasília)**, dentro do próprio processo
@@ -106,8 +106,9 @@ um cron externo chamando a CLI ou a rota:
 
 - `ADMIN`: vê todos os servidores, gerencia servidores e usuários, pode sincronizar e mesclar clãs.
 - `USER`: vê somente os servidores marcados em **Usuários → servidor → Servidores liberados**.
-- Dentro de cada servidor o usuário pode ser **dono** ou **editor**: dono administra a diplomacia de clãs; editor edita
-  jogadores e guerras. Sem papel de edição o acesso é somente leitura.
+- Dentro de cada servidor o usuário pode ser **dono** ou **editor**: os dois usam as ferramentas de gestão do servidor
+  (clãs, times, castelo, salários, CE, World Boss) e editam jogadores e guerras, sempre limitados aos servidores dele.
+  Sem papel de edição o acesso é somente leitura.
 - Toda alteração administrativa entra em **Auditoria** (autor, alvo, servidor e detalhe).
 - Sessões expiram em 7 dias; redefinir senha ou desativar a conta encerra as sessões abertas.
 - Não é possível desativar/remover o próprio acesso nem ficar sem administrador ativo.

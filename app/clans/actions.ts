@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
-import { canAdminServer, requireAdmin, requireUser } from "@/lib/auth";
+import { canEditServer, requireAdmin, requireUser } from "@/lib/auth";
 import { getClan, isClanStance, logClanChange, mergeClans, STANCE_LABELS } from "@/lib/clans";
 import { execute, queryOne } from "@/lib/db";
 import { getServerById } from "@/lib/queries";
@@ -27,8 +27,8 @@ export async function setClanStanceAction(formData: FormData): Promise<void> {
   const server = getServerById(serverId);
   const clan = getClan(clanId);
   if (!server || !clan) redirect(back(returnTo, "error", "Clã ou servidor inválido."));
-  if (!canAdminServer(user, serverId)) {
-    redirect(back(returnTo, "error", "Apenas o dono do servidor pode definir a postura dos clãs."));
+  if (!canEditServer(user, serverId)) {
+    redirect(back(returnTo, "error", "Sem permissão para definir a postura dos clãs neste servidor."));
   }
 
   if (stanceRaw === "") {
@@ -126,8 +126,8 @@ export async function assignClanPlayerAction(formData: FormData): Promise<void> 
   const server = getServerById(serverId);
   const clan = getClan(clanId);
   if (!server || !clan) redirect(back(returnTo, "error", "Clã ou servidor inválido."));
-  if (!canAdminServer(user, serverId)) {
-    redirect(back(returnTo, "error", "Apenas o dono do servidor pode vincular jogadores aos clãs."));
+  if (!canEditServer(user, serverId)) {
+    redirect(back(returnTo, "error", "Sem permissão para vincular jogadores aos clãs neste servidor."));
   }
 
   const character = queryOne<{

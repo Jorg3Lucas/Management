@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { accessibleServerIds, accessibleServers, canAdminServer, isAdmin, requireUser } from "@/lib/auth";
+import { accessibleServerIds, accessibleServers, canEditServer, isAdmin, requireUser } from "@/lib/auth";
 import { formatDuration, formatPower } from "@/lib/format";
 import {
   countCharactersForServers,
@@ -237,7 +237,7 @@ export default async function DashboardPage({
                             {character.name}
                           </Link>
                           <div className="player-clan">
-                            {character.clan && character.clan_id && canAdminServer(user, character.server_id) ? (
+                            {character.clan && character.clan_id && canEditServer(user, character.server_id) ? (
                               <Link
                                 className="clan-link"
                                 href={`/clans/${character.clan_id}?server=${character.server_code}`}

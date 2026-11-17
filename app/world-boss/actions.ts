@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canAdminServer, requireUser } from "@/lib/auth";
+import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ceWeekStart, shortDay } from "@/lib/ce";
 import { getServerById } from "@/lib/queries";
@@ -35,7 +35,7 @@ export async function addWorldBossFightAction(formData: FormData): Promise<void>
   const redirectTo = safePath(formData.get("redirectTo"), "/world-boss");
   const server = getServerById(serverId);
 
-  if (!server || !canAdminServer(user, serverId)) {
+  if (!server || !canEditServer(user, serverId)) {
     redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para registrar encontros."));
   }
 
@@ -72,7 +72,7 @@ export async function deleteWorldBossFightAction(formData: FormData): Promise<vo
   const redirectTo = safePath(formData.get("redirectTo"), "/world-boss");
   const fight = getWorldBossFight(fightId);
 
-  if (!fight || fight.server_id !== serverId || !canAdminServer(user, serverId)) {
+  if (!fight || fight.server_id !== serverId || !canEditServer(user, serverId)) {
     redirect(back(redirectTo, "error", "Encontro inválido ou sem permissão para removê-lo."));
   }
 
@@ -98,7 +98,7 @@ export async function saveWorldBossAttendanceAction(formData: FormData): Promise
   const weekStart = ceWeekStart(String(formData.get("week") ?? ""));
   const server = getServerById(serverId);
 
-  if (!server || !canAdminServer(user, serverId)) {
+  if (!server || !canEditServer(user, serverId)) {
     redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para marcar presenças."));
   }
 

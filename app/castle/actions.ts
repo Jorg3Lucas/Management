@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canAdminServer, requireUser } from "@/lib/auth";
+import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { saveCastlePrizeDistribution } from "@/lib/castle";
 import {
@@ -31,7 +31,7 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
   const monthStart = castleMonthStart(String(formData.get("month") ?? ""));
   const server = getServerById(serverId);
 
-  if (!server || !canAdminServer(user, serverId)) {
+  if (!server || !canEditServer(user, serverId)) {
     redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para distribuir o prêmio."));
   }
 

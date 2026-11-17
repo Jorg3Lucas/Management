@@ -144,12 +144,6 @@ export function canEditServer(user: SessionUser, serverId: number): boolean {
   return role === "owner" || role === "editor";
 }
 
-/** Pode administrar o servidor: diplomacia de clãs e papéis.
- *  Admin global: dono de todos. Dono do servidor: só dos seus. */
-export function canAdminServer(user: SessionUser, serverId: number): boolean {
-  return serverRole(user, serverId) === "owner";
-}
-
 export function editableServerIds(user: SessionUser): number[] {
   if (user.role === "ADMIN") {
     return queryAll<{ id: number }>("SELECT id FROM servers ORDER BY id").map((row) => row.id);

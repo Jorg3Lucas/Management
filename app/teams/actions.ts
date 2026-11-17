@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
-import { canAdminServer, canEditServer, requireUser } from "@/lib/auth";
+import { canEditServer, requireUser } from "@/lib/auth";
 import { getClan } from "@/lib/clans";
 import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import {
@@ -42,8 +42,8 @@ export async function createTeamAction(formData: FormData): Promise<void> {
   const color = String(formData.get("color") ?? TEAM_COLORS[0].value);
 
   if (!server) redirect(back(returnTo, "error", "Servidor inválido."));
-  if (!canAdminServer(user, serverId)) {
-    redirect(back(returnTo, "error", "Apenas o dono do servidor pode criar times."));
+  if (!canEditServer(user, serverId)) {
+    redirect(back(returnTo, "error", "Sem permissão para criar times neste servidor."));
   }
   if (name.length < 2) redirect(back(returnTo, "error", "Informe um nome de time com pelo menos 2 caracteres."));
   if (!isValidTeamColor(color)) redirect(back(returnTo, "error", "Cor inválida."));
@@ -85,8 +85,8 @@ export async function updateTeamAction(formData: FormData): Promise<void> {
   const color = String(formData.get("color") ?? "");
 
   if (!team || team.server_id !== serverId) redirect(back(returnTo, "error", "Time inválido."));
-  if (!canAdminServer(user, serverId)) {
-    redirect(back(returnTo, "error", "Apenas o dono do servidor pode editar times."));
+  if (!canEditServer(user, serverId)) {
+    redirect(back(returnTo, "error", "Sem permissão para editar times neste servidor."));
   }
   if (name.length < 2) redirect(back(returnTo, "error", "Informe um nome de time com pelo menos 2 caracteres."));
   if (!isValidTeamColor(color)) redirect(back(returnTo, "error", "Cor inválida."));
@@ -121,8 +121,8 @@ export async function deleteTeamAction(formData: FormData): Promise<void> {
   const team = getTeam(teamId);
 
   if (!team || team.server_id !== serverId) redirect(back(returnTo, "error", "Time inválido."));
-  if (!canAdminServer(user, serverId)) {
-    redirect(back(returnTo, "error", "Apenas o dono do servidor pode remover times."));
+  if (!canEditServer(user, serverId)) {
+    redirect(back(returnTo, "error", "Sem permissão para remover times neste servidor."));
   }
 
   deleteTeam(teamId);
@@ -150,8 +150,8 @@ export async function assignTeamClanAction(formData: FormData): Promise<void> {
   const server = getServerById(serverId);
   const clan = getClan(clanId);
   if (!server || !clan) redirect(back(returnTo, "error", "Clã ou servidor inválido."));
-  if (!canAdminServer(user, serverId)) {
-    redirect(back(returnTo, "error", "Apenas o dono do servidor pode vincular clãs a times."));
+  if (!canEditServer(user, serverId)) {
+    redirect(back(returnTo, "error", "Sem permissão para vincular clãs a times neste servidor."));
   }
 
   const teamId = rawTeamId === "" ? null : Number(rawTeamId);

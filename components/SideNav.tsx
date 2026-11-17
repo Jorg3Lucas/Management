@@ -51,14 +51,14 @@ const groups = [
   },
 ];
 
-export function SideNav({ isAdmin, canManageClans }: { isAdmin: boolean; canManageClans: boolean }) {
+export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canManageServers: boolean }) {
   const pathname = usePathname();
 
   return (
     <nav className="nav" aria-label="Navegação principal">
       {groups.map((group) => {
         const visible = group.items.filter(
-          (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || canManageClans),
+          (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || canManageServers),
         );
         if (visible.length === 0) return null;
 

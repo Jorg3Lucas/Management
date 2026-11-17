@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canAdminServer, canEditServer, requireUser } from "@/lib/auth";
+import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ensureClan, logClanChange } from "@/lib/clans";
 import { execute, queryOne } from "@/lib/db";
@@ -341,7 +341,7 @@ export async function setHomeServerAction(formData: FormData): Promise<void> {
   if (!server) redirect(back(detail, "error", "Servidor inválido."));
 
   // Quem administra o servidor casa também define a casa do jogador, mesmo que o personagem esteja em outro servidor.
-  if (!canEditServer(user, character.server_id) && !canAdminServer(user, server.id)) {
+  if (!canEditServer(user, character.server_id) && !canEditServer(user, server.id)) {
     redirect(back(detail, "error", "Sem permissão para definir este servidor casa."));
   }
 

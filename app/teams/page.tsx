@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { accessibleServers, canAdminServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { formatPower } from "@/lib/format";
 import {
   TEAM_COLORS,
@@ -32,7 +32,7 @@ export default async function TeamsPage({
   const user = await requireUser();
   const params = await searchParams;
 
-  const managed = accessibleServers(user).filter((server) => canAdminServer(user, server.id));
+  const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
   const requested = (params.server ?? "").toUpperCase();
   const selected = managed.find((server) => server.code === requested) ?? managed[0] ?? null;
 
@@ -80,7 +80,7 @@ export default async function TeamsPage({
 
       {managed.length === 0 ? (
         <div className="alert warn">
-          Você não administra nenhum servidor. Peça ao administrador para marcar você como dono de um servidor em
+          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um servidor em
           Usuários.
         </div>
       ) : null}

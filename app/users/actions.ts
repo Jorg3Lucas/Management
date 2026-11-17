@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { execute } from "@/lib/db";
+import { getT } from "@/lib/i18n";
 import { listServers } from "@/lib/queries";
 import { validatePassword } from "@/lib/password";
 import type { Role } from "@/lib/types";
@@ -77,7 +78,14 @@ export async function createUserAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/users");
-  redirect(back(`/users/${userId}`, "ok", `Usuário ${username} criado. Defina os servidores liberados abaixo.`));
+  const { m } = await getT();
+  redirect(
+    back(
+      `/users/${userId}`,
+      "ok",
+      m("Usuário {username} criado. Defina os servidores liberados abaixo.", { username }),
+    ),
+  );
 }
 
 export async function updateUserProfileAction(formData: FormData): Promise<void> {
@@ -137,13 +145,14 @@ export async function updateUserAccessAction(formData: FormData): Promise<void> 
   revalidatePath(path);
   revalidatePath("/users");
   revalidatePath("/");
+  const { m } = await getT();
   redirect(
     back(
       path,
       "ok",
       serverIds.length === 0
         ? "Acessos removidos. O usuário não verá nenhum servidor."
-        : `${serverIds.length} servidor(es) liberado(s).`,
+        : m("Servidores liberados: {count}.", { count: serverIds.length }),
     ),
   );
 }
@@ -219,11 +228,14 @@ export async function updateUserOwnersAction(formData: FormData): Promise<void> 
 
   revalidatePath(path);
   revalidatePath("/users");
+  const { m } = await getT();
   redirect(
     back(
       path,
       "ok",
-      owners.length === 0 ? "Nenhum servidor com dono definido." : `${owners.length} servidor(es) com dono definido.`,
+      owners.length === 0
+        ? "Nenhum servidor com dono definido."
+        : m("Servidores com dono definido: {count}.", { count: owners.length }),
     ),
   );
 }

@@ -8,20 +8,21 @@ import {
   countClanlessCharacters,
   getClan,
   getServerClan,
-  STANCE_LABELS,
 } from "@/lib/clans";
 import { formatPower } from "@/lib/format";
+import { getT } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { EmptyState, Flash, StatCard } from "@/components/ui";
+import { EmptyState, Flash, RichText, StatCard } from "@/components/ui";
 import { assignClanPlayerAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { t } = await getT();
   const { id } = await params;
   const clan = getClan(Number(id));
-  return { title: clan ? `Clã ${clan.name}` : "Clã" };
+  return { title: clan ? t("clanDetail.metadataName", { name: clan.name }) : t("clanDetail.metadata") };
 }
 
 export default async function ClanDetailPage({
@@ -32,6 +33,7 @@ export default async function ClanDetailPage({
   searchParams: Promise<{ server?: string; q?: string; ok?: string; error?: string }>;
 }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const { id } = await params;
   const query = await searchParams;
   const clanId = Number(id);
@@ -60,27 +62,25 @@ export default async function ClanDetailPage({
       <div className="page-head">
         <div>
           <div className="row small muted" style={{ marginBottom: 6 }}>
-            <Link href={`/clans?server=${selected.code}`}>Clãs</Link>
+            <Link href={`/clans?server=${selected.code}`}>{t("nav.clans")}</Link>
             <span>/</span>
             <span>{selected.label}</span>
           </div>
           <h1 className="page-title">{clan.name}</h1>
-          <p className="page-sub">
-            Elenco do clã no ranking de {selected.label} e vínculo manual de jogadores.
-          </p>
+          <p className="page-sub">{t("clanDetail.sub", { server: selected.label })}</p>
         </div>
         <div className="head-actions">
           {summary.stance ? (
             <span
               className={`badge ${summary.stance === "ally" ? "ok" : summary.stance === "enemy" ? "err" : ""}`}
             >
-              {STANCE_LABELS[summary.stance]}
+              {t(`stance.${summary.stance}`)}
             </span>
           ) : (
-            <span className="badge">Sem postura</span>
+            <span className="badge">{t("clans.stanceUnset")}</span>
           )}
           <Link className="btn sm ghost" href={`/players?server=${selected.code}&q=${encodeURIComponent(clan.name)}`}>
-            Ver no ranking
+            {t("clanDetail.viewRanking")}
           </Link>
         </div>
       </div>
@@ -88,37 +88,49 @@ export default async function ClanDetailPage({
       <Flash ok={query.ok} error={query.error} />
 
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <StatCard label="Membros no clã" value={summary.members} foot="jogadores do ranking" />
-        <StatCard label="Poder total" value={formatPower(summary.total_power)} foot="soma do clã" />
-        <StatCard label="Maior poder" value={formatPower(summary.top_power)} foot="jogador mais forte" />
-        <StatCard label="Jogadores sem clã" value={clanless} foot={`no servidor ${selected.code}`} />
+        <StatCard label={t("clanDetail.members")} value={summary.members} foot={t("clanDetail.membersFoot")} />
+        <StatCard
+          label={t("clanDetail.totalPower")}
+          value={formatPower(summary.total_power, locale)}
+          foot={t("clanDetail.totalPowerFoot")}
+        />
+        <StatCard
+          label={t("clanDetail.topPower")}
+          value={formatPower(summary.top_power, locale)}
+          foot={t("clanDetail.topPowerFoot")}
+        />
+        <StatCard
+          label={t("clanDetail.clanless")}
+          value={clanless}
+          foot={t("clanDetail.clanlessFoot", { code: selected.code })}
+        />
       </div>
 
       <section className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
           <div>
-            <div className="card-title">Elenco do clã</div>
+            <div className="card-title">{t("clanDetail.roster")}</div>
             <div className="card-sub">
-              Ordenado por poder · última atividade {summary.last_seen_at ? formatDateTime(summary.last_seen_at) : "—"}
+              {t("clanDetail.rosterSub", {
+                date: summary.last_seen_at ? formatDateTime(summary.last_seen_at, locale) : "—",
+              })}
             </div>
           </div>
           <span className="badge">{members.length}</span>
         </div>
         <div className="table-wrap">
           {members.length === 0 ? (
-            <EmptyState title="Nenhum jogador neste clã">
-              Vincule jogadores abaixo ou rode a sincronização do servidor.
-            </EmptyState>
+            <EmptyState title={t("clanDetail.rosterEmpty")}>{t("clanDetail.rosterEmptyBody")}</EmptyState>
           ) : (
             <table className="data">
               <thead>
                 <tr>
                   <th className="rank-cell">#</th>
-                  <th>Jogador</th>
-                  <th>Classe</th>
-                  <th className="num">Poder</th>
-                  <th className="num">Rank</th>
-                  <th>Visto</th>
+                  <th>{t("common.player")}</th>
+                  <th>{t("players.colClass")}</th>
+                  <th className="num">{t("players.colPower")}</th>
+                  <th className="num">{t("clanDetail.colRank")}</th>
+                  <th>{t("clanDetail.colSeen")}</th>
                   <th />
                 </tr>
               </thead>
@@ -132,15 +144,15 @@ export default async function ClanDetailPage({
                       </Link>
                       {member.sync_locked ? (
                         <span className="badge warn" style={{ marginLeft: 6 }}>
-                          protegido
+                          {t("clanDetail.protected")}
                         </span>
                       ) : null}
                     </td>
                     <td className="muted small">{member.class_name ?? "—"}</td>
-                    <td className="num mono">{formatPower(member.power_score)}</td>
+                    <td className="num mono">{formatPower(member.power_score, locale)}</td>
                     <td className="num mono muted">{member.rank_position ?? "—"}</td>
                     <td className="small muted nowrap">
-                      {member.last_seen_at ? formatDateTime(member.last_seen_at) : "—"}
+                      {member.last_seen_at ? formatDateTime(member.last_seen_at, locale) : "—"}
                     </td>
                     <td>
                       <div className="row" style={{ justifyContent: "flex-end" }}>
@@ -150,8 +162,10 @@ export default async function ClanDetailPage({
                           <input type="hidden" name="characterId" value={member.id} />
                           <input type="hidden" name="mode" value="remove" />
                           <input type="hidden" name="redirectTo" value={returnTo} />
-                          <ConfirmButton message={`Remover ${member.name} do clã ${clan.name}?`}>
-                            Remover
+                          <ConfirmButton
+                            message={t("clanDetail.removeConfirm", { player: member.name, clan: clan.name })}
+                          >
+                            {t("common.remove")}
                           </ConfirmButton>
                         </form>
                       </div>
@@ -168,8 +182,8 @@ export default async function ClanDetailPage({
         <section className="card">
           <div className="card-head">
             <div>
-              <div className="card-title">Vincular jogador</div>
-              <div className="card-sub">Escolha um personagem do servidor para entrar neste clã</div>
+              <div className="card-title">{t("clanDetail.assignTitle")}</div>
+              <div className="card-sub">{t("clanDetail.assignSub")}</div>
             </div>
           </div>
           <div className="card-body stack">
@@ -179,25 +193,23 @@ export default async function ClanDetailPage({
                 name="q"
                 type="search"
                 defaultValue={search}
-                placeholder="Buscar jogador do servidor"
-                aria-label="Buscar jogador para vincular"
+                placeholder={t("clanDetail.searchPlaceholder")}
+                aria-label={t("clanDetail.searchAria")}
                 style={{ minWidth: 200 }}
               />
               <button className="btn sm" type="submit">
-                Buscar
+                {t("common.search")}
               </button>
               {search ? (
                 <Link className="btn sm ghost" href={path}>
-                  Limpar
+                  {t("players.clear")}
                 </Link>
               ) : null}
             </form>
 
             {candidates.length === 0 ? (
               <p className="small muted">
-                {search
-                  ? "Nenhum jogador encontrado fora deste clã com essa busca."
-                  : "Todos os jogadores do servidor já estão neste clã."}
+                {search ? t("clanDetail.noCandidateSearch") : t("clanDetail.noCandidate")}
               </p>
             ) : (
               <form action={assignClanPlayerAction} className="stack">
@@ -206,22 +218,21 @@ export default async function ClanDetailPage({
                 <input type="hidden" name="mode" value="assign" />
                 <input type="hidden" name="redirectTo" value={returnTo} />
                 <div className="field">
-                  <label htmlFor="characterId">Jogador</label>
+                  <label htmlFor="characterId">{t("common.player")}</label>
                   <select id="characterId" name="characterId" required>
                     {candidates.map((candidate) => (
                       <option key={candidate.id} value={candidate.id}>
-                        {candidate.name} · {candidate.clan ?? "sem clã"} · {formatPower(candidate.power_score)}
+                        {candidate.name} · {candidate.clan ?? t("common.noClan")} ·{" "}
+                        {formatPower(candidate.power_score, locale)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="row">
                   <button className="btn primary" type="submit">
-                    Vincular ao clã
+                    {t("clanDetail.assignButton")}
                   </button>
-                  <span className="small muted">
-                    A lista traz primeiro quem está sem clã; use a busca para achar os demais.
-                  </span>
+                  <span className="small muted">{t("clanDetail.assignNote")}</span>
                 </div>
               </form>
             )}
@@ -231,24 +242,16 @@ export default async function ClanDetailPage({
         <section className="card">
           <div className="card-head">
             <div>
-              <div className="card-title">Como o clã é definido</div>
-              <div className="card-sub">Ranking do fórum e ajuste manual</div>
+              <div className="card-title">{t("clanDetail.howTitle")}</div>
+              <div className="card-sub">{t("clanDetail.howSub")}</div>
             </div>
           </div>
           <div className="card-body stack small muted">
+            <p>{t("clanDetail.how1")}</p>
             <p>
-              O clã de cada jogador vem do ranking do fórum a cada sincronização. Jogadores sem clã no ranking ficam
-              disponíveis para vínculo manual.
+              <RichText text={t("clanDetail.how2")} />
             </p>
-            <p>
-              Um vínculo manual fica gravado no histórico de trocas de clã com origem <strong>manual</strong>. Quando o
-              ranking voltar a informar um clã para o jogador, a sincronização passa a valer e o vínculo manual é
-              substituído.
-            </p>
-            <p>
-              Remover um jogador do clã não apaga o personagem: ele continua no ranking, apenas sem clã até o próximo
-              sync ou até você vinculá-lo de novo.
-            </p>
+            <p>{t("clanDetail.how3")}</p>
           </div>
         </section>
       </div>

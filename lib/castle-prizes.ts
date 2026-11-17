@@ -3,6 +3,7 @@
  * entregue na guerra de castelo. Este módulo é puro (sem banco) para poder
  * ser importado por componentes client.
  */
+import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "./i18n/locales";
 import { todayInApp } from "./time";
 export const CASTLE_PRIZES = [
   { key: "legendary", label: "Lendário", total: 1 },
@@ -58,12 +59,16 @@ export function shiftMonth(start: string, months: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** "2026-11-01" → "Novembro/2026". */
-export function castleMonthTitle(start: string): string {
+/** "2026-11-01" → "Novembro/2026" (no idioma atual). */
+export function castleMonthTitle(start: string, locale: Locale = DEFAULT_LOCALE): string {
   const date = new Date(`${start}T00:00:00Z`);
   if (Number.isNaN(date.getTime())) return start;
-  const name = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", month: "long" }).format(date);
-  return `${name.charAt(0).toUpperCase()}${name.slice(1)}/${date.getUTCFullYear()}`;
+  const formatted = new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    timeZone: "UTC",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+  return `${formatted.charAt(0).toUpperCase()}${formatted.slice(1)}`;
 }
 
 /** "2026-11-01" → "2026-11", para nomes de arquivo. */

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { getT } from "@/lib/i18n";
 import { getServerById } from "@/lib/queries";
 import {
   CE_EXPEDITIONS,
@@ -70,7 +71,8 @@ export async function saveCePlanAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/ce");
-  redirect(back(redirectTo, "ok", `Plano de ${clan.name} salvo.`));
+  const { m } = await getT();
+  redirect(back(redirectTo, "ok", m("Plano de {clan} salvo.", { clan: clan.name })));
 }
 
 export async function saveCeDonationAction(formData: FormData): Promise<void> {

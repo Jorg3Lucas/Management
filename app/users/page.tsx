@@ -1,13 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { listUsers, requireAdmin } from "@/lib/auth";
+import { getT } from "@/lib/i18n";
 import { listServers } from "@/lib/queries";
 import { formatDate } from "@/lib/time";
 import { Flash } from "@/components/ui";
 import { ServerAccessGrid } from "@/components/ServerAccessGrid";
 import { createUserAction } from "./actions";
 
-export const metadata: Metadata = { title: "Usuários" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("users.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage({
@@ -16,6 +21,7 @@ export default async function UsersPage({
   searchParams: Promise<{ ok?: string; error?: string }>;
 }) {
   const admin = await requireAdmin();
+  const { locale, t } = await getT();
   const flash = await searchParams;
   const users = listUsers();
   const servers = listServers();
@@ -25,36 +31,47 @@ export default async function UsersPage({
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Administração</p>
-          <h1 className="page-title">Usuários</h1>
-          <p className="page-sub">
-            Cada usuário vê e edita somente os servidores liberados. Donos de servidor também classificam os clãs.
-            Administradores têm acesso a tudo.
-          </p>
+          <p className="eyebrow">{t("nav.admin")}</p>
+          <h1 className="page-title">{t("users.title")}</h1>
+          <p className="page-sub">{t("users.sub")}</p>
         </div>
         <div className="head-actions">
-          <span className="badge">{users.length} conta(s)</span>
-          <span className="badge ok">{users.filter((user) => user.active).length} ativa(s)</span>
+          <span className="badge">{t("users.count", { count: users.length })}</span>
+          <span className="badge ok">{t("users.activeCount", { count: users.filter((user) => user.active).length })}</span>
         </div>
       </div>
 
       <Flash ok={flash.ok} error={flash.error} />
 
       <details className="panel" open>
-        <summary>Novo usuário</summary>
+        <summary>{t("users.newUser")}</summary>
         <div className="panel-body">
           <form action={createUserAction}>
             <div className="form-grid">
               <div className="field">
-                <label htmlFor="username">Usuário</label>
-                <input id="username" name="username" type="text" maxLength={32} required placeholder="ex.: operador.eu11" />
+                <label htmlFor="username">{t("users.username")}</label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  maxLength={32}
+                  required
+                  placeholder={t("users.usernamePlaceholder")}
+                />
               </div>
               <div className="field">
-                <label htmlFor="displayName">Nome de exibição</label>
-                <input id="displayName" name="displayName" type="text" maxLength={60} required placeholder="Ex.: João" />
+                <label htmlFor="displayName">{t("users.displayName")}</label>
+                <input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  maxLength={60}
+                  required
+                  placeholder={t("users.displayNamePlaceholder")}
+                />
               </div>
               <div className="field">
-                <label htmlFor="password">Senha inicial</label>
+                <label htmlFor="password">{t("users.initialPassword")}</label>
                 <input
                   id="password"
                   name="password"
@@ -62,32 +79,30 @@ export default async function UsersPage({
                   minLength={8}
                   autoComplete="new-password"
                   required
-                  placeholder="mínimo 8 caracteres"
+                  placeholder={t("users.passwordPlaceholder")}
                 />
               </div>
               <div className="field">
-                <label htmlFor="role">Papel</label>
+                <label htmlFor="role">{t("users.role")}</label>
                 <select id="role" name="role" defaultValue="USER">
-                  <option value="USER">Operador — só servidores liberados</option>
-                  <option value="ADMIN">Administrador — acesso total</option>
+                  <option value="USER">{t("users.roleUserOption")}</option>
+                  <option value="ADMIN">{t("users.roleAdminOption")}</option>
                 </select>
               </div>
             </div>
 
             <div style={{ marginTop: 18 }}>
               <div className="field-label" style={{ marginBottom: 9 }}>
-                Servidores liberados
+                {t("users.grantedServers")}
               </div>
               <ServerAccessGrid servers={servers} selectedIds={defaultAccess} />
             </div>
 
             <div className="row" style={{ marginTop: 18 }}>
               <button className="btn primary" type="submit">
-                Criar usuário
+                {t("users.createButton")}
               </button>
-              <span className="small muted">
-                A senha pode ser trocada depois na página do usuário. Sessões duram 7 dias.
-              </span>
+              <span className="small muted">{t("users.createNote")}</span>
             </div>
           </form>
         </div>
@@ -98,11 +113,11 @@ export default async function UsersPage({
           <table className="data">
             <thead>
               <tr>
-                <th>Usuário</th>
-                <th>Papel</th>
-                <th>Status</th>
-                <th className="num">Servidores</th>
-                <th>Criado em</th>
+                <th>{t("users.colUser")}</th>
+                <th>{t("users.colRole")}</th>
+                <th>{t("common.status")}</th>
+                <th className="num">{t("common.servers")}</th>
+                <th>{t("users.colCreated")}</th>
                 <th />
               </tr>
             </thead>
@@ -111,32 +126,31 @@ export default async function UsersPage({
                 <tr key={user.id}>
                   <td>
                     <div style={{ fontWeight: 600 }}>
-                      {user.display_name}{" "}
-                      {user.id === admin.id ? <span className="badge gold">você</span> : null}
+                      {user.display_name} {user.id === admin.id ? <span className="badge gold">{t("users.you")}</span> : null}
                     </div>
                     <div className="player-clan mono">{user.username}</div>
                   </td>
                   <td>
                     <span className={`badge ${user.role === "ADMIN" ? "gold" : ""}`}>
-                      {user.role === "ADMIN" ? "Administrador" : "Operador"}
+                      {user.role === "ADMIN" ? t("shell.roleAdmin") : t("shell.roleOperator")}
                     </span>
                   </td>
                   <td>
                     <span className={`badge ${user.active ? "ok" : "err"}`}>
-                      {user.active ? "Ativo" : "Desativado"}
+                      {user.active ? t("users.active") : t("users.inactive")}
                     </span>
                   </td>
                   <td className="num mono">
-                    {user.role === "ADMIN" ? "todos" : user.server_count}
+                    {user.role === "ADMIN" ? t("users.allServers") : user.server_count}
                     {user.role !== "ADMIN" && user.owner_count > 0 ? (
-                      <div className="player-clan">dono de {user.owner_count}</div>
+                      <div className="player-clan">{t("users.ownerOf", { count: user.owner_count })}</div>
                     ) : null}
                   </td>
-                  <td className="small muted nowrap">{formatDate(user.created_at)}</td>
+                  <td className="small muted nowrap">{formatDate(user.created_at, locale)}</td>
                   <td>
                     <div className="row" style={{ justifyContent: "flex-end" }}>
                       <Link className="btn sm" href={`/users/${user.id}`}>
-                        Gerenciar
+                        {t("users.manage")}
                       </Link>
                     </div>
                   </td>

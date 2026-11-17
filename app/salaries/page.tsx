@@ -6,6 +6,9 @@ import { ClearValueButton } from "@/components/ClearValueButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EmptyState, Flash, StatCard } from "@/components/ui";
 import { formatNumber, formatPower } from "@/lib/format";
+import { getT } from "@/lib/i18n";
+import { INTL_LOCALE, type Locale } from "@/lib/i18n/locales";
+import type { T } from "@/lib/i18n";
 import {
   listSalaryPeriods,
   periodTitle,
@@ -40,7 +43,11 @@ import {
   updateSalaryMemberAction,
 } from "./actions";
 
-export const metadata: Metadata = { title: "Salários" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("salary.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
@@ -63,12 +70,13 @@ function isRosterSort(value: string | undefined): value is RosterSort {
 }
 
 /** Pontos podem ter fração de 1/3; mostra até duas casas. */
-function decimal(value: number): string {
-  return value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+function decimal(value: number, locale: Locale): string {
+  return value.toLocaleString(INTL_LOCALE[locale], { maximumFractionDigits: 2 });
 }
 
 export default async function SalariesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const params = await searchParams;
 
   const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
@@ -101,7 +109,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     )
     .sort((a, b) => {
       const factor = sortDir === "asc" ? 1 : -1;
-      const byName = a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+      const byName = a.name.localeCompare(b.name, INTL_LOCALE[locale], { sensitivity: "base" });
       if (sortKey === "power") return (a.power_score - b.power_score) * factor || byName;
       if (sortKey === "salary") return (a.salary - b.salary) * factor || byName;
       if (sortKey === "presence") return (a.attendedCount - b.attendedCount) * factor || byName;
@@ -168,11 +176,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Economia</p>
-          <h1 className="page-title">Salários do vale</h1>
-          <p className="page-sub">
-            Produção dos três vales menos os custos, dividida por coeficiente entre os membros dos clãs aliados.
-          </p>
+          <p className="eyebrow">{t("salary.eyebrow")}</p>
+          <h1 className="page-title">{t("salary.title")}</h1>
+          <p className="page-sub">{t("salary.sub")}</p>
         </div>
         <div className="head-actions">
           {managed.slice(0, 6).map((server) => (
@@ -189,36 +195,34 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
 
       <Flash ok={params.ok} error={params.error} />
 
-      {managed.length === 0 ? (
-        <div className="alert warn">
-          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um servidor em
-          Usuários.
-        </div>
-      ) : null}
+      {managed.length === 0 ? <div className="alert warn">{t("gest.noServers")}</div> : null}
 
       {selected ? (
         <>
           {summary ? (
             <div className="grid cols-4" style={{ marginBottom: 16 }}>
               <StatCard
-                label="Prêmio da semana"
-                value={formatNumber(summary.pool)}
-                foot={`${formatNumber(summary.production)} de produção − ${formatNumber(summary.fixedCosts)} de custos`}
+                label={t("salary.statPool")}
+                value={formatNumber(summary.pool, locale)}
+                foot={t("salary.statPoolFoot", {
+                  production: formatNumber(summary.production, locale),
+                  costs: formatNumber(summary.fixedCosts, locale),
+                })}
               />
               <StatCard
-                label="Pago pelo elenco"
-                value={formatNumber(summary.paid)}
-                foot={`${summary.attended} de ${summary.members.length} participaram`}
+                label={t("salary.statPaid")}
+                value={formatNumber(summary.paid, locale)}
+                foot={t("salary.statPaidFoot", { attended: summary.attended, members: summary.members.length })}
               />
               <StatCard
-                label="Não distribuído"
-                value={formatNumber(summary.leftover)}
-                foot="sobra de arredondamento e dos percentuais"
+                label={t("salary.statLeft")}
+                value={formatNumber(summary.leftover, locale)}
+                foot={t("salary.statLeftFoot")}
               />
               <StatCard
-                label="Prêmio por ponto"
-                value={formatNumber(Math.round(summary.base))}
-                foot={`soma dos coeficientes: ${formatNumber(summary.totalWeight)}`}
+                label={t("salary.statBase")}
+                value={formatNumber(Math.round(summary.base), locale)}
+                foot={t("salary.statBaseFoot", { weight: formatNumber(summary.totalWeight, locale) })}
               />
             </div>
           ) : null}
@@ -226,12 +230,12 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           <section className="card" style={{ marginBottom: 16 }}>
             <div className="card-head">
               <div>
-                <div className="card-title">Semanas de {selected.label}</div>
-                <div className="card-sub">A semana mais recente abre por padrão; cada uma guarda seus próprios números</div>
+                <div className="card-title">{t("salary.weeksTitle", { server: selected.label })}</div>
+                <div className="card-sub">{t("salary.weeksSub")}</div>
               </div>
               <div className="row">
-                {period ? <span className="badge gold">{periodTitle(period)}</span> : null}
-                <span className="badge">{periods.length} semana(s)</span>
+                {period ? <span className="badge gold">{periodTitle(period, locale)}</span> : null}
+                <span className="badge">{t("salary.weekCount", { count: periods.length })}</span>
               </div>
             </div>
             <div className="card-body">
@@ -239,25 +243,28 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <input type="hidden" name="serverId" value={selected.id} />
                 <input type="hidden" name="redirectTo" value={`/salaries?server=${selected.code}`} />
                 <div className="field">
-                  <label htmlFor="startsOn">Início da semana (quinta)</label>
+                  <label htmlFor="startsOn">{t("salary.startsOn")}</label>
                   <input id="startsOn" name="startsOn" type="date" required defaultValue={weekDefaults.startsOn} />
                 </div>
                 <div className="field">
-                  <label htmlFor="endsOn">Fim da semana (quarta)</label>
+                  <label htmlFor="endsOn">{t("salary.endsOn")}</label>
                   <input id="endsOn" name="endsOn" type="date" required defaultValue={weekDefaults.endsOn} />
                 </div>
                 <div className="field">
-                  <label htmlFor="label">Nome (opcional)</label>
-                  <input id="label" name="label" type="text" maxLength={40} placeholder="Ex.: Vale 12" />
+                  <label htmlFor="label">{t("salary.labelOptional")}</label>
+                  <input
+                    id="label"
+                    name="label"
+                    type="text"
+                    maxLength={40}
+                    placeholder={t("salary.labelPlaceholder")}
+                  />
                 </div>
                 <div className="full row">
                   <button className="btn primary" type="submit">
-                    Criar semana
+                    {t("salary.createWeek")}
                   </button>
-                  <span className="small muted">
-                    A semana vai de quinta a quarta, dia da guerra do vale e do pagamento. Ela já nasce com todo o
-                    elenco dos clãs aliados; a produção e os custos são lançados nela e você só marca as presenças.
-                  </span>
+                  <span className="small muted">{t("salary.createWeekNote")}</span>
                 </div>
               </form>
             </div>
@@ -270,21 +277,26 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         className="player-name"
                         href={`/salaries?server=${selected.code}&period=${entry.id}`}
                       >
-                        {periodTitle(entry)}
+                        {periodTitle(entry, locale)}
                       </Link>
                       <div className="small muted">
-                        Produção {formatNumber(entry.production)} · custos {formatNumber(entry.fixed_costs)} ·{" "}
-                        {entry.members} membro(s)
+                        {t("salary.periodLine", {
+                          production: formatNumber(entry.production, locale),
+                          costs: formatNumber(entry.fixed_costs, locale),
+                          members: formatNumber(entry.members, locale),
+                        })}
                       </div>
                     </div>
                     <div className="row">
-                      <span className="badge">{formatNumber(entry.production - entry.fixed_costs)}</span>
-                      {period?.id === entry.id ? <span className="badge gold">aberta</span> : null}
+                      <span className="badge">{formatNumber(entry.production - entry.fixed_costs, locale)}</span>
+                      {period?.id === entry.id ? <span className="badge gold">{t("salary.weekOpen")}</span> : null}
                       <form action={deleteSalaryPeriodAction} className="inline-form">
                         <input type="hidden" name="periodId" value={entry.id} />
                         <input type="hidden" name="redirectTo" value={returnTo} />
-                        <ConfirmButton message={`Remover a semana ${periodTitle(entry)} com vales, custos e elenco?`}>
-                          Remover
+                        <ConfirmButton
+                          message={t("salary.deletePeriodConfirm", { period: periodTitle(entry, locale) })}
+                        >
+                          {t("common.remove")}
                         </ConfirmButton>
                       </form>
                     </div>
@@ -295,17 +307,17 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           </section>
 
           {!period || !summary ? (
-            <div className="alert">Nenhuma semana criada em {selected.label}. Crie a primeira acima.</div>
+            <div className="alert">{t("salary.noWeeks", { server: selected.label })}</div>
           ) : (
             <>
               <div className="grid cols-2" style={{ marginBottom: 16 }}>
                 <section className="card">
                   <div className="card-head">
                     <div>
-                      <div className="card-title">Vales da semana</div>
-                      <div className="card-sub">Redmoon, Snake e Bicheon são fixos; lance só o valor da produção</div>
+                      <div className="card-title">{t("salary.valesTitle")}</div>
+                      <div className="card-sub">{t("salary.valesSub")}</div>
                     </div>
-                    <span className="badge">{formatNumber(summary.production)}</span>
+                    <span className="badge">{formatNumber(summary.production, locale)}</span>
                   </div>
                   <div className="card-body stack">
                     {SALARY_VALES.map((vale) => {
@@ -314,7 +326,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         <div key={vale.slot}>
                           <div className="small muted" style={{ fontWeight: 600, marginBottom: 4 }}>
                             {vale.label}
-                            {entry ? ` · ${formatNumber(entry.amount)}` : ""}
+                            {entry ? ` · ${formatNumber(entry.amount, locale)}` : ""}
                           </div>
                           <form
                             action={setSalaryProductionSlotAction}
@@ -330,12 +342,12 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                               type="text"
                               inputMode="numeric"
                               defaultValue={entry ? String(entry.amount) : ""}
-                              placeholder="Valor"
-                              aria-label={`Valor do ${vale.label}`}
+                              placeholder={t("salary.amountPlaceholder")}
+                              aria-label={t("salary.amountAria", { vale: vale.label })}
                               style={{ flex: "1 1 160px" }}
                             />
                             <input type="hidden" name="clear" value="" />
-                            {entry ? <ClearValueButton>Limpar</ClearValueButton> : null}
+                            {entry ? <ClearValueButton>{t("castleBoard.clear")}</ClearValueButton> : null}
                           </form>
                         </div>
                       );
@@ -346,10 +358,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 <section className="card">
                   <div className="card-head">
                     <div>
-                      <div className="card-title">Custos da semana</div>
-                      <div className="card-sub">Elder, staff e outros pagamentos descontados antes da divisão</div>
+                      <div className="card-title">{t("salary.costsTitle")}</div>
+                      <div className="card-sub">{t("salary.costsSub")}</div>
                     </div>
-                    <span className="badge">{formatNumber(summary.fixedCosts)}</span>
+                    <span className="badge">{formatNumber(summary.fixedCosts, locale)}</span>
                   </div>
                   <div className="card-body">
                     <form action={addSalaryEntryAction} className="filters" style={{ marginBottom: 12 }}>
@@ -357,46 +369,53 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       <input type="hidden" name="kind" value="fixed" />
                       <input type="hidden" name="redirectTo" value={returnTo} />
                       <div className="field" style={{ flex: "1 1 160px" }}>
-                        <label htmlFor="fixed-name">Custo</label>
-                        <input id="fixed-name" name="name" type="text" maxLength={60} required placeholder="Elder" />
+                        <label htmlFor="fixed-name">{t("salary.costLabel")}</label>
+                        <input
+                          id="fixed-name"
+                          name="name"
+                          type="text"
+                          maxLength={60}
+                          required
+                          placeholder={t("salary.costPlaceholder")}
+                        />
                       </div>
                       <div className="field" style={{ flex: "1 1 140px" }}>
-                        <label htmlFor="fixed-amount">Valor</label>
+                        <label htmlFor="fixed-amount">{t("salary.valueLabel")}</label>
                         <input
                           id="fixed-amount"
                           name="amount"
                           type="text"
                           inputMode="numeric"
                           required
-                          placeholder="10.000.000"
+                          placeholder={t("salary.valuePlaceholder")}
                         />
                       </div>
                       <button className="btn" type="submit">
-                        Lançar
+                        {t("salary.post")}
                       </button>
                     </form>
                     {fixedEntries.length === 0 ? (
-                      <p className="small muted">Nenhum custo lançado nesta semana.</p>
+                      <p className="small muted">{t("salary.noCosts")}</p>
                     ) : (
                       <div className="list">
                         {fixedEntries.map((entry) => (
                           <div key={entry.id} className="list-row" style={{ padding: "9px 0" }}>
                             <div>
                               <div style={{ fontWeight: 600 }}>{entry.name}</div>
-                              <div className="small muted mono">{formatNumber(entry.amount)}</div>
+                              <div className="small muted mono">{formatNumber(entry.amount, locale)}</div>
                             </div>
                             <form action={deleteSalaryEntryAction} className="inline-form">
                               <input type="hidden" name="entryId" value={entry.id} />
                               <input type="hidden" name="redirectTo" value={returnTo} />
                               <button className="btn sm ghost" type="submit">
-                                Remover
+                                {t("common.remove")}
                               </button>
                             </form>
                           </div>
                         ))}
                         <div className="list-row" style={{ padding: "9px 0", fontWeight: 650 }}>
-                          <span>Total</span>
-                          <span className="mono">{formatNumber(summary.fixedCosts)}</span>
+                          <span>{t("common.total")}</span>
+                          <span className="mono">{formatNumber(summary.fixedCosts, locale)}</span>
                         </div>
                       </div>
                     )}
@@ -407,29 +426,27 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
               <section className="card" style={{ marginBottom: 16 }}>
                 <div className="card-head">
                   <div>
-                    <div className="card-title">Coeficientes de {selected.label}</div>
-                    <div className="card-sub">
-                      Poder mínimo define a faixa; heist, altar e vale pagam 1/3 cada
-                    </div>
+                    <div className="card-title">{t("salary.tiersTitle", { server: selected.label })}</div>
+                    <div className="card-sub">{t("salary.tiersSub")}</div>
                   </div>
-                  {summary.pool < 0 ? <span className="badge err">custos maiores que a produção</span> : null}
+                  {summary.pool < 0 ? <span className="badge err">{t("salary.costsOverProduction")}</span> : null}
                 </div>
                 <form action={setSalaryWeightsAction}>
                   <AutoSave />
                   <input type="hidden" name="serverId" value={selected.id} />
                   <input type="hidden" name="redirectTo" value={returnTo} />
-                  <p className="table-hint">Deslize a tabela para o lado para ver todas as colunas →</p>
+                  <p className="table-hint">{t("salary.tableHint")}</p>
                   <div className="table-wrap">
                     <table className="data">
                       <thead>
                         <tr>
-                          <th>Faixa</th>
-                          <th className="num">Poder mínimo</th>
-                          <th className="num">Coeficiente</th>
-                          <th className="num">Com presença</th>
-                          <th className="num">Pontos</th>
-                          <th className="num">Fatia do prêmio</th>
-                          <th className="num">Salário por membro</th>
+                          <th>{t("salary.colTier")}</th>
+                          <th className="num">{t("salary.colMinPower")}</th>
+                          <th className="num">{t("salary.colWeight")}</th>
+                          <th className="num">{t("salary.colAttended")}</th>
+                          <th className="num">{t("salary.colPoints")}</th>
+                          <th className="num">{t("salary.colPool")}</th>
+                          <th className="num">{t("salary.colSalary")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -442,7 +459,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 type="text"
                                 inputMode="numeric"
                                 defaultValue={tier.minPower}
-                                aria-label={`Poder mínimo da faixa ${tier.tier}`}
+                                aria-label={t("salary.minPowerAria", { tier: tier.tier })}
                                 style={{ maxWidth: 104, marginLeft: "auto" }}
                               />
                             </td>
@@ -454,36 +471,36 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 max={100}
                                 step={0.5}
                                 defaultValue={tier.weight}
-                                aria-label={`Coeficiente da faixa ${tier.tier}`}
+                                aria-label={t("salary.weightAria", { tier: tier.tier })}
                                 style={{ maxWidth: 90, marginLeft: "auto" }}
                               />
                             </td>
                             <td className="num mono">{tier.members}</td>
-                            <td className="num mono">{decimal(tier.points)}</td>
-                            <td className="num mono">{formatNumber(Math.round(tier.pool))}</td>
-                            <td className="num mono">{formatNumber(Math.floor(tier.salary))}</td>
+                            <td className="num mono">{decimal(tier.points, locale)}</td>
+                            <td className="num mono">{formatNumber(Math.round(tier.pool), locale)}</td>
+                            <td className="num mono">{formatNumber(Math.floor(tier.salary), locale)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td style={{ fontWeight: 650 }}>Total</td>
+                          <td style={{ fontWeight: 650 }}>{t("common.total")}</td>
                           <td />
                           <td />
                           <td className="num mono">{summary.attended}</td>
-                          <td className="num mono">{decimal(summary.totalWeight)}</td>
-                          <td className="num mono">{formatNumber(summary.pool)}</td>
-                          <td className="num small muted">1 ponto = {formatNumber(Math.round(summary.base))}</td>
+                          <td className="num mono">{decimal(summary.totalWeight, locale)}</td>
+                          <td className="num mono">{formatNumber(summary.pool, locale)}</td>
+                          <td className="num small muted">
+                            {t("salary.pointValue", { value: formatNumber(Math.round(summary.base), locale) })}
+                          </td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
+
                   <div className="panel-body row">
                     <span className="small muted">
-                      Prêmio por ponto = (vales − custos) ÷ soma dos coeficientes ponderados pelas presenças. Cada membro
-                      recebe no máximo {formatNumber(SALARY_MEMBER_CAP)} DS; o excedente vai para os demais,
-                      proporcionalmente aos pontos. A penalidade de um membro sai do salário dele e também é
-                      redistribuída entre quem não tem penalidade.
+                      {t("salary.tiersExplain", { cap: formatNumber(SALARY_MEMBER_CAP, locale) })}
                     </span>
                   </div>
                 </form>
@@ -492,10 +509,14 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
               <section className="card" style={{ marginBottom: 16 }}>
                 <div className="card-head">
                   <div>
-                    <div className="card-title">Elenco da semana</div>
+                    <div className="card-title">{t("salary.rosterTitle")}</div>
                     <div className="card-sub">
-                      {summary.attended} de {summary.members.length} com presença · {summary.preferences.darksteel}{" "}
-                      querem darksteel · {summary.preferences.stone} querem pedra
+                      {t("salary.rosterSub", {
+                        attended: summary.attended,
+                        members: summary.members.length,
+                        darksteel: summary.preferences.darksteel,
+                        stone: summary.preferences.stone,
+                      })}
                     </div>
                   </div>
                   <span className="badge">
@@ -505,111 +526,121 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 {members.length > 0 ? (
                   <div className="roster-toolbar">
                     <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                      <span className="small muted">Presença</span>
+                      <span className="small muted">{t("salary.presence")}</span>
                       <Link
                         className={`btn sm${presence === "all" ? " primary" : " ghost"}`}
                         href={rosterHref({ presence: "all" })}
                       >
-                        Todos · {members.length}
+                        {t("salary.presenceAll", { count: members.length })}
                       </Link>
                       <Link
                         className={`btn sm${presence === "with" ? " primary" : " ghost"}`}
                         href={rosterHref({ presence: "with" })}
                       >
-                        Com presença · {withPresence}
+                        {t("salary.presenceWith", { count: withPresence })}
                       </Link>
                       <Link
                         className={`btn sm${presence === "without" ? " primary" : " ghost"}`}
                         href={rosterHref({ presence: "without" })}
                       >
-                        Sem presença · {members.length - withPresence}
+                        {t("salary.presenceWithout", { count: members.length - withPresence })}
                       </Link>
                     </div>
                     <span className="small muted">
-                      Mostrando {visibleMembers.length} de {members.length}
-                      {sortKey !== "name" || sortDir !== "asc" ? " · ordenado" : ""}
+                      {t("salary.showing", { visible: visibleMembers.length, total: members.length })}
+                      {sortKey !== "name" || sortDir !== "asc" ? t("salary.sorted") : ""}
                     </span>
                   </div>
                 ) : null}
                 {members.length > 0 ? (
                   <div className="roster-sort-mobile">
-                    <span className="small muted">Ordenar</span>
-                    {mobileSort("name", "Nome")}
-                    {mobileSort("power", "Poder")}
-                    {mobileSort("presence", "Presença")}
-                    {mobileSort("salary", "Salário")}
+                    <span className="small muted">{t("salary.sortBy")}</span>
+                    {mobileSort("name", t("players.sortName"))}
+                    {mobileSort("power", t("players.sortPower"))}
+                    {mobileSort("presence", t("salary.presence"))}
+                    {mobileSort("salary", t("salary.colSalary"))}
                   </div>
                 ) : null}
                 {stones.members > 0 ? (
                   <div className="stone-totals">
-                    <span className="small muted">Pedras da semana</span>
+                    <span className="small muted">{t("salary.stonesTitle")}</span>
                     <span className="stone-color">
                       <span
                         className="badge gold"
-                        title={`${formatNumber(STONE_PRICES.yellow.ds)} DS + ${formatNumber(STONE_PRICES.yellow.clanPoints)} pontos de clã por pedra amarela`}
+                        title={t("salary.stoneYellowTitle", {
+                          ds: formatNumber(STONE_PRICES.yellow.ds, locale),
+                          points: formatNumber(STONE_PRICES.yellow.clanPoints, locale),
+                        })}
                       >
-                        Amarela · {formatNumber(yellow.stones)} pedra(s)
+                        {t("salary.stonesYellow", { count: formatNumber(yellow.stones, locale) })}
                       </span>
                       <span className="small muted mono">
-                        {formatNumber(yellow.ds)} DS · {formatNumber(yellow.clanPoints)} pts
+                        {formatNumber(yellow.ds, locale)} DS · {formatNumber(yellow.clanPoints, locale)} pts
                       </span>
                     </span>
                     <span className="stone-color">
                       <span
                         className="badge purple"
-                        title={`${formatNumber(STONE_PRICES.purple.ds)} DS + ${formatNumber(STONE_PRICES.purple.clanPoints)} pontos de clã por pedra roxa`}
+                        title={t("salary.stonePurpleTitle", {
+                          ds: formatNumber(STONE_PRICES.purple.ds, locale),
+                          points: formatNumber(STONE_PRICES.purple.clanPoints, locale),
+                        })}
                       >
-                        Roxa · {formatNumber(purple.stones)} pedra(s)
+                        {t("salary.stonesPurple", { count: formatNumber(purple.stones, locale) })}
                       </span>
                       <span className="small muted mono">
-                        {formatNumber(purple.ds)} DS · {formatNumber(purple.clanPoints)} pts
+                        {formatNumber(purple.ds, locale)} DS · {formatNumber(purple.clanPoints, locale)} pts
                       </span>
                     </span>
                     <span className="small muted">
-                      {stones.members} membro(s) em pedra
-                      {stones.half > 0 ? ` · ${stones.half} em 50/50` : ""} · total{" "}
-                      {formatNumber(yellow.ds + purple.ds)} DS e{" "}
-                      {formatNumber(yellow.clanPoints + purple.clanPoints)} pontos de clã
-                      {stoneLeftover > 0 ? ` · sobra ${formatNumber(stoneLeftover)} DS (não fecha 1 pedra)` : ""}
+                      {t("salary.stonesMembers", { count: stones.members })}
+                      {stones.half > 0 ? ` · ${t("salary.stonesHalf", { count: stones.half })}` : ""} ·{" "}
+                      {t("salary.stonesTotal", {
+                        ds: formatNumber(yellow.ds + purple.ds, locale),
+                        points: formatNumber(yellow.clanPoints + purple.clanPoints, locale),
+                      })}
+                      {stoneLeftover > 0 ? ` · ${t("salary.stonesLeftover", { ds: formatNumber(stoneLeftover, locale) })}` : ""}
                     </span>
                   </div>
                 ) : null}
                 <div className="table-wrap">
                   {summary.members.length === 0 ? (
-                    <EmptyState title="Nenhum jogador no elenco desta semana">
-                      Adicione membros aliados no painel abaixo, selecionando do ranking ou um time inteiro.
-                    </EmptyState>
+                    <EmptyState title={t("salary.rosterEmpty")}>{t("salary.rosterEmptyBody")}</EmptyState>
                   ) : (
                     <table className="data table-cards">
                       <thead>
                         <tr>
                           <th>
                             <Link className={sortLink("name").className} href={sortLink("name").href}>
-                              Jogador{sortLink("name").mark}
+                              {t("common.player")}
+                              {sortLink("name").mark}
                             </Link>
                           </th>
-                          <th>Clã</th>
+                          <th>{t("common.clan")}</th>
                           <th className="num">
                             <Link className={sortLink("power").className} href={sortLink("power").href}>
-                              Poder{sortLink("power").mark}
+                              {t("players.sortPower")}
+                              {sortLink("power").mark}
                             </Link>
                           </th>
                           <th>
                             <Link
                               className={sortLink("presence").className}
                               href={sortLink("presence").href}
-                              title="Ordenar por presenças"
+                              title={t("salary.sortPresence")}
                             >
-                              Ajustes da semana{sortLink("presence").mark}
+                              {t("salary.colAdjust")}
+                              {sortLink("presence").mark}
                             </Link>
                           </th>
                           <th className="num">
                             <Link className={sortLink("salary").className} href={sortLink("salary").href}>
-                              Salário{sortLink("salary").mark}
+                              {t("salary.colSalary")}
+                              {sortLink("salary").mark}
                             </Link>
                           </th>
-                          <th className="num" title="Pedras amarelas (A) e roxas (R) que o membro recebe">
-                            Pedras A/R
+                          <th className="num" title={t("salary.stonesHint")}>
+                            {t("salary.colStones")}
                           </th>
                           <th />
                         </tr>
@@ -618,7 +649,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         {visibleMembers.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="small muted" style={{ textAlign: "center", padding: "18px 14px" }}>
-                              Nenhum membro {presence === "with" ? "com" : "sem"} presença nesta semana.
+                              {presence === "with" ? t("salary.noMemberWith") : t("salary.noMemberWithout")}
                             </td>
                           </tr>
                         ) : null}
@@ -637,34 +668,37 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                     {member.team_name}
                                   </span>
                                 ) : (
-                                  <span className="muted">sem time</span>
+                                  <span className="muted">{t("salary.noTeam")}</span>
                                 )}
                               </div>
                             </td>
-                            <td className="small" data-label="Clã">
-                              {member.clan ?? <span className="muted">sem clã</span>}
+                            <td className="small" data-label={t("common.clan")}>
+                              {member.clan ?? <span className="muted">{t("common.noClan")}</span>}
                             </td>
-                            <td className="num mono" data-label="Poder">
-                              {formatPower(member.power_score)}
+                            <td className="num mono" data-label={t("players.colPower")}>
+                              {formatPower(member.power_score, locale)}
                             </td>
-                            <td className="cell-wide" data-label="Ajustes da semana">
+                            <td className="cell-wide" data-label={t("salary.colAdjust")}>
                               <form action={updateSalaryMemberAction} className="salary-controls">
                                 <AutoSave delay={500} />
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
                                 <input type="hidden" name="redirectTo" value={returnTo} />
                                 <label className="mini-field">
-                                  <span>Faixa</span>
+                                  <span>{t("salary.miniTier")}</span>
                                   <select name="tier" defaultValue={member.tier}>
                                     {tiers.map((tier) => (
                                       <option key={tier.tier} value={tier.tier}>
-                                        {tier.tier} · ×{formatNumber(tier.weight)}
+                                        {t("salary.tierOption", {
+                                          tier: tier.tier,
+                                          weight: formatNumber(tier.weight, locale),
+                                        })}
                                       </option>
                                     ))}
                                   </select>
                                 </label>
                                 <label className="mini-field narrow">
-                                  <span>Penalidade %</span>
+                                  <span>{t("salary.miniPenalty")}</span>
                                   <input
                                     name="penaltyPercent"
                                     type="number"
@@ -675,38 +709,41 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                   />
                                 </label>
                                 <div className="mini-field">
-                                  <span>Presenças</span>
+                                  <span>{t("salary.miniPresence")}</span>
                                   <div className="check-chips">
                                     {SALARY_ACTIVITIES.map((activity) => (
-                                      <label key={activity.field} title={`${activity.label} — vale 1/3 da faixa`}>
+                                      <label
+                                        key={activity.field}
+                                        title={t("salary.activityTitle", { label: t(`salary.activity.${activity.field}`) })}
+                                      >
                                         <input
                                           type="checkbox"
                                           name={`attended${activity.field[0].toUpperCase()}${activity.field.slice(1)}`}
                                           value="1"
                                           defaultChecked={member[`attended_${activity.field}` as "attended_heist" | "attended_altar" | "attended_vale"] === 1}
                                         />
-                                        {activity.label}
+                                        {t(`salary.activity.${activity.field}`)}
                                       </label>
                                     ))}
                                   </div>
                                 </div>
                                 <label className="mini-field">
-                                  <span>Recompensa</span>
+                                  <span>{t("salary.miniReward")}</span>
                                   <select name="preference" defaultValue={member.preference}>
                                     {SALARY_PREFERENCES.map((option) => (
                                       <option key={option.value} value={option.value}>
-                                        {option.label}
+                                        {t(`salary.pref.${option.value}`)}
                                       </option>
                                     ))}
                                   </select>
                                 </label>
                                 {member.preference === "stone" ? (
                                   <label className="mini-field">
-                                    <span>Pedra</span>
+                                    <span>{t("salary.miniStone")}</span>
                                     <select name="stoneSplit" defaultValue={member.stone_split}>
                                       {SALARY_STONE_SPLITS.map((split) => (
                                         <option key={split.value} value={split.value}>
-                                          {split.label}
+                                          {t(`salary.split.${split.value}`)}
                                         </option>
                                       ))}
                                     </select>
@@ -716,23 +753,23 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 )}
                               </form>
                             </td>
-                            <td className="num mono" data-label="Salário">
+                            <td className="num mono" data-label={t("salary.colSalary")}>
                               {member.attendedCount > 0 ? (
                                 <>
-                                  {formatNumber(member.salary)}
+                                  {formatNumber(member.salary, locale)}
                                   <div className="small muted">
                                     {member.attendedCount}/3
                                     {member.share_percent !== 100
-                                      ? ` · −${100 - member.share_percent}% de penalidade`
+                                      ? ` · ${t("salary.penalty", { percent: 100 - member.share_percent })}`
                                       : ""}
                                   </div>
                                 </>
                               ) : (
-                                <span className="small muted">sem presença</span>
+                                <span className="small muted">{t("salary.noPresence")}</span>
                               )}
                             </td>
-                            <td className="num" data-label="Pedras A/R">
-                              <MemberStones member={member} />
+                            <td className="num" data-label={t("salary.colStones")}>
+                              <MemberStones member={member} locale={locale} t={t} />
                             </td>
                             <td className="cell-action">
                               <form
@@ -743,8 +780,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
                                 <input type="hidden" name="redirectTo" value={returnTo} />
-                                <ConfirmButton message={`Remover ${member.name} do elenco desta semana?`}>
-                                  Remover
+                                <ConfirmButton message={t("salary.removeConfirm", { player: member.name })}>
+                                  {t("common.remove")}
                                 </ConfirmButton>
                               </form>
                             </td>
@@ -754,10 +791,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       <tfoot>
                         <tr>
                           <td colSpan={4} style={{ fontWeight: 650 }}>
-                            {filtered ? "Total pago (filtro)" : "Total pago"}
+                            {filtered ? t("salary.totalPaidFiltered") : t("salary.totalPaid")}
                           </td>
                           <td className="num mono" style={{ fontWeight: 650 }}>
-                            {formatNumber(visiblePaid)}
+                            {formatNumber(visiblePaid, locale)}
                           </td>
                           <td />
                           <td />
@@ -769,22 +806,22 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
               </section>
 
               <details className="panel">
-                <summary>Adicionar membros ao elenco</summary>
+                <summary>{t("salary.addMembers")}</summary>
                 <div className="panel-body stack">
                   <p className="small muted" style={{ margin: 0 }}>
-                    Só aparecem jogadores dos clãs aliados de {selected.label} ({alliedClans} clã(s) marcado(s)).
-                    Ajuste a postura dos clãs em <Link href="/clans">Clãs</Link>.
+                    {t("salary.onlyAllied", { server: selected.label, count: alliedClans })}{" "}
+                    {t("salary.adjustStanceBefore")}
+                    <Link href="/clans">{t("nav.clans")}</Link>
+                    {t("salary.adjustStanceAfter")}
                   </p>
 
                   <form action={addAlliedSalaryMembersAction} className="row">
                     <input type="hidden" name="periodId" value={period.id} />
                     <input type="hidden" name="redirectTo" value={returnTo} />
                     <button className="btn primary" type="submit">
-                      Adicionar todos os aliados
+                      {t("salary.addAllAllied")}
                     </button>
-                    <span className="small muted">
-                      Coloca no elenco, de uma vez, todos os jogadores dos clãs aliados que ainda não estão na semana.
-                    </span>
+                    <span className="small muted">{t("salary.addAllNote")}</span>
                   </form>
 
                   <form className="filters" action="/salaries" method="get">
@@ -798,15 +835,21 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     ) : null}
                     {presence !== "all" ? <input type="hidden" name="presence" value={presence} /> : null}
                     <div className="field" style={{ flex: "1 1 260px" }}>
-                      <label htmlFor="q">Buscar jogador ou clã</label>
-                      <input id="q" name="q" type="search" defaultValue={search} placeholder="Ex.: Arke" />
+                      <label htmlFor="q">{t("salary.searchLabel")}</label>
+                      <input
+                        id="q"
+                        name="q"
+                        type="search"
+                        defaultValue={search}
+                        placeholder={t("salary.searchPlaceholder")}
+                      />
                     </div>
                     <button className="btn" type="submit">
-                      Buscar
+                      {t("common.search")}
                     </button>
                     {search ? (
                       <Link className="btn ghost" href={returnTo}>
-                        Limpar
+                        {t("players.clear")}
                       </Link>
                     ) : null}
                   </form>
@@ -814,26 +857,29 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                   {candidates.length === 0 ? (
                     <p className="small muted">
                       {alliedClans === 0
-                        ? "Nenhum clã aliado marcado neste servidor, então não há ninguém para adicionar."
+                        ? t("salary.noClans")
                         : search
-                          ? "Nenhum jogador aliado com essa busca."
-                          : "Todos os jogadores aliados deste servidor já estão no elenco."}
+                          ? t("salary.noCandidateSearch")
+                          : t("salary.noCandidateAll")}
                     </p>
                   ) : (
                     <form action={addSalaryMembersAction} className="stack">
                       <input type="hidden" name="periodId" value={period.id} />
                       <input type="hidden" name="redirectTo" value={returnTo} />
                       <div className="field" style={{ flex: "0 1 auto" }}>
-                        <span>Presenças iniciais</span>
+                        <span>{t("salary.initialPresence")}</span>
                         <div className="check-chips">
                           {SALARY_ACTIVITIES.map((activity) => (
-                            <label key={activity.field} title={`${activity.label} — vale 1/3 da faixa`}>
+                            <label
+                              key={activity.field}
+                              title={t("salary.activityTitle", { label: t(`salary.activity.${activity.field}`) })}
+                            >
                               <input
                                 type="checkbox"
                                 name={`attended${activity.field[0].toUpperCase()}${activity.field.slice(1)}`}
                                 value="1"
                               />
-                              {activity.label}
+                              {t(`salary.activity.${activity.field}`)}
                             </label>
                           ))}
                         </div>
@@ -843,9 +889,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                           <thead>
                             <tr>
                               <th />
-                              <th>Jogador</th>
-                              <th>Clã / time</th>
-                              <th className="num">Poder</th>
+                              <th>{t("common.player")}</th>
+                              <th>{t("salary.colClanTeam")}</th>
+                              <th className="num">{t("players.colPower")}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -857,13 +903,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                       type="checkbox"
                                       name="characterIds"
                                       value={candidate.id}
-                                      aria-label={`Selecionar ${candidate.name}`}
+                                      aria-label={t("salary.selectAria", { name: candidate.name })}
                                     />
                                   </label>
                                 </td>
                                 <td>{candidate.name}</td>
                                 <td className="small">
-                                  {candidate.clan ?? <span className="muted">sem clã</span>}
+                                  {candidate.clan ?? <span className="muted">{t("common.noClan")}</span>}
                                   {candidate.team_name ? (
                                     <span
                                       className="badge"
@@ -876,7 +922,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                     </span>
                                   ) : null}
                                 </td>
-                                <td className="num mono">{formatPower(candidate.power_score)}</td>
+                                <td className="num mono">{formatPower(candidate.power_score, locale)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -884,11 +930,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       </div>
                       <div className="row">
                         <button className="btn primary" type="submit">
-                          Adicionar selecionados
+                          {t("salary.addSelected")}
                         </button>
                         <span className="small muted">
-                          A faixa inicial vem do poder mínimo de cada coeficiente ({SALARY_TIERS.join(" · ")}); ajuste
-                          depois na tabela do elenco.
+                          {t("salary.tierNote", { tiers: SALARY_TIERS.join(" · ") })}
                         </span>
                       </div>
                     </form>
@@ -924,19 +969,19 @@ function addStonePurchase(total: StonePurchase, entry: StonePurchase): StonePurc
 }
 
 /** Quantas pedras de cada cor o membro leva, já convertidas pelo preço da loja. */
-function MemberStones({ member }: { member: RosterMember }) {
-  if (member.preference !== "stone") return <span className="small muted">darksteel</span>;
+function MemberStones({ member, locale, t }: { member: RosterMember; locale: Locale; t: T }) {
+  if (member.preference !== "stone") return <span className="small muted">{t("salary.darksteel")}</span>;
   if (member.salary <= 0) return <span className="small muted">—</span>;
 
   const { split, yellow, purple } = memberStonePurchase(member);
 
   return (
     <div className="stone-cell">
-      <span className="badge gold" title={`${formatNumber(split.yellow)} em pedra amarela`}>
-        A · {formatNumber(yellow.stones)}
+      <span className="badge gold" title={t("salary.yellowTitle", { value: formatNumber(split.yellow, locale) })}>
+        A · {formatNumber(yellow.stones, locale)}
       </span>
-      <span className="badge purple" title={`${formatNumber(split.purple)} em pedra roxa`}>
-        R · {formatNumber(purple.stones)}
+      <span className="badge purple" title={t("salary.purpleTitle", { value: formatNumber(split.purple, locale) })}>
+        R · {formatNumber(purple.stones, locale)}
       </span>
     </div>
   );

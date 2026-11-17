@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useT } from "./I18nProvider";
 import { KeepScroll } from "./KeepScroll";
 
 const DEFAULT_DELAY = 700;
@@ -25,6 +26,7 @@ function signatureOf(data: FormData): string {
  */
 export function AutoSave({ delay = DEFAULT_DELAY, enabled = true }: { delay?: number; enabled?: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useT();
   const anchorRef = useRef<HTMLSpanElement>(null);
   const [saved, setSaved] = useState(false);
   const wasPending = useRef(false);
@@ -89,7 +91,7 @@ export function AutoSave({ delay = DEFAULT_DELAY, enabled = true }: { delay?: nu
   }, [delay, enabled]);
 
   const state = pending ? "busy" : saved ? "saved" : "idle";
-  const label = pending ? "Salvando…" : saved ? "Salvo" : "";
+  const label = pending ? t("common.saving") : saved ? t("common.saved") : "";
 
   return (
     <>

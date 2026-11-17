@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { getT } from "@/lib/i18n";
 import { getServerById } from "@/lib/queries";
 import {
   addAlliedSalaryMembers,
@@ -119,11 +120,12 @@ export async function createSalaryPeriodAction(formData: FormData): Promise<void
   });
 
   revalidatePath("/salaries");
+  const { m } = await getT();
   redirect(
     `/salaries?server=${server.code}&period=${periodId}&ok=${encodeURIComponent(
       added > 0
-        ? `Semana criada com ${added} jogador(es) dos clãs aliados no elenco.`
-        : "Semana criada. Nenhum jogador aliado encontrado para o elenco.",
+        ? m("Semana criada com {count} jogadores dos clãs aliados no elenco.", { count: added })
+        : m("Semana criada. Nenhum jogador aliado encontrado para o elenco."),
     )}`,
   );
 }
@@ -187,7 +189,8 @@ export async function addSalaryEntryAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", `Custo lançado: ${name}.`));
+  const { m } = await getT();
+  redirect(back(periodPath(period), "ok", m("Custo lançado: {name}.", { name })));
 }
 
 export async function setSalaryProductionSlotAction(formData: FormData): Promise<void> {
@@ -219,10 +222,14 @@ export async function setSalaryProductionSlotAction(formData: FormData): Promise
       detail: `${vale.label} limpo`,
     });
     revalidatePath("/salaries");
-    redirect(back(periodPath(period), "ok", `${vale.label} limpo.`));
+    const { m } = await getT();
+    redirect(back(periodPath(period), "ok", m("{vale} limpo.", { vale: vale.label })));
   }
 
-  if (amount === null) redirect(back(periodPath(period), "error", `Informe o valor do ${vale.label}.`));
+  const { m } = await getT();
+  if (amount === null) {
+    redirect(back(periodPath(period), "error", m("Informe o valor do {vale}.", { vale: vale.label })));
+  }
 
   setSalaryProductionSlot({ periodId: period.id, slot: vale.slot, name, amount });
 
@@ -236,7 +243,7 @@ export async function setSalaryProductionSlotAction(formData: FormData): Promise
   });
 
   revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", `${vale.label} salvo.`));
+  redirect(back(periodPath(period), "ok", m("{vale} salvo.", { vale: vale.label })));
 }
 
 export async function deleteSalaryEntryAction(formData: FormData): Promise<void> {
@@ -260,7 +267,8 @@ export async function deleteSalaryEntryAction(formData: FormData): Promise<void>
   });
 
   revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", `Lançamento removido: ${entry.name}.`));
+  const { m } = await getT();
+  redirect(back(periodPath(period), "ok", m("Lançamento removido: {name}.", { name: entry.name })));
 }
 
 export async function addSalaryMembersAction(formData: FormData): Promise<void> {
@@ -291,11 +299,14 @@ export async function addSalaryMembersAction(formData: FormData): Promise<void> 
   });
 
   revalidatePath("/salaries");
+  const { m } = await getT();
   redirect(
     back(
       periodPath(period),
       added > 0 ? "ok" : "error",
-      added > 0 ? `${added} jogador(es) adicionado(s) ao elenco.` : "Nenhum jogador novo para adicionar.",
+      added > 0
+        ? m("Jogadores adicionados ao elenco: {count}.", { count: added })
+        : m("Nenhum jogador novo para adicionar."),
     ),
   );
 }
@@ -321,11 +332,14 @@ export async function addAlliedSalaryMembersAction(formData: FormData): Promise<
   });
 
   revalidatePath("/salaries");
+  const { m } = await getT();
   redirect(
     back(
       periodPath(period),
       added > 0 ? "ok" : "error",
-      added > 0 ? `${added} jogador(es) aliados adicionado(s) ao elenco.` : "Todos os aliados já estão no elenco.",
+      added > 0
+        ? m("Aliados adicionados ao elenco: {count}.", { count: added })
+        : m("Todos os aliados já estão no elenco."),
     ),
   );
 }
@@ -431,10 +445,15 @@ export async function setSalaryWeightsAction(formData: FormData): Promise<void> 
   const settings: { tier: (typeof SALARY_TIERS)[number]; weight: number; minPower: number }[] = [];
   for (const tier of SALARY_TIERS) {
     const weight = parseWeight(formData.get(`weight_${tier}`));
-    if (weight === null) redirect(back(redirectTo, "error", `Coeficiente da faixa ${tier} inválido.`));
+    const { m } = await getT();
+    if (weight === null) {
+      redirect(back(redirectTo, "error", m("Coeficiente da faixa {tier} inválido.", { tier })));
+    }
 
     const minPower = parseAmount(formData.get(`power_${tier}`));
-    if (minPower === null) redirect(back(redirectTo, "error", `Poder mínimo da faixa ${tier} inválido.`));
+    if (minPower === null) {
+      redirect(back(redirectTo, "error", m("Poder mínimo da faixa {tier} inválido.", { tier })));
+    }
 
     settings.push({ tier, weight, minPower });
   }

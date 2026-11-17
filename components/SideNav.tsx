@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { SVGProps } from "react";
+import type { MessageKey } from "@/lib/i18n/pt";
+import { useT } from "./I18nProvider";
 import {
   IconArrowRight,
   IconBoss,
@@ -19,43 +22,52 @@ import {
   IconUsers,
 } from "./icons";
 
-const groups = [
+type NavItem = {
+  href: string;
+  labelKey: MessageKey;
+  icon: (props: SVGProps<SVGSVGElement>) => React.JSX.Element;
+  adminOnly: boolean;
+  managerOnly: boolean;
+};
+
+const groups: { labelKey: MessageKey; items: NavItem[] }[] = [
   {
-    label: "Operação",
+    labelKey: "nav.operation",
     items: [
-      { href: "/", label: "Visão geral", icon: IconDashboard, adminOnly: false, managerOnly: false },
-      { href: "/players", label: "Ranking", icon: IconRanking, adminOnly: false, managerOnly: false },
-      { href: "/wars", label: "Guerras", icon: IconSwords, adminOnly: false, managerOnly: false },
+      { href: "/", labelKey: "nav.dashboard", icon: IconDashboard, adminOnly: false, managerOnly: false },
+      { href: "/players", labelKey: "nav.ranking", icon: IconRanking, adminOnly: false, managerOnly: false },
+      { href: "/wars", labelKey: "nav.wars", icon: IconSwords, adminOnly: false, managerOnly: false },
     ],
   },
   {
-    label: "Gestão",
+    labelKey: "nav.management",
     items: [
-      { href: "/clans", label: "Clãs", icon: IconShield, adminOnly: false, managerOnly: true },
-      { href: "/teams", label: "Times", icon: IconFlag, adminOnly: false, managerOnly: true },
-      { href: "/castle", label: "Prêmio do castelo", icon: IconGift, adminOnly: false, managerOnly: true },
-      { href: "/salaries", label: "Salários", icon: IconCoins, adminOnly: false, managerOnly: true },
-      { href: "/ce", label: "CE", icon: IconExpedition, adminOnly: false, managerOnly: true },
-      { href: "/world-boss", label: "World Boss", icon: IconBoss, adminOnly: false, managerOnly: true },
+      { href: "/clans", labelKey: "nav.clans", icon: IconShield, adminOnly: false, managerOnly: true },
+      { href: "/teams", labelKey: "nav.teams", icon: IconFlag, adminOnly: false, managerOnly: true },
+      { href: "/castle", labelKey: "nav.castle", icon: IconGift, adminOnly: false, managerOnly: true },
+      { href: "/salaries", labelKey: "nav.salaries", icon: IconCoins, adminOnly: false, managerOnly: true },
+      { href: "/ce", labelKey: "nav.ce", icon: IconExpedition, adminOnly: false, managerOnly: true },
+      { href: "/world-boss", labelKey: "nav.worldBoss", icon: IconBoss, adminOnly: false, managerOnly: true },
     ],
   },
   {
-    label: "Administração",
+    labelKey: "nav.admin",
     items: [
-      { href: "/transfers", label: "Transferências", icon: IconArrowRight, adminOnly: true, managerOnly: false },
-      { href: "/servers", label: "Servidores", icon: IconServer, adminOnly: true, managerOnly: false },
-      { href: "/users", label: "Usuários", icon: IconUsers, adminOnly: true, managerOnly: false },
-      { href: "/sync", label: "Sincronização", icon: IconRefresh, adminOnly: true, managerOnly: false },
-      { href: "/audit", label: "Auditoria", icon: IconHistory, adminOnly: true, managerOnly: false },
+      { href: "/transfers", labelKey: "nav.transfers", icon: IconArrowRight, adminOnly: true, managerOnly: false },
+      { href: "/servers", labelKey: "nav.servers", icon: IconServer, adminOnly: true, managerOnly: false },
+      { href: "/users", labelKey: "nav.users", icon: IconUsers, adminOnly: true, managerOnly: false },
+      { href: "/sync", labelKey: "nav.sync", icon: IconRefresh, adminOnly: true, managerOnly: false },
+      { href: "/audit", labelKey: "nav.audit", icon: IconHistory, adminOnly: true, managerOnly: false },
     ],
   },
 ];
 
 export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canManageServers: boolean }) {
   const pathname = usePathname();
+  const { t } = useT();
 
   return (
-    <nav className="nav" aria-label="Navegação principal">
+    <nav className="nav" aria-label={t("nav.label")}>
       {groups.map((group) => {
         const visible = group.items.filter(
           (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || canManageServers),
@@ -63,8 +75,8 @@ export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canMa
         if (visible.length === 0) return null;
 
         return (
-          <div key={group.label} className="nav-group">
-            <span className="nav-label">{group.label}</span>
+          <div key={group.labelKey} className="nav-group">
+            <span className="nav-label">{t(group.labelKey)}</span>
             {visible.map((item) => {
               const active =
                 item.href === "/"
@@ -76,7 +88,7 @@ export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canMa
               return (
                 <Link key={item.href} href={item.href} className={`nav-link${active ? " active" : ""}`}>
                   <Icon />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                 </Link>
               );
             })}

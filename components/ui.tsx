@@ -1,9 +1,18 @@
 import type { ReactNode } from "react";
 import { classifyStatus } from "@/lib/format";
+import { getLocale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { translateMessage } from "@/lib/i18n/messages";
+import { translate } from "@/lib/i18n/translate";
 
-export function Flash({ ok, error }: { ok?: string; error?: string }) {
-  if (!ok && !error) return null;
-  return <div className={`alert ${error ? "error" : "ok"}`}>{error || ok}</div>;
+/** Aviso de retorno das server actions — a mensagem chega em pt e é traduzida aqui. */
+export async function Flash({ ok, error }: { ok?: string; error?: string }) {
+  const message = error || ok;
+  if (!message) return null;
+  const locale = await getLocale();
+  return (
+    <div className={`alert ${error ? "error" : "ok"}`}>{translateMessage(locale, message)}</div>
+  );
 }
 
 export function StatCard({
@@ -24,10 +33,16 @@ export function StatCard({
   );
 }
 
-export function SyncBadge({ status }: { status: string | null }) {
+export function SyncBadge({ status, locale = DEFAULT_LOCALE }: { status: string | null; locale?: Locale }) {
   const kind = classifyStatus(status);
   const label =
-    status === "success" ? "Sincronizado" : status === "empty" ? "Sem dados" : status === "error" ? "Falhou" : "Nunca sincronizado";
+    status === "success"
+      ? translate(locale, "syncBadge.success")
+      : status === "empty"
+        ? translate(locale, "syncBadge.empty")
+        : status === "error"
+          ? translate(locale, "syncBadge.error")
+          : translate(locale, "syncBadge.never");
   return (
     <span className={`badge ${kind === "ok" ? "ok" : kind === "warn" ? "warn" : kind === "error" ? "err" : ""}`}>
       <span className={`dot ${kind === "ok" ? "ok" : kind === "warn" ? "warn" : kind === "error" ? "err" : ""}`} />
@@ -42,6 +57,23 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
       <strong>{title}</strong>
       {children}
     </div>
+  );
+}
+
+/**
+ * Texto traduzido com marcação mínima (`<code>`, `<strong>`) que existe em
+ * algumas frases longas — os dicionários são nossos, então não há HTML externo.
+ */
+export function RichText({ text }: { text: string }) {
+  const parts = text.split(/(<code>[\s\S]*?<\/code>|<strong>[\s\S]*?<\/strong>)/g).filter(Boolean);
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith("<code>")) return <code key={index}>{part.slice(6, -7)}</code>;
+        if (part.startsWith("<strong>")) return <strong key={index}>{part.slice(8, -9)}</strong>;
+        return <span key={index}>{part}</span>;
+      })}
+    </>
   );
 }
 

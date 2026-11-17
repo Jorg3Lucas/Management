@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveCastlePrizesAction } from "@/app/castle/actions";
+import { useT } from "@/components/I18nProvider";
 import { KeepScroll } from "@/components/KeepScroll";
 import {
   CASTLE_PRIZES,
@@ -14,6 +15,7 @@ import {
   type CastlePrizeMember,
 } from "@/lib/castle-prizes";
 import { formatNumber } from "@/lib/format";
+import { INTL_LOCALE } from "@/lib/i18n/locales";
 
 type Awards = Record<number, CastlePrizeKey[]>;
 
@@ -37,12 +39,14 @@ function sameAwards(a: Awards, b: Awards): boolean {
 }
 
 export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, initial }: Props) {
+  const { locale, t } = useT();
   const [awards, setAwards] = useState<Awards>(initial);
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
+  const collator = useMemo(() => new Intl.Collator(INTL_LOCALE[locale], { sensitivity: "base" }), [locale]);
 
   const lists = useMemo(() => Object.values(awards), [awards]);
   const counts = useMemo(() => castlePrizeCounts(lists.flat()), [lists]);
@@ -67,20 +71,18 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
       if ((awards[member.character_id] ?? []).length > 0) entry.assigned += 1;
       stats.set(member.clan_id, entry);
     }
-    return Array.from(stats.values()).sort((a, b) =>
-      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
-    );
-  }, [members, awards]);
+    return Array.from(stats.values()).sort((a, b) => collator.compare(a.name, b.name));
+  }, [members, awards, collator]);
 
   const visible = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase("pt-BR");
+    const term = query.trim().toLocaleLowerCase(INTL_LOCALE[locale]);
     return members.filter((member) => {
       if (clan !== "all" && String(member.clan_id) !== clan) return false;
       if (onlyUnassigned && (awards[member.character_id] ?? []).length > 0) return false;
-      if (term && !member.name.toLocaleLowerCase("pt-BR").includes(term)) return false;
+      if (term && !member.name.toLocaleLowerCase(INTL_LOCALE[locale]).includes(term)) return false;
       return true;
     });
-  }, [members, clan, onlyUnassigned, query, awards]);
+  }, [members, clan, onlyUnassigned, query, awards, locale]);
 
   // Resumo por jogador: quem recebeu o quê, na ordem de quem levou mais baús.
   const summary = useMemo(() => {
@@ -95,7 +97,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           b.total - a.total ||
           b.counts.legendary - a.counts.legendary ||
           b.counts.epic - a.counts.epic ||
-          a.member.name.localeCompare(b.member.name, "pt-BR", { sensitivity: "base" }),
+          collator.compare(a.member.name, b.member.name),
       );
 
     const totals = castlePrizeCounts([]);
@@ -104,12 +106,14 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
     }
 
     return { rows, totals, totalChests: rows.reduce((total, row) => total + row.total, 0) };
-  }, [members, awards]);
+  }, [members, awards, collator]);
+
+  const prizeLabel = (key: CastlePrizeKey) => t(`prize.${key}` as const);
 
   function exportCsv() {
     const quote = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
     const lines = [
-      ["Jogador", "Clã", ...CASTLE_PRIZES.map((prize) => prize.label), "Total"],
+      [t("common.player"), t("common.clan"), ...CASTLE_PRIZES.map((prize) => prizeLabel(prize.key)), t("common.total")],
       ...summary.rows.map((row) => [
         row.member.name,
         row.member.clan_name,
@@ -117,7 +121,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
         String(row.total),
       ]),
       [
-        "TOTAL",
+        t("common.total").toUpperCase(),
         "",
         ...CASTLE_PRIZES.map((prize) => String(summary.totals[prize.key])),
         String(summary.totalChests),
@@ -129,7 +133,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `premio-castelo-${castleMonthSlug(monthStart)}.csv`;
+    link.download = t("castleBoard.csvFile", { month: castleMonthSlug(monthStart) });
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -158,16 +162,16 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
       <section className="card">
         <div className="card-head">
           <div>
-            <div className="card-title">Membros dos clãs aliados</div>
-            <div className="card-sub">
-              Cada membro pode receber vários baús, mas só um de cada raridade. O contador mostra o que
-              já foi usado e o que ainda sobra.
-            </div>
+            <div className="card-title">{t("castleBoard.membersTitle")}</div>
+            <div className="card-sub">{t("castleBoard.membersSub")}</div>
           </div>
           <div className="row">
-            {dirty ? <span className="badge warn">alterações não salvas</span> : null}
+            {dirty ? <span className="badge warn">{t("castleBoard.unsaved")}</span> : null}
             <span className="badge gold">
-              {formatNumber(used)}/{formatNumber(CASTLE_PRIZE_TOTAL)} baú(s) distribuídos
+              {t("castleBoard.distributed", {
+                used: formatNumber(used, locale),
+                total: formatNumber(CASTLE_PRIZE_TOTAL, locale),
+              })}
             </span>
           </div>
         </div>
@@ -187,15 +191,13 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
               return (
                 <div key={prize.key} className="stat" style={{ padding: "13px 15px" }}>
                   <div className="spread">
-                    <span className={`prize-key ${prize.key}`}>{prize.label}</span>
+                    <span className={`prize-key ${prize.key}`}>{prizeLabel(prize.key)}</span>
                     <span className="small muted">
                       {prizeUsed}/{prize.total}
                     </span>
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 650, marginTop: 6 }}>
-                    {formatNumber(left)}
-                  </div>
-                  <div className="small muted">{left === 1 ? "restante" : "restantes"}</div>
+                  <div style={{ fontSize: 22, fontWeight: 650, marginTop: 6 }}>{formatNumber(left, locale)}</div>
+                  <div className="small muted">{t("castleBoard.left")}</div>
                   <div className={`prize-meter ${prize.key}`} aria-hidden="true">
                     <span style={{ width: `${percent}%` }} />
                   </div>
@@ -219,7 +221,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
               className={`btn sm${clan === "all" ? " primary" : " ghost"}`}
               onClick={() => setClan("all")}
             >
-              Todos · {formatNumber(members.length)}
+              {t("castleBoard.all", { count: formatNumber(members.length, locale) })}
             </button>
             {clanStats.map((entry) => (
               <button
@@ -228,7 +230,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                 className={`btn sm${clan === String(entry.id) ? " primary" : " ghost"}`}
                 onClick={() => setClan(String(entry.id))}
               >
-                {entry.name} · {formatNumber(entry.assigned)}/{formatNumber(entry.total)}
+                {entry.name} · {formatNumber(entry.assigned, locale)}/{formatNumber(entry.total, locale)}
               </button>
             ))}
           </div>
@@ -238,8 +240,8 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar jogador..."
-              aria-label="Buscar jogador"
+              placeholder={t("castleBoard.searchPlaceholder")}
+              aria-label={t("castleBoard.searchAria")}
               style={{ maxWidth: 240 }}
             />
             <label className="small" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -248,19 +250,17 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                 checked={onlyUnassigned}
                 onChange={(event) => setOnlyUnassigned(event.target.checked)}
               />
-              Só sem prêmio
+              {t("castleBoard.onlyUnassigned")}
             </label>
             <span className="small muted">
-              {formatNumber(visible.length)} de {formatNumber(members.length)} membro(s)
+              {t("castleBoard.visible", {
+                visible: formatNumber(visible.length, locale),
+                total: formatNumber(members.length, locale),
+              })}
             </span>
             <span className="row" style={{ gap: 6, marginLeft: "auto" }}>
-              <button
-                type="button"
-                className="btn sm ghost"
-                onClick={() => setAwards(initial)}
-                disabled={!dirty}
-              >
-                Desfazer
+              <button type="button" className="btn sm ghost" onClick={() => setAwards(initial)} disabled={!dirty}>
+                {t("castleBoard.undo")}
               </button>
               <button
                 type="button"
@@ -268,7 +268,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                 onClick={() => setAwards({})}
                 disabled={assigned === 0}
               >
-                Limpar
+                {t("castleBoard.clear")}
               </button>
             </span>
           </div>
@@ -278,17 +278,17 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           <table className="data">
             <thead>
               <tr>
-                <th>Jogador</th>
-                <th>Clã</th>
-                <th className="num">Poder</th>
-                <th>Prêmios</th>
+                <th>{t("common.player")}</th>
+                <th>{t("common.clan")}</th>
+                <th className="num">{t("players.colPower")}</th>
+                <th>{t("castleBoard.colPrizes")}</th>
               </tr>
             </thead>
             <tbody>
               {visible.length === 0 ? (
                 <tr>
                   <td colSpan={4}>
-                    <span className="small muted">Nenhum membro encontrado com esses filtros.</span>
+                    <span className="small muted">{t("castleBoard.noMember")}</span>
                   </td>
                 </tr>
               ) : (
@@ -296,18 +296,18 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                   const current = awards[member.character_id] ?? [];
                   return (
                     <tr key={member.character_id}>
-                      <td className="cell-title" data-label="Jogador">
+                      <td className="cell-title" data-label={t("common.player")}>
                         <Link className="player-name" href={`/players/${member.character_id}`}>
                           {member.name}
                         </Link>
                       </td>
-                      <td data-label="Clã">
+                      <td data-label={t("common.clan")}>
                         <span className="badge">{member.clan_name}</span>
                       </td>
-                      <td className="num mono" data-label="Poder">
-                        {formatNumber(member.power_score)}
+                      <td className="num mono" data-label={t("players.colPower")}>
+                        {formatNumber(member.power_score, locale)}
                       </td>
-                      <td data-label="Prêmios">
+                      <td data-label={t("castleBoard.colPrizes")}>
                         <div className="prize-picks">
                           {CASTLE_PRIZES.map((prize) => {
                             const on = current.includes(prize.key);
@@ -320,9 +320,9 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                                 onClick={() => togglePrize(member.character_id, prize.key)}
                                 disabled={!on && left <= 0}
                                 aria-pressed={on}
-                                title={`${prize.label} · ${left} restante(s) no baú`}
+                                title={t("castleBoard.prizeTitle", { label: prizeLabel(prize.key), left })}
                               >
-                                {prize.label}
+                                {prizeLabel(prize.key)}
                               </button>
                             );
                           })}
@@ -338,8 +338,12 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
 
         <div className="panel-body spread">
           <span className="small muted">
-            {formatNumber(used)} de {formatNumber(CASTLE_PRIZE_TOTAL)} baú(s) usados ·{" "}
-            {formatNumber(assigned)} membro(s) com prêmio · {formatNumber(members.length)} elegível(is)
+            {t("castleBoard.footer", {
+              used: formatNumber(used, locale),
+              total: formatNumber(CASTLE_PRIZE_TOTAL, locale),
+              assigned: formatNumber(assigned, locale),
+              eligible: formatNumber(members.length, locale),
+            })}
           </span>
         </div>
       </section>
@@ -347,21 +351,20 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
       <section className="card" style={{ marginTop: 12 }}>
         <div className="card-head">
           <div>
-            <div className="card-title">Resumo por jogador e raridade</div>
-            <div className="card-sub">
-              Quem recebeu o quê neste mês, ordenado por quantidade de baús. O CSV abre no Excel com
-              uma coluna por raridade.
-            </div>
+            <div className="card-title">{t("castleBoard.summaryTitle")}</div>
+            <div className="card-sub">{t("castleBoard.summarySub")}</div>
           </div>
           <div className="row">
-            <span className="badge">{formatNumber(summary.rows.length)} jogador(es) com baú</span>
+            <span className="badge">
+              {t("castleBoard.summaryBadge", { count: formatNumber(summary.rows.length, locale) })}
+            </span>
             <button
               type="button"
               className="btn sm ghost"
               onClick={exportCsv}
               disabled={summary.rows.length === 0}
             >
-              Exportar CSV
+              {t("castleBoard.exportCsv")}
             </button>
           </div>
         </div>
@@ -370,36 +373,36 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           <table className="data">
             <thead>
               <tr>
-                <th>Jogador</th>
-                <th>Clã</th>
+                <th>{t("common.player")}</th>
+                <th>{t("common.clan")}</th>
                 {CASTLE_PRIZES.map((prize) => (
                   <th key={prize.key} className="num">
-                    {prize.label}
+                    {prizeLabel(prize.key)}
                   </th>
                 ))}
-                <th className="num">Total</th>
+                <th className="num">{t("common.total")}</th>
               </tr>
             </thead>
             <tbody>
               {summary.rows.length === 0 ? (
                 <tr>
                   <td colSpan={CASTLE_PRIZES.length + 3}>
-                    <span className="small muted">Nenhum baú distribuído neste mês ainda.</span>
+                    <span className="small muted">{t("castleBoard.noChests")}</span>
                   </td>
                 </tr>
               ) : (
                 summary.rows.map((row) => (
                   <tr key={row.member.character_id}>
-                    <td className="cell-title" data-label="Jogador">
+                    <td className="cell-title" data-label={t("common.player")}>
                       <Link className="player-name" href={`/players/${row.member.character_id}`}>
                         {row.member.name}
                       </Link>
                     </td>
-                    <td data-label="Clã">
+                    <td data-label={t("common.clan")}>
                       <span className="badge">{row.member.clan_name}</span>
                     </td>
                     {CASTLE_PRIZES.map((prize) => (
-                      <td key={prize.key} className="num mono" data-label={prize.label}>
+                      <td key={prize.key} className="num mono" data-label={prizeLabel(prize.key)}>
                         {row.counts[prize.key] > 0 ? (
                           <span className={`prize-count ${prize.key}`}>{row.counts[prize.key]}</span>
                         ) : (
@@ -407,8 +410,8 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                         )}
                       </td>
                     ))}
-                    <td className="num mono" data-label="Total">
-                      {formatNumber(row.total)}
+                    <td className="num mono" data-label={t("common.total")}>
+                      {formatNumber(row.total, locale)}
                     </td>
                   </tr>
                 ))
@@ -417,13 +420,13 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
             {summary.rows.length > 0 ? (
               <tfoot>
                 <tr>
-                  <td colSpan={2}>Total</td>
+                  <td colSpan={2}>{t("common.total")}</td>
                   {CASTLE_PRIZES.map((prize) => (
                     <td key={prize.key} className="num mono">
-                      {formatNumber(summary.totals[prize.key])}
+                      {formatNumber(summary.totals[prize.key], locale)}
                     </td>
                   ))}
-                  <td className="num mono">{formatNumber(summary.totalChests)}</td>
+                  <td className="num mono">{formatNumber(summary.totalChests, locale)}</td>
                 </tr>
               </tfoot>
             ) : null}

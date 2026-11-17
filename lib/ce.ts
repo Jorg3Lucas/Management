@@ -1,5 +1,8 @@
 import { execute, queryAll, queryOne } from "./db";
-import { APP_TIMEZONE } from "./time";
+import { DEFAULT_LOCALE, type Locale } from "./i18n/locales";
+
+export { ceWeekEnd, ceWeekStart, ceWeekTitle, shiftWeek, shortDay } from "./ce-dates";
+import { ceWeekStart } from "./ce-dates";
 
 /**
  * Calculadora de CE (Clan Expedition), espelhando a planilha da aliança:
@@ -106,47 +109,6 @@ export function ceSummary(runs: CePlan): CeSummary {
 /* ------------------------------------------------------------------ */
 /* Semanas                                                             */
 /* ------------------------------------------------------------------ */
-
-/** Hoje (AAAA-MM-DD) no fuso da app. */
-function todayInApp(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: APP_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-/** Segunda-feira da semana de uma data; sem data válida, a semana atual. */
-export function ceWeekStart(value?: string | null): string {
-  const raw = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : todayInApp();
-  const date = new Date(`${raw}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return ceWeekStart(null);
-  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
-  return date.toISOString().slice(0, 10);
-}
-
-export function shiftWeek(start: string, weeks: number): string {
-  const date = new Date(`${start}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + weeks * 7);
-  return date.toISOString().slice(0, 10);
-}
-
-export function ceWeekEnd(start: string): string {
-  const date = new Date(`${start}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 6);
-  return date.toISOString().slice(0, 10);
-}
-
-/** "2026-11-03" → "03/11" — datas de semana são só dia, sem fuso. */
-export function shortDay(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  return match ? `${match[3]}/${match[2]}` : value;
-}
-
-export function ceWeekTitle(start: string): string {
-  return `${shortDay(start)} – ${shortDay(ceWeekEnd(start))}`;
-}
 
 /* ------------------------------------------------------------------ */
 /* Plano                                                               */

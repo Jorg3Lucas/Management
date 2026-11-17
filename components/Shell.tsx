@@ -3,9 +3,12 @@ import type { ReactNode } from "react";
 import { editableServerIds, isAdmin, ownedServerIds } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import { logoutAction } from "@/app/login/actions";
+import { getT } from "@/lib/i18n";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SideNav } from "./SideNav";
 
-export function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
+export async function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
+  const { t } = await getT();
   const ownedServers = isAdmin(user) ? [] : ownedServerIds(user);
   // Dono ou editor de servidor também usa as ferramentas de gestão, sempre preso aos servidores dele.
   const canManageServers = isAdmin(user) || editableServerIds(user).length > 0;
@@ -26,18 +29,23 @@ export function Shell({ user, children }: { user: SessionUser; children: ReactNo
         <SideNav isAdmin={isAdmin(user)} canManageServers={canManageServers} />
 
         <div className="sidebar-foot">
+          <LanguageSwitcher />
           <div className="user-box">
             <div className="avatar">{initials}</div>
             <div className="user-meta">
               <div className="user-name">{user.displayName}</div>
               <div className="user-role">
-                {user.role === "ADMIN" ? "Administrador" : ownedServers.length > 0 ? "Dono de servidor" : "Operador"}
+                {user.role === "ADMIN"
+                  ? t("shell.roleAdmin")
+                  : ownedServers.length > 0
+                    ? t("shell.roleOwner")
+                    : t("shell.roleOperator")}
               </div>
             </div>
           </div>
           <form action={logoutAction}>
             <button className="logout" type="submit">
-              Sair da conta
+              {t("shell.logout")}
             </button>
           </form>
         </div>

@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveWorldBossAttendanceAction } from "@/app/world-boss/actions";
+import { useT } from "@/components/I18nProvider";
 import { KeepScroll } from "@/components/KeepScroll";
+import { shortDay } from "@/lib/ce-dates";
 import { formatNumber, formatPower } from "@/lib/format";
+import { INTL_LOCALE } from "@/lib/i18n/locales";
 
 type Fight = {
   id: number;
@@ -32,12 +35,6 @@ type Props = {
   initial: Record<number, number[]>;
 };
 
-/** "2026-11-03" → "03/11" — datas de encontro são só dia, sem fuso. */
-function shortDay(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  return match ? `${match[3]}/${match[2]}` : value;
-}
-
 function selectionFrom(initial: Record<number, number[]>, fights: Fight[]): Selection {
   const selection: Selection = {};
   for (const fight of fights) {
@@ -62,6 +59,7 @@ function signature(selection: Selection, fights: Fight[]): string {
 }
 
 export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fights, initial }: Props) {
+  const { locale, t } = useT();
   const [selection, setSelection] = useState<Selection>(() => selectionFrom(initial, fights));
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
@@ -72,6 +70,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
   const dirty = initialSignature !== currentSignature;
 
   const formRef = useRef<HTMLFormElement>(null);
+  const collator = useMemo(() => new Intl.Collator(INTL_LOCALE[locale], { sensitivity: "base" }), [locale]);
 
   // Salva sozinho pouco depois da última presença marcada.
   useEffect(() => {
@@ -104,20 +103,18 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
       if (fights.some((fight) => selection[fight.id]?.[member.character_id])) entry.attended += 1;
       stats.set(member.clan_id, entry);
     }
-    return Array.from(stats.values()).sort((a, b) =>
-      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
-    );
-  }, [members, fights, selection]);
+    return Array.from(stats.values()).sort((a, b) => collator.compare(a.name, b.name));
+  }, [members, fights, selection, collator]);
 
   const visible = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase("pt-BR");
+    const term = query.trim().toLocaleLowerCase(INTL_LOCALE[locale]);
     return members.filter((member) => {
       if (clan !== "all" && String(member.clan_id) !== clan) return false;
-      if (term && !member.name.toLocaleLowerCase("pt-BR").includes(term)) return false;
+      if (term && !member.name.toLocaleLowerCase(INTL_LOCALE[locale]).includes(term)) return false;
       if (onlyAttended && !fights.some((fight) => selection[fight.id]?.[member.character_id])) return false;
       return true;
     });
-  }, [members, clan, query, onlyAttended, fights, selection]);
+  }, [members, clan, query, onlyAttended, fights, selection, locale]);
 
   function toggle(fightId: number, characterId: number) {
     setSelection((previous) => {
@@ -152,15 +149,16 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
       <section className="card">
         <div className="card-head">
           <div>
-            <div className="card-title">Presenças da semana</div>
-            <div className="card-sub">
-              Marque quem entrou em cada encontro. O percentual do jogador considera todos os encontros da semana.
-            </div>
+            <div className="card-title">{t("bossBoard.title")}</div>
+            <div className="card-sub">{t("bossBoard.sub")}</div>
           </div>
           <div className="row">
-            {dirty ? <span className="badge warn">alterações não salvas</span> : null}
+            {dirty ? <span className="badge warn">{t("castleBoard.unsaved")}</span> : null}
             <span className="badge gold">
-              {formatNumber(marks)} de {formatNumber(capacity)} presenças
+              {t("bossBoard.marks", {
+                marks: formatNumber(marks, locale),
+                capacity: formatNumber(capacity, locale),
+              })}
             </span>
           </div>
         </div>
@@ -172,7 +170,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
               className={`btn sm${clan === "all" ? " primary" : " ghost"}`}
               onClick={() => setClan("all")}
             >
-              Todos · {formatNumber(members.length)}
+              {t("castleBoard.all", { count: formatNumber(members.length, locale) })}
             </button>
             {clanStats.map((entry) => (
               <button
@@ -181,7 +179,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                 className={`btn sm${clan === String(entry.id) ? " primary" : " ghost"}`}
                 onClick={() => setClan(String(entry.id))}
               >
-                {entry.name} · {formatNumber(entry.attended)}/{formatNumber(entry.total)}
+                {entry.name} · {formatNumber(entry.attended, locale)}/{formatNumber(entry.total, locale)}
               </button>
             ))}
           </div>
@@ -191,8 +189,8 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar jogador..."
-              aria-label="Buscar jogador"
+              placeholder={t("castleBoard.searchPlaceholder")}
+              aria-label={t("castleBoard.searchAria")}
               style={{ maxWidth: 240 }}
             />
             <label className="small" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -201,10 +199,13 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                 checked={onlyAttended}
                 onChange={(event) => setOnlyAttended(event.target.checked)}
               />
-              Só com presença
+              {t("bossBoard.onlyAttended")}
             </label>
             <span className="small muted">
-              {formatNumber(visible.length)} de {formatNumber(members.length)} membro(s)
+              {t("castleBoard.visible", {
+                visible: formatNumber(visible.length, locale),
+                total: formatNumber(members.length, locale),
+              })}
             </span>
             <span className="row" style={{ gap: 6, marginLeft: "auto" }}>
               <button
@@ -213,7 +214,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                 onClick={() => setSelection(selectionFrom(initial, fights))}
                 disabled={!dirty}
               >
-                Desfazer
+                {t("castleBoard.undo")}
               </button>
               <button
                 type="button"
@@ -221,7 +222,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                 onClick={() => setSelection(selectionFrom({}, fights))}
                 disabled={marks === 0}
               >
-                Limpar
+                {t("castleBoard.clear")}
               </button>
             </span>
           </div>
@@ -231,9 +232,9 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
           <table className="data">
             <thead>
               <tr>
-                <th>Jogador</th>
-                <th>Clã</th>
-                <th className="num">Poder</th>
+                <th>{t("common.player")}</th>
+                <th>{t("common.clan")}</th>
+                <th className="num">{t("players.colPower")}</th>
                 {fights.map((fight) => {
                   const allMarked =
                     visible.length > 0 &&
@@ -245,11 +246,11 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                   return (
                     <th key={fight.id} style={{ textAlign: "center", whiteSpace: "nowrap" }}>
                       <div>
-                        {shortDay(fight.fought_on)} · {fight.fought_at}
+                        {shortDay(fight.fought_on, locale)} · {fight.fought_at}
                       </div>
                       <div className="small muted" style={{ fontWeight: 400 }}>
                         {fight.label ? `${fight.label} · ` : ""}
-                        {formatNumber(attended)}/{formatNumber(visible.length)}
+                        {formatNumber(attended, locale)}/{formatNumber(visible.length, locale)}
                       </div>
                       <label
                         className="small muted"
@@ -259,14 +260,17 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                           type="checkbox"
                           checked={allMarked}
                           onChange={() => toggleColumn(fight.id)}
-                          aria-label={`Marcar todos em ${shortDay(fight.fought_on)} às ${fight.fought_at}`}
+                          aria-label={t("bossBoard.markAllAria", {
+                            date: shortDay(fight.fought_on, locale),
+                            time: fight.fought_at,
+                          })}
                         />
-                        todos
+                        {t("bossBoard.all")}
                       </label>
                     </th>
                   );
                 })}
-                <th className="num">Presenças</th>
+                <th className="num">{t("bossBoard.colMarks")}</th>
                 <th className="num">%</th>
               </tr>
             </thead>
@@ -274,7 +278,7 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
               {visible.length === 0 ? (
                 <tr>
                   <td colSpan={5 + fights.length}>
-                    <span className="small muted">Nenhum membro encontrado com esses filtros.</span>
+                    <span className="small muted">{t("castleBoard.noMember")}</span>
                   </td>
                 </tr>
               ) : (
@@ -292,18 +296,22 @@ export function WorldBossBoard({ serverId, weekStart, redirectTo, members, fight
                         </Link>
                       </td>
                       <td className="small muted">{member.clan_name}</td>
-                      <td className="num">{formatPower(member.power_score)}</td>
+                      <td className="num">{formatPower(member.power_score, locale)}</td>
                       {fights.map((fight) => (
                         <td key={fight.id} style={{ textAlign: "center" }}>
                           <input
                             type="checkbox"
                             checked={Boolean(selection[fight.id]?.[member.character_id])}
                             onChange={() => toggle(fight.id, member.character_id)}
-                            aria-label={`${member.name} em ${shortDay(fight.fought_on)} às ${fight.fought_at}`}
+                            aria-label={t("bossBoard.memberAria", {
+                              name: member.name,
+                              date: shortDay(fight.fought_on, locale),
+                              time: fight.fought_at,
+                            })}
                           />
                         </td>
                       ))}
-                      <td className="num">{formatNumber(attended)}</td>
+                      <td className="num">{formatNumber(attended, locale)}</td>
                       <td className="num">{percent}%</td>
                     </tr>
                   );

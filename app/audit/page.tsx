@@ -1,32 +1,38 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
 import { recentAudit } from "@/lib/audit";
+import { getT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n/translate";
 import { formatDateTime } from "@/lib/time";
 import { EmptyState, Flash } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Auditoria" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("audit.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
-const ACTION_LABELS: Record<string, string> = {
-  "clan.stance": "Postura de clã",
-  "clan.merge": "Mescla de clãs",
-  "team.create": "Time criado",
-  "team.update": "Time editado",
-  "team.delete": "Time removido",
-  "team.clan": "Clã no time",
-  "team.character": "Time do personagem",
-  "player.home": "Servidor casa",
-  "transfer.confirm": "Transferência confirmada",
-  "transfer.reject": "Transferência rejeitada",
-  "character.create": "Jogador cadastrado",
-  "character.update": "Jogador editado",
-  "user.create": "Usuário criado",
-  "user.profile": "Perfil do usuário",
-  "user.access": "Acessos do usuário",
-  "user.owners": "Donos de servidor",
-  "user.password": "Senha redefinida",
-  "user.active": "Status do usuário",
-  "server.flag": "Configuração de servidor",
+const ACTION_KEYS: Record<string, MessageKey> = {
+  "clan.stance": "audit.action.clan.stance",
+  "clan.merge": "audit.action.clan.merge",
+  "team.create": "audit.action.team.create",
+  "team.update": "audit.action.team.update",
+  "team.delete": "audit.action.team.delete",
+  "team.clan": "audit.action.team.clan",
+  "team.character": "audit.action.team.character",
+  "player.home": "audit.action.player.home",
+  "transfer.confirm": "audit.action.transfer.confirm",
+  "transfer.reject": "audit.action.transfer.reject",
+  "character.create": "audit.action.character.create",
+  "character.update": "audit.action.character.update",
+  "user.create": "audit.action.user.create",
+  "user.profile": "audit.action.user.profile",
+  "user.access": "audit.action.user.access",
+  "user.owners": "audit.action.user.owners",
+  "user.password": "audit.action.user.password",
+  "user.active": "audit.action.user.active",
+  "server.flag": "audit.action.server.flag",
 };
 
 export default async function AuditPage({
@@ -35,6 +41,7 @@ export default async function AuditPage({
   searchParams: Promise<{ ok?: string; error?: string }>;
 }) {
   await requireAdmin();
+  const { locale, t } = await getT();
   const flash = await searchParams;
   const entries = recentAudit(150);
 
@@ -42,12 +49,12 @@ export default async function AuditPage({
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Administração</p>
-          <h1 className="page-title">Auditoria</h1>
-          <p className="page-sub">Últimas 150 alterações administrativas, com autor, alvo e servidor.</p>
+          <p className="eyebrow">{t("nav.admin")}</p>
+          <h1 className="page-title">{t("audit.title")}</h1>
+          <p className="page-sub">{t("audit.sub")}</p>
         </div>
         <div className="head-actions">
-          <span className="badge">{entries.length} registro(s)</span>
+          <span className="badge">{t("audit.count", { count: entries.length })}</span>
         </div>
       </div>
 
@@ -56,42 +63,43 @@ export default async function AuditPage({
       <div className="card">
         <div className="table-wrap">
           {entries.length === 0 ? (
-            <EmptyState title="Nenhuma alteração registrada">
-              Edições de jogador, posturas de clã, acessos e configurações de servidor aparecem aqui.
-            </EmptyState>
+            <EmptyState title={t("audit.empty")}>{t("audit.emptyBody")}</EmptyState>
           ) : (
             <table className="data">
               <thead>
                 <tr>
-                  <th>Quando</th>
-                  <th>Quem</th>
-                  <th>Ação</th>
-                  <th>Servidor</th>
-                  <th>Detalhe</th>
+                  <th>{t("audit.colWhen")}</th>
+                  <th>{t("audit.colWho")}</th>
+                  <th>{t("audit.colAction")}</th>
+                  <th>{t("common.server")}</th>
+                  <th>{t("audit.colDetail")}</th>
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="small muted nowrap">{formatDateTime(entry.created_at)}</td>
-                    <td>
-                      <span style={{ fontWeight: 600 }}>{entry.actor ?? "sistema"}</span>
-                      <div className="player-clan">
-                        {entry.entity}
-                        {entry.entity_id ? ` #${entry.entity_id}` : ""}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${entry.action.startsWith("clan.") ? "gold" : ""}`}>
-                        {ACTION_LABELS[entry.action] ?? entry.action}
-                      </span>
-                    </td>
-                    <td className="small muted">{entry.server_label ?? "—"}</td>
-                    <td className="small muted" style={{ maxWidth: 380 }}>
-                      {entry.detail ?? "—"}
-                    </td>
-                  </tr>
-                ))}
+                {entries.map((entry) => {
+                  const key = ACTION_KEYS[entry.action];
+                  return (
+                    <tr key={entry.id}>
+                      <td className="small muted nowrap">{formatDateTime(entry.created_at, locale)}</td>
+                      <td>
+                        <span style={{ fontWeight: 600 }}>{entry.actor ?? t("audit.system")}</span>
+                        <div className="player-clan">
+                          {entry.entity}
+                          {entry.entity_id ? ` #${entry.entity_id}` : ""}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${entry.action.startsWith("clan.") ? "gold" : ""}`}>
+                          {key ? t(key) : entry.action}
+                        </span>
+                      </td>
+                      <td className="small muted">{entry.server_label ?? "—"}</td>
+                      <td className="small muted" style={{ maxWidth: 380 }}>
+                        {entry.detail ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

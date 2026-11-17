@@ -6,6 +6,7 @@ import { WorldBossBoard } from "@/components/WorldBossBoard";
 import { Flash, StatCard } from "@/components/ui";
 import { ceWeekEnd, ceWeekStart, ceWeekTitle, shiftWeek, shortDay } from "@/lib/ce";
 import { formatNumber } from "@/lib/format";
+import { getT } from "@/lib/i18n";
 import { APP_TIMEZONE } from "@/lib/time";
 import {
   worldBossAttendance,
@@ -14,7 +15,11 @@ import {
 } from "@/lib/world-boss";
 import { addWorldBossFightAction, deleteWorldBossFightAction } from "./actions";
 
-export const metadata: Metadata = { title: "World Boss" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("boss.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
@@ -36,6 +41,7 @@ function todayInApp(): string {
 
 export default async function WorldBossPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const params = await searchParams;
 
   const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
@@ -80,11 +86,9 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Eventos</p>
-          <h1 className="page-title">World Boss</h1>
-          <p className="page-sub">
-            Acompanhe a presença dos clãs aliados em cada encontro de World Boss da semana.
-          </p>
+          <p className="eyebrow">{t("boss.eyebrow")}</p>
+          <h1 className="page-title">{t("boss.title")}</h1>
+          <p className="page-sub">{t("boss.sub")}</p>
         </div>
         <div className="head-actions">
           {managed.slice(0, 6).map((server) => (
@@ -101,64 +105,64 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
 
       <Flash ok={params.ok} error={params.error} />
 
-      {managed.length === 0 ? (
-        <div className="alert warn">
-          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um servidor em
-          Usuários.
-        </div>
-      ) : null}
+      {managed.length === 0 ? <div className="alert warn">{t("gest.noServers")}</div> : null}
 
       {selected ? (
         <>
           <div className="row" style={{ marginBottom: 12, flexWrap: "wrap" }}>
-            <Link className="btn sm ghost" href={weekHref(shiftWeek(weekStart, -1))} aria-label="Semana anterior">
+            <Link className="btn sm ghost" href={weekHref(shiftWeek(weekStart, -1))} aria-label={t("week.prev")}>
               ←
             </Link>
-            <span className="badge gold">{ceWeekTitle(weekStart)}</span>
-            {weekStart === currentWeek ? <span className="badge">semana atual</span> : null}
-            <Link className="btn sm ghost" href={weekHref(shiftWeek(weekStart, 1))} aria-label="Próxima semana">
+            <span className="badge gold">{ceWeekTitle(weekStart, locale)}</span>
+            {weekStart === currentWeek ? <span className="badge">{t("week.current")}</span> : null}
+            <Link className="btn sm ghost" href={weekHref(shiftWeek(weekStart, 1))} aria-label={t("week.next")}>
               →
             </Link>
             {weekStart !== currentWeek ? (
               <Link className="btn sm" href={weekHref(currentWeek)}>
-                Ir para a semana atual
+                {t("week.goCurrent")}
               </Link>
             ) : null}
           </div>
 
           <div className="grid cols-4" style={{ marginBottom: 16 }}>
             <StatCard
-              label="Encontros na semana"
-              value={formatNumber(fights.length)}
-              foot={fights.length === 1 ? "1 horário registrado" : "horários registrados"}
+              label={t("boss.statFights")}
+              value={formatNumber(fights.length, locale)}
+              foot={fights.length === 1 ? t("boss.statFightsFootOne") : t("boss.statFightsFoot")}
             />
             <StatCard
-              label="Presenças marcadas"
-              value={formatNumber(totalMarks)}
-              foot={`${presenceRate}% de ${formatNumber(capacity)} marcações possíveis`}
+              label={t("boss.statMarks")}
+              value={formatNumber(totalMarks, locale)}
+              foot={t("boss.statMarksFoot", { rate: presenceRate, capacity: formatNumber(capacity, locale) })}
             />
             <StatCard
-              label="Média por encontro"
-              value={formatNumber(average)}
-              foot="jogadores marcados por encontro"
+              label={t("boss.statAverage")}
+              value={formatNumber(average, locale)}
+              foot={t("boss.statAverageFoot")}
             />
             <StatCard
-              label="Mais presente"
+              label={t("boss.statTop")}
               value={top ? top.name : "—"}
-              foot={top ? `${counts.get(top.character_id) ?? 0} de ${fights.length} encontro(s)` : "sem presenças"}
+              foot={
+                top
+                  ? t("boss.statTopFoot", { count: counts.get(top.character_id) ?? 0, fights: fights.length })
+                  : t("boss.statTopNone")
+              }
             />
           </div>
 
           <section className="card" style={{ marginBottom: 16 }}>
             <div className="card-head">
               <div>
-                <div className="card-title">Encontros da semana</div>
-                <div className="card-sub">
-                  Cada encontro é único por dia e horário; as presenças ficam salvas separadamente em cada um.
-                </div>
+                <div className="card-title">{t("boss.fightsTitle")}</div>
+                <div className="card-sub">{t("boss.fightsSub")}</div>
               </div>
               <span className="badge">
-                {formatNumber(fights.length)} encontro(s) · {formatNumber(members.length)} membro(s) aliados
+                {t("boss.fightsBadge", {
+                  fights: formatNumber(fights.length, locale),
+                  members: formatNumber(members.length, locale),
+                })}
               </span>
             </div>
             <div className="card-body">
@@ -166,7 +170,7 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                 <input type="hidden" name="serverId" value={selected.id} />
                 <input type="hidden" name="redirectTo" value={returnTo} />
                 <div className="field">
-                  <label htmlFor="foughtOn">Data</label>
+                  <label htmlFor="foughtOn">{t("boss.date")}</label>
                   <input
                     id="foughtOn"
                     name="foughtOn"
@@ -178,16 +182,22 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="foughtAt">Horário</label>
+                  <label htmlFor="foughtAt">{t("boss.time")}</label>
                   <input id="foughtAt" name="foughtAt" type="time" required defaultValue="20:00" />
                 </div>
                 <div className="field">
-                  <label htmlFor="label">Nome (opcional)</label>
-                  <input id="label" name="label" type="text" maxLength={40} placeholder="Ex.: World Boss 20h" />
+                  <label htmlFor="label">{t("salary.labelOptional")}</label>
+                  <input
+                    id="label"
+                    name="label"
+                    type="text"
+                    maxLength={40}
+                    placeholder={t("boss.namePlaceholder")}
+                  />
                 </div>
                 <div className="full row">
                   <button className="btn primary" type="submit">
-                    Adicionar encontro
+                    {t("boss.addFight")}
                   </button>
                 </div>
               </form>
@@ -195,18 +205,28 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
 
             <div className="card-body tight">
               {fights.length === 0 ? (
-                <div className="empty">Nenhum encontro registrado nesta semana. Adicione o primeiro acima.</div>
+                <div className="empty">{t("boss.noFights")}</div>
               ) : (
                 <div className="list">
                   {fights.map((fight) => (
                     <div key={fight.id} className="list-row">
                       <div>
                         <div style={{ fontWeight: 600 }}>
-                          {shortDay(fight.fought_on)} às {fight.fought_at}
-                          {fight.label ? <span className="badge" style={{ marginLeft: 8 }}>{fight.label}</span> : null}
+                          {t("boss.fightLine", {
+                            date: shortDay(fight.fought_on, locale),
+                            time: fight.fought_at,
+                          })}
+                          {fight.label ? (
+                            <span className="badge" style={{ marginLeft: 8 }}>
+                              {fight.label}
+                            </span>
+                          ) : null}
                         </div>
                         <div className="small muted">
-                          {formatNumber(fight.attended)} presença(s) de {formatNumber(members.length)} membro(s)
+                          {t("boss.fightMarks", {
+                            count: formatNumber(fight.attended, locale),
+                            total: formatNumber(members.length, locale),
+                          })}
                         </div>
                       </div>
                       <form action={deleteWorldBossFightAction} className="inline-form">
@@ -214,9 +234,12 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
                         <input type="hidden" name="serverId" value={selected.id} />
                         <input type="hidden" name="redirectTo" value={returnTo} />
                         <ConfirmButton
-                          message={`Remover o encontro de ${shortDay(fight.fought_on)} às ${fight.fought_at}? As presenças dele também serão apagadas.`}
+                          message={t("boss.deleteConfirm", {
+                            date: shortDay(fight.fought_on, locale),
+                            time: fight.fought_at,
+                          })}
                         >
-                          Remover
+                          {t("common.remove")}
                         </ConfirmButton>
                       </form>
                     </div>
@@ -228,13 +251,15 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
 
           {members.length === 0 ? (
             <div className="alert warn">
-              Nenhum membro nos clãs aliados de {selected.label}. Marque os clãs aliados em{" "}
-              <Link href="/clans">Clãs</Link> e sincronize o ranking para acompanhar a presença.
+              <div className="spread" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>{t("boss.noMembers", { server: selected.label })}</span>
+                <Link className="btn sm" href="/clans">
+                  {t("castle.openClans")}
+                </Link>
+              </div>
             </div>
           ) : fights.length === 0 ? (
-            <div className="alert">
-              Registre pelo menos um encontro na semana para começar a marcar as presenças.
-            </div>
+            <div className="alert">{t("boss.needFight")}</div>
           ) : (
             <WorldBossBoard
               key={`${selected.id}-${weekStart}`}

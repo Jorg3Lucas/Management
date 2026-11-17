@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { accessibleServerIds, accessibleServers, canEditServer, isAdmin, requireUser } from "@/lib/auth";
-import { formatDuration, formatPower } from "@/lib/format";
+import { formatDuration, formatNumber, formatPower } from "@/lib/format";
+import { getT } from "@/lib/i18n";
 import {
   countCharactersForServers,
   lastDailySyncRun,
@@ -21,6 +22,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ ok?: string; error?: string }>;
 }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const flash = await searchParams;
 
   const ids = accessibleServerIds(user);
@@ -53,15 +55,15 @@ export default async function DashboardPage({
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Operação</p>
-          <h1 className="page-title">Visão geral</h1>
-          <p className="page-sub">Ranking do fórum, deslocamentos de guerra e acessos em um só lugar.</p>
+          <p className="eyebrow">{t("nav.operation")}</p>
+          <h1 className="page-title">{t("nav.dashboard")}</h1>
+          <p className="page-sub">{t("dash.sub")}</p>
         </div>
         <div className="head-actions">
-          <span className="badge">{servers.length} servidor(es) liberado(s)</span>
+          <span className="badge">{t("dash.serversAllowed", { count: servers.length })}</span>
           {isAdmin(user) ? (
             <Link className="btn" href="/sync">
-              Histórico de sync
+              {t("dash.syncHistory")}
             </Link>
           ) : null}
         </div>
@@ -69,11 +71,7 @@ export default async function DashboardPage({
 
       <Flash ok={flash.ok} error={flash.error} />
 
-      {serverCards.length === 0 ? (
-        <div className="alert warn">
-          Nenhum servidor liberado para o seu usuário. Peça ao administrador para ajustar seu acesso.
-        </div>
-      ) : null}
+      {serverCards.length === 0 ? <div className="alert warn">{t("dash.noServers")}</div> : null}
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
         {serverCards.map(({ server, players, topPlayer, warSeconds, activeWars }) => (
@@ -85,37 +83,39 @@ export default async function DashboardPage({
                   <span className="server-code">{server.code}</span>
                 </div>
                 <div className="card-sub">
-                  {server.group_name} · mundo {server.world_id}
+                  {server.group_name} · {t("dash.world", { id: server.world_id })}
                 </div>
               </div>
-              <SyncBadge status={server.last_sync_status} />
+              <SyncBadge status={server.last_sync_status} locale={locale} />
             </div>
 
             <div className="server-metrics">
               <div className="metric">
-                <div className="metric-label">Jogadores</div>
-                <div className="metric-value">{players.toLocaleString("pt-BR")}</div>
+                <div className="metric-label">{t("dash.players")}</div>
+                <div className="metric-value">{formatNumber(players, locale)}</div>
               </div>
               <div className="metric">
-                <div className="metric-label">Poder máximo</div>
-                <div className="metric-value">{topPlayer ? formatPower(topPlayer.power_score) : "—"}</div>
+                <div className="metric-label">{t("dash.maxPower")}</div>
+                <div className="metric-value">{topPlayer ? formatPower(topPlayer.power_score, locale) : "—"}</div>
               </div>
               <div className="metric">
-                <div className="metric-label">Tempo em guerra</div>
-                <div className="metric-value">{formatDuration(warSeconds)}</div>
+                <div className="metric-label">{t("dash.warTime")}</div>
+                <div className="metric-value">{formatDuration(warSeconds, locale)}</div>
               </div>
               <div className="metric">
-                <div className="metric-label">Guerras ativas</div>
+                <div className="metric-label">{t("dash.activeWars")}</div>
                 <div className="metric-value">{activeWars}</div>
               </div>
             </div>
 
             <div className="server-foot">
               <span>
-                {server.last_sync_at ? `Sync ${formatDateTime(server.last_sync_at)}` : "Aguardando primeira sincronização"}
+                {server.last_sync_at
+                  ? t("dash.syncAt", { date: formatDateTime(server.last_sync_at, locale) })
+                  : t("dash.awaitingSync")}
               </span>
               <Link className="btn sm ghost" href={`/players?server=${server.code}`}>
-                Ver ranking
+                {t("dash.viewRanking")}
               </Link>
             </div>
           </section>
@@ -124,79 +124,94 @@ export default async function DashboardPage({
 
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <StatCard
-          label="Jogadores rastreados"
-          value={totalPlayers.toLocaleString("pt-BR")}
-          foot="nos servidores liberados"
+          label={t("dash.trackedPlayers")}
+          value={formatNumber(totalPlayers, locale)}
+          foot={t("dash.trackedPlayersFoot")}
         />
-        <StatCard label="Tempo total em guerra" value={formatDuration(totalWarSeconds(sessions, now))} foot={`${sessions.length} batalha(s) registrada(s)`} />
         <StatCard
-          label="Guerras em andamento"
+          label={t("dash.totalWarTime")}
+          value={formatDuration(totalWarSeconds(sessions, now), locale)}
+          foot={t("dash.battles", { count: sessions.length })}
+        />
+        <StatCard
+          label={t("dash.warsRunning")}
           value={activeWars.length}
-          foot={activeWars.length > 0 ? "jogadores em campo agora" : "nenhum jogador em guerra"}
+          foot={activeWars.length > 0 ? t("dash.warsRunningFoot") : t("dash.warsRunningNone")}
         />
         <StatCard
-          label="Servidores sincronizando"
+          label={t("dash.serversSyncing")}
           value={servers.filter((server) => server.sync_enabled).length}
-          foot={`de ${servers.length} liberados`}
+          foot={t("dash.serversSyncingFoot", { count: servers.length })}
         />
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
           <div>
-            <div className="card-title">Rodada diária automática</div>
-            <div className="card-sub">Todos os servidores, todos os dias às 17h de Brasília</div>
+            <div className="card-title">{t("dash.dailyTitle")}</div>
+            <div className="card-sub">{t("dash.dailySub")}</div>
           </div>
           {daily ? (
             <span className={`badge ${daily.failed > 0 || daily.total < servers.length ? "warn" : "ok"}`}>
-              {daily.failed > 0 ? `${daily.failed} com erro` : daily.total < servers.length ? "rodada parcial" : "sem falhas"}
+              {daily.failed > 0
+                ? t("dash.dailyFailed", { count: daily.failed })
+                : daily.total < servers.length
+                  ? t("dash.dailyPartial")
+                  : t("dash.dailyNoFailures")}
             </span>
           ) : null}
         </div>
         <div className="card-body">
           {!daily ? (
-            <EmptyState title="A rodada diária ainda não executou">
-              Ela roda sozinha às 17h (horário de Brasília) enquanto o app estiver em execução contínua.
-            </EmptyState>
+            <EmptyState title={t("dash.dailyNotRun")}>{t("dash.dailyNotRunBody")}</EmptyState>
           ) : (
             <div className="stack" style={{ gap: 14 }}>
               <div className="spread">
                 <div>
-                  <div className="small muted">Última rodada</div>
-                  <div style={{ fontWeight: 650 }}>{formatDateTime(daily.startedAt, "America/Sao_Paulo")}</div>
+                  <div className="small muted">{t("dash.lastRun")}</div>
+                  <div style={{ fontWeight: 650 }}>
+                    {formatDateTime(daily.startedAt, locale, "America/Sao_Paulo")}
+                  </div>
                   <div className="small muted">
-                    {formatDuration((Date.parse(daily.finishedAt) - Date.parse(daily.startedAt)) / 1000)} de duração ·{" "}
-                    {daily.total} servidor(es) registrado(s)
+                    {t("dash.runDuration", {
+                      duration: formatDuration(
+                        (Date.parse(daily.finishedAt) - Date.parse(daily.startedAt)) / 1000,
+                        locale,
+                      ),
+                      count: daily.total,
+                    })}
                   </div>
                 </div>
                 <div className="tag-list">
-                  <span className="badge ok">{daily.ok} sincronizado(s)</span>
-                  <span className="badge warn">{daily.empty} sem dados</span>
-                  <span className={`badge ${daily.failed > 0 ? "err" : ""}`}>{daily.failed} com erro</span>
+                  <span className="badge ok">{t("dash.dailyOk", { count: daily.ok })}</span>
+                  <span className="badge warn">{t("dash.dailyEmpty", { count: daily.empty })}</span>
+                  <span className={`badge ${daily.failed > 0 ? "err" : ""}`}>
+                    {t("dash.dailyErr", { count: daily.failed })}
+                  </span>
                 </div>
               </div>
 
               {daily.total < servers.length ? (
                 <div className="small" style={{ color: "var(--warn)" }}>
-                  Rodada incompleta: {daily.total} de {servers.length} servidores registrados até agora.
+                  {t("dash.dailyIncomplete", { done: daily.total, total: servers.length })}
                 </div>
               ) : null}
 
               {daily.failures.length === 0 ? (
-                <div className="small muted">Nenhum servidor falhou na última rodada.</div>
+                <div className="small muted">{t("dash.dailyAllOk")}</div>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
                   {daily.failures.map((failure) => (
                     <div key={`${failure.serverId ?? "sem-servidor"}-${failure.startedAt}`} className="spread">
                       <div>
                         <div style={{ fontWeight: 600 }}>
-                          {failure.serverLabel ?? "Servidor removido"}{" "}
+                          {failure.serverLabel ?? t("dash.serverRemoved")}{" "}
                           <span className="small muted mono">{failure.serverCode ?? ""}</span>
                         </div>
-                        <div className="small muted">{failure.message ?? "erro sem detalhe"}</div>
+                        <div className="small muted">{failure.message ?? t("dash.errorNoDetail")}</div>
                       </div>
                       <span className="small muted nowrap">
-                        {formatDateTime(failure.startedAt, "America/Sao_Paulo")}
+                        {formatDateTime(failure.startedAt, locale, "America/Sao_Paulo")}
                       </span>
                     </div>
                   ))}
@@ -212,17 +227,17 @@ export default async function DashboardPage({
           <section key={server.id} className="card">
             <div className="card-head">
               <div>
-                <div className="card-title">Top poder — {server.label}</div>
-                <div className="card-sub">Ranking atual vindo do fórum</div>
+                <div className="card-title">{t("dash.topPower", { server: server.label })}</div>
+                <div className="card-sub">{t("dash.topPowerSub")}</div>
               </div>
               <Link className="btn sm ghost" href={`/players?server=${server.code}`}>
-                Ver tudo
+                {t("dash.viewAll")}
               </Link>
             </div>
             <div className="card-body tight">
               {top.length === 0 ? (
-                <EmptyState title="Nenhum jogador sincronizado">
-                  Rode a sincronização para puxar o ranking de {server.label}.
+                <EmptyState title={t("dash.noPlayers")}>
+                  {t("dash.noPlayersBody", { server: server.label })}
                 </EmptyState>
               ) : (
                 <div className="list">
@@ -245,17 +260,19 @@ export default async function DashboardPage({
                                 {character.clan}
                               </Link>
                             ) : (
-                              (character.clan ?? "sem clã")
+                              (character.clan ?? t("common.noClan"))
                             )}
                           </div>
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div className="mono" style={{ fontWeight: 650 }}>
-                          {formatPower(character.power_score)}
+                          {formatPower(character.power_score, locale)}
                         </div>
                         <div className="small muted">
-                          {formatDuration(warByCharacter.get(character.id)?.totalSeconds ?? 0)} em guerra
+                          {t("dash.atWar", {
+                            duration: formatDuration(warByCharacter.get(character.id)?.totalSeconds ?? 0, locale),
+                          })}
                         </div>
                       </div>
                     </div>
@@ -271,26 +288,24 @@ export default async function DashboardPage({
         <section className="card">
           <div className="card-head">
             <div>
-              <div className="card-title">Guerras em andamento</div>
-              <div className="card-sub">Jogadores com batalha aberta</div>
+              <div className="card-title">{t("dash.openWars")}</div>
+              <div className="card-sub">{t("dash.openWarsSub")}</div>
             </div>
             <Link className="btn sm ghost" href="/wars">
-              Todas
+              {t("dash.openWarsAll")}
             </Link>
           </div>
           <div className="card-body tight">
             {activeWars.length === 0 ? (
-              <EmptyState title="Nenhuma guerra aberta">
-                Registre uma guerra no perfil do jogador para começar a contar o tempo.
-              </EmptyState>
+              <EmptyState title={t("dash.noOpenWars")}>{t("dash.noOpenWarsBody")}</EmptyState>
             ) : (
               <div className="table-wrap">
                 <table className="data">
                   <thead>
                     <tr>
-                      <th>Jogador</th>
-                      <th>Servidor da guerra</th>
-                      <th className="num">Tempo</th>
+                      <th>{t("common.player")}</th>
+                      <th>{t("dash.warServer")}</th>
+                      <th className="num">{t("common.time")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -306,7 +321,7 @@ export default async function DashboardPage({
                           <span className="badge gold">{session.war_server_label}</span>
                         </td>
                         <td className="num mono">
-                          {formatDuration((now - Date.parse(session.started_at)) / 1000)}
+                          {formatDuration((now - Date.parse(session.started_at)) / 1000, locale)}
                         </td>
                       </tr>
                     ))}
@@ -320,19 +335,19 @@ export default async function DashboardPage({
         <section className="card">
           <div className="card-head">
             <div>
-              <div className="card-title">Sincronizações recentes</div>
-              <div className="card-sub">Últimas execuções do coletor do fórum</div>
+              <div className="card-title">{t("dash.recentSyncs")}</div>
+              <div className="card-sub">{t("dash.recentSyncsSub")}</div>
             </div>
             {isAdmin(user) ? (
               <Link className="btn sm ghost" href="/sync">
-                Detalhes
+                {t("dash.syncDetails")}
               </Link>
             ) : null}
           </div>
           <div className="card-body tight">
             {runs.length === 0 ? (
-              <EmptyState title="Nenhuma sincronização ainda">
-                {isAdmin(user) ? "Use Servidores ou Sincronização para rodar a primeira coleta." : "O administrador ainda não rodou a coleta."}
+              <EmptyState title={t("dash.noSyncs")}>
+                {isAdmin(user) ? t("dash.noSyncsAdmin") : t("dash.noSyncsUser")}
               </EmptyState>
             ) : (
               <div className="list">
@@ -346,10 +361,12 @@ export default async function DashboardPage({
                         </span>
                       </div>
                       <div className="small muted">
-                        {formatDateTime(run.started_at)} · {run.rows_fetched} linha(s)
+                        {formatDateTime(run.started_at, locale)} · {t("dash.rowsFetched", { count: run.rows_fetched })}
                       </div>
                     </div>
-                    <div className="small muted mono">{formatDuration((Date.parse(run.finished_at) - Date.parse(run.started_at)) / 1000)}</div>
+                    <div className="small muted mono">
+                      {formatDuration((Date.parse(run.finished_at) - Date.parse(run.started_at)) / 1000, locale)}
+                    </div>
                   </div>
                 ))}
               </div>

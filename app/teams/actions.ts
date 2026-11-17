@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { getClan } from "@/lib/clans";
+import { getT } from "@/lib/i18n";
 import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import {
   assignCharacterTeam,
@@ -72,7 +73,8 @@ export async function createTeamAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/teams");
-  redirect(back(returnTo, "ok", `Time ${name} criado.`));
+  const { m } = await getT();
+  redirect(back(returnTo, "ok", m("Time {name} criado.", { name })));
 }
 
 export async function updateTeamAction(formData: FormData): Promise<void> {
@@ -110,7 +112,8 @@ export async function updateTeamAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/teams");
-  redirect(back(returnTo, "ok", `Time ${name} atualizado.`));
+  const { m } = await getT();
+  redirect(back(returnTo, "ok", m("Time {name} atualizado.", { name })));
 }
 
 export async function deleteTeamAction(formData: FormData): Promise<void> {
@@ -137,7 +140,8 @@ export async function deleteTeamAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/teams");
-  redirect(back(returnTo, "ok", `Time ${team.name} removido.`));
+  const { m } = await getT();
+  redirect(back(returnTo, "ok", m("Time {team} removido.", { team: team.name })));
 }
 
 export async function assignTeamClanAction(formData: FormData): Promise<void> {
@@ -172,7 +176,16 @@ export async function assignTeamClanAction(formData: FormData): Promise<void> {
 
   revalidatePath("/teams");
   revalidatePath("/clans");
-  redirect(back(returnTo, "ok", team ? `${clan.name} agora está em ${team.name}.` : `${clan.name} sem time.`));
+  const { m } = await getT();
+  redirect(
+    back(
+      returnTo,
+      "ok",
+      team
+        ? m("{clan} agora está em {team}.", { clan: clan.name, team: team.name })
+        : m("{clan} sem time.", { clan: clan.name }),
+    ),
+  );
 }
 
 /** Vínculo individual: vale só para o personagem e tem prioridade sobre o time do clã. */

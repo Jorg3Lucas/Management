@@ -1,4 +1,5 @@
 import { execute, queryAll, queryOne, transaction } from "./db";
+import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "./i18n/locales";
 import { APP_TIMEZONE } from "./time";
 
 /**
@@ -216,13 +217,20 @@ export function salaryWeekRange(reference: Date = new Date()): { startsOn: strin
 }
 
 /** "2026-11-03" → "03/11" — datas de semana são só dia, sem fuso. */
-export function shortDay(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  return match ? `${match[3]}/${match[2]}` : value;
+export function shortDay(value: string, locale: Locale = DEFAULT_LOCALE): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(`${value}T00:00:00Z`));
 }
 
-export function periodTitle(period: Pick<SalaryPeriodRow, "label" | "starts_on" | "ends_on">): string {
-  const range = `${shortDay(period.starts_on)} – ${shortDay(period.ends_on)}`;
+export function periodTitle(
+  period: Pick<SalaryPeriodRow, "label" | "starts_on" | "ends_on">,
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  const range = `${shortDay(period.starts_on, locale)} – ${shortDay(period.ends_on, locale)}`;
   return period.label ? `${period.label} (${range})` : range;
 }
 

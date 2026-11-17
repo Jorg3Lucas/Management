@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "./i18n/locales";
+
 const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || "Europe/Lisbon";
 
 export const APP_TIMEZONE = DEFAULT_TIMEZONE;
@@ -53,11 +55,15 @@ export function utcToZonedInput(iso: string | null, timeZone = DEFAULT_TIMEZONE)
   return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
 }
 
-export function formatDateTime(iso: string | null, timeZone = DEFAULT_TIMEZONE): string {
+export function formatDateTime(
+  iso: string | null,
+  locale: Locale = DEFAULT_LOCALE,
+  timeZone = DEFAULT_TIMEZONE,
+): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
     timeZone,
     day: "2-digit",
     month: "2-digit",
@@ -67,11 +73,15 @@ export function formatDateTime(iso: string | null, timeZone = DEFAULT_TIMEZONE):
   }).format(date);
 }
 
-export function formatDate(iso: string | null, timeZone = DEFAULT_TIMEZONE): string {
+export function formatDate(
+  iso: string | null,
+  locale: Locale = DEFAULT_LOCALE,
+  timeZone = DEFAULT_TIMEZONE,
+): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
     timeZone,
     day: "2-digit",
     month: "2-digit",

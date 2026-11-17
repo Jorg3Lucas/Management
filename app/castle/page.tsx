@@ -14,9 +14,14 @@ import {
   type CastlePrizeKey,
 } from "@/lib/castle-prizes";
 import { formatNumber } from "@/lib/format";
+import { getT } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 
-export const metadata: Metadata = { title: "Prêmio do castelo" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("castle.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
@@ -28,6 +33,7 @@ type SearchParams = {
 
 export default async function CastlePrizePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const params = await searchParams;
 
   const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
@@ -57,13 +63,9 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Recompensas</p>
-          <h1 className="page-title">Prêmio do castelo</h1>
-          <p className="page-sub">
-            O baú do castelo é mensal e sai na guerra de castelo: 1 lendário, 3 épicos, 5 raros, 10
-            incomuns e 50 comuns por mês. Cada membro pode receber vários baús, mas só um de cada
-            raridade.
-          </p>
+          <p className="eyebrow">{t("castle.eyebrow")}</p>
+          <h1 className="page-title">{t("castle.title")}</h1>
+          <p className="page-sub">{t("castle.sub")}</p>
         </div>
         <div className="head-actions">
           {managed.slice(0, 6).map((server) => (
@@ -80,52 +82,65 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
 
       <Flash ok={params.ok} error={params.error} />
 
-      {managed.length === 0 ? (
-        <div className="alert warn">
-          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um
-          servidor em Usuários.
-        </div>
-      ) : null}
+      {managed.length === 0 ? <div className="alert warn">{t("gest.noServers")}</div> : null}
 
       {selected ? (
         <>
           <div className="row" style={{ marginBottom: 12, flexWrap: "wrap" }}>
-            <Link className="btn sm ghost" href={monthHref(shiftMonth(monthStart, -1))} aria-label="Mês anterior">
+            <Link
+              className="btn sm ghost"
+              href={monthHref(shiftMonth(monthStart, -1))}
+              aria-label={t("castle.prevMonth")}
+            >
               ←
             </Link>
-            <span className="badge gold">{castleMonthTitle(monthStart)}</span>
-            {monthStart === currentMonth ? <span className="badge">mês atual</span> : null}
-            <Link className="btn sm ghost" href={monthHref(shiftMonth(monthStart, 1))} aria-label="Próximo mês">
+            <span className="badge gold">{castleMonthTitle(monthStart, locale)}</span>
+            {monthStart === currentMonth ? <span className="badge">{t("castle.thisMonth")}</span> : null}
+            <Link
+              className="btn sm ghost"
+              href={monthHref(shiftMonth(monthStart, 1))}
+              aria-label={t("castle.nextMonth")}
+            >
               →
             </Link>
             {monthStart !== currentMonth ? (
               <Link className="btn sm" href={monthHref(currentMonth)}>
-                Ir para o mês atual
+                {t("castle.goCurrent")}
               </Link>
             ) : null}
             {updatedAt ? (
-              <span className="small muted">salvo em {formatDateTime(updatedAt)}</span>
+              <span className="small muted">{t("castle.savedAt", { date: formatDateTime(updatedAt, locale) })}</span>
             ) : (
-              <span className="small muted">mês ainda não distribuído</span>
+              <span className="small muted">{t("castle.notDistributed")}</span>
             )}
           </div>
 
           {members.length > 0 ? (
             <div className="row" style={{ marginBottom: 12 }}>
               <span className="badge">
-                {formatNumber(members.length)} membro(s) de {formatNumber(clanCount)} clã(s) aliado(s)
+                {t("castle.membersBadge", {
+                  members: formatNumber(members.length, locale),
+                  clans: formatNumber(clanCount, locale),
+                })}
               </span>
               <span className="badge gold">
-                {formatNumber(usedTotal)} de {formatNumber(CASTLE_PRIZE_TOTAL)} prêmio(s) usados
+                {t("castle.usedBadge", {
+                  used: formatNumber(usedTotal, locale),
+                  total: formatNumber(CASTLE_PRIZE_TOTAL, locale),
+                })}
               </span>
-              <span className="badge">{formatNumber(assigned)} membro(s) com prêmio</span>
+              <span className="badge">{t("castle.assignedBadge", { count: formatNumber(assigned, locale) })}</span>
             </div>
           ) : null}
 
           {members.length === 0 ? (
             <div className="alert warn">
-              Nenhum membro nos clãs aliados de {selected.label}. Marque os clãs aliados em{" "}
-              <Link href="/clans">Clãs</Link> e sincronize o ranking para distribuir o prêmio.
+              <div className="spread" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>{t("castle.noMembers", { server: selected.label })}</span>
+                <Link className="btn sm" href="/clans">
+                  {t("castle.openClans")}
+                </Link>
+              </div>
             </div>
           ) : (
             <CastlePrizeBoard

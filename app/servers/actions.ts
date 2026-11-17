@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth";
 import { execute } from "@/lib/db";
+import { getT } from "@/lib/i18n";
 import { getServerById } from "@/lib/queries";
 import { syncServer } from "@/lib/sync";
 
@@ -42,7 +43,11 @@ export async function toggleServerFlagAction(formData: FormData): Promise<void> 
 
   revalidatePath("/servers");
   revalidatePath("/");
-  const message = `${server.label}: sincronização ${server.sync_enabled ? "desativada" : "ativada"}.`;
+  const { m } = await getT();
+  const message = m(
+    server.sync_enabled ? "{label}: sincronização desativada." : "{label}: sincronização ativada.",
+    { label: server.label },
+  );
   redirect(back(returnTo, "ok", message));
 }
 
@@ -61,18 +66,24 @@ export async function syncServerAction(formData: FormData): Promise<void> {
   revalidatePath("/sync");
   revalidatePath("/");
 
+  const { m } = await getT();
   if (result.status === "error") {
-    redirect(back(returnTo, "error", `${server.label}: ${result.message ?? "falha ao sincronizar."}`));
+    redirect(back(returnTo, "error", `${server.label}: ${m(result.message ?? "falha ao sincronizar.")}`));
   }
   if (result.status === "empty") {
-    redirect(back(returnTo, "error", `${server.label}: ${result.message ?? "ranking vazio."}`));
+    redirect(back(returnTo, "error", `${server.label}: ${m(result.message ?? "ranking vazio.")}`));
   }
 
   redirect(
     back(
       returnTo,
       "ok",
-      `${server.label}: ${result.fetched} jogadores lidos, ${result.created} novos, ${result.updated} atualizados.`,
+      m("{label}: {read} jogadores lidos, {created} novos, {updated} atualizados.", {
+        label: server.label,
+        read: result.fetched,
+        created: result.created,
+        updated: result.updated,
+      }),
     ),
   );
 }

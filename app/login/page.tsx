@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { getT } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { loginAction } from "./actions";
 
-export const metadata: Metadata = {
-  title: "Entrar — MIR4 Ranking Ops",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("login.metadataTitle") };
+}
 
 const checkIcon = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -21,6 +24,7 @@ export default async function LoginPage({
   const user = await getSessionUser();
   if (user) redirect("/");
 
+  const { t } = await getT();
   const params = await searchParams;
   const error = params.error;
 
@@ -36,50 +40,55 @@ export default async function LoginPage({
             </div>
           </div>
           <h1 className="login-title">
-            Ranking, guerras e <span>poder</span> sob controle.
+            {t("login.h1Before")}
+            <span>{t("login.h1Power")}</span>
+            {t("login.h1After")}
           </h1>
-          <p className="login-copy">
-            Centralize o ranking do fórum oficial, acompanhe deslocamentos de guerra entre servidores e mantenha os
-            dados corrigidos à mão quando precisar.
-          </p>
+          <p className="login-copy">{t("login.copy")}</p>
           <div className="login-points">
-            <div className="login-point">{checkIcon} Sincronização do fórum por servidor</div>
-            <div className="login-point">{checkIcon} Tempo de guerra por jogador e por servidor</div>
-            <div className="login-point">{checkIcon} Acesso liberado servidor a servidor</div>
+            <div className="login-point">
+              {checkIcon} {t("login.point1")}
+            </div>
+            <div className="login-point">
+              {checkIcon} {t("login.point2")}
+            </div>
+            <div className="login-point">
+              {checkIcon} {t("login.point3")}
+            </div>
           </div>
         </div>
         <div className="login-foot">
-          Ferramenta interna de gestão. Não afiliada à Wemade / MIR4.
+          {t("login.foot")}
           <br />
-          Dados públicos do ranking em forum.mir4global.com.
+          {t("login.footData")}
         </div>
       </aside>
 
       <section className="login-form-wrap">
         <div>
-          <h2>Acessar painel</h2>
-          <p className="sub">Use as credenciais criadas pelo administrador.</p>
+          <h2>{t("login.title")}</h2>
+          <p className="sub">{t("login.sub")}</p>
         </div>
+
+        <LanguageSwitcher className="inline" />
 
         {error ? <div className="alert error">{error}</div> : null}
 
         <form className="login-form" action={loginAction}>
           <div className="field">
-            <label htmlFor="username">Usuário</label>
+            <label htmlFor="username">{t("login.username")}</label>
             <input id="username" name="username" type="text" autoComplete="username" autoFocus required />
           </div>
           <div className="field">
-            <label htmlFor="password">Senha</label>
+            <label htmlFor="password">{t("login.password")}</label>
             <input id="password" name="password" type="password" autoComplete="current-password" required />
           </div>
           <button className="btn primary" type="submit">
-            Entrar
+            {t("login.submit")}
           </button>
         </form>
 
-        <p className="login-hint">
-          Sem acesso? Peça ao administrador para criar seu usuário e liberar os servidores que você acompanha.
-        </p>
+        <p className="login-hint">{t("login.hint")}</p>
       </section>
     </div>
   );

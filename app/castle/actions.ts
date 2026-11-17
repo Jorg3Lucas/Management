@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { saveCastlePrizeDistribution } from "@/lib/castle";
+import { getT } from "@/lib/i18n";
 import {
   CASTLE_PRIZES,
   castleMonthStart,
@@ -85,11 +86,16 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
   });
 
   revalidatePath("/castle");
+  const { m } = await getT();
   redirect(
     back(
       redirectTo,
       "ok",
-      `Baú de ${castleMonthTitle(monthStart)} salvo: ${result.assigned} baú(s) para ${result.members} membro(s).`,
+      m("Baú de {month} salvo: {chests} baú(s) para {members} membro(s).", {
+        month: castleMonthTitle(monthStart),
+        chests: result.assigned,
+        members: result.members,
+      }),
     ),
   );
 }

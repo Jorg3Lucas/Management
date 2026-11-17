@@ -4,6 +4,7 @@ import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { AutoSave } from "@/components/AutoSave";
 import { Flash, StatCard } from "@/components/ui";
 import { formatNumber } from "@/lib/format";
+import { getT } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import {
   CE_EXPEDITIONS,
@@ -22,7 +23,11 @@ import {
 } from "@/lib/ce";
 import { saveCeDonationAction, saveCePlanAction } from "./actions";
 
-export const metadata: Metadata = { title: "CE" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("ce.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
@@ -35,6 +40,7 @@ type SearchParams = {
 
 export default async function CePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const params = await searchParams;
 
   const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
@@ -75,11 +81,9 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Operação</p>
-          <h1 className="page-title">Calculadora de CE</h1>
-          <p className="page-sub">
-            Cada clã aliado tem seu próprio plano, recursos e doações. Escolha um clã para trabalhar.
-          </p>
+          <p className="eyebrow">{t("nav.operation")}</p>
+          <h1 className="page-title">{t("ce.title")}</h1>
+          <p className="page-sub">{t("ce.sub")}</p>
         </div>
         <div className="head-actions">
           {managed.slice(0, 6).map((server) => (
@@ -96,11 +100,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
 
       <Flash ok={params.ok} error={params.error} />
 
-      {managed.length === 0 ? (
-        <div className="alert warn">
-          Você não edita nenhum servidor. Peça ao administrador para liberar acesso em Usuários.
-        </div>
-      ) : null}
+      {managed.length === 0 ? <div className="alert warn">{t("gest.noEditServers")}</div> : null}
 
       {selected ? (
         <>
@@ -108,61 +108,63 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
             <Link
               className="btn sm ghost"
               href={activeClan ? clanHref(activeClan.clan.id, shiftWeek(weekStart, -1)) : weekHref(shiftWeek(weekStart, -1))}
-              aria-label="Semana anterior"
+              aria-label={t("week.prev")}
             >
               ←
             </Link>
-            <span className="badge gold">{ceWeekTitle(weekStart)}</span>
-            {weekStart === currentWeek ? <span className="badge">semana atual</span> : null}
+            <span className="badge gold">{ceWeekTitle(weekStart, locale)}</span>
+            {weekStart === currentWeek ? <span className="badge">{t("week.current")}</span> : null}
             <Link
               className="btn sm ghost"
               href={activeClan ? clanHref(activeClan.clan.id, shiftWeek(weekStart, 1)) : weekHref(shiftWeek(weekStart, 1))}
-              aria-label="Próxima semana"
+              aria-label={t("week.next")}
             >
               →
             </Link>
             {weekStart !== currentWeek ? (
               <Link className="btn sm" href={activeClan ? clanHref(activeClan.clan.id, currentWeek) : weekHref(currentWeek)}>
-                Ir para a semana atual
+                {t("week.goCurrent")}
               </Link>
             ) : null}
             <form className="filters" action="/ce" method="get" style={{ margin: 0 }}>
               <input type="hidden" name="server" value={selected.code} />
               {activeClan ? <input type="hidden" name="clan" value={activeClan.clan.id} /> : null}
-              <input type="date" name="week" defaultValue={weekStart} aria-label="Abrir semana" />
+              <input type="date" name="week" defaultValue={weekStart} aria-label={t("week.openAria")} />
               <button className="btn sm" type="submit">
-                Abrir semana
+                {t("week.open")}
               </button>
             </form>
           </div>
 
           {clanPlans.length === 0 ? (
             <div className="alert warn">
-              Nenhum clã aliado em {selected.label}. Marque os clãs aliados em <Link href="/clans">Clãs</Link> para
-              criar um plano por clã.
+              <div className="spread" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>{t("ce.noAllied", { server: selected.label })}</span>
+                <Link className="btn sm" href="/clans">
+                  {t("castle.openClans")}
+                </Link>
+              </div>
             </div>
           ) : (
             <>
               <section className="card" style={{ marginBottom: 16 }}>
                 <div className="card-head">
                   <div>
-                    <div className="card-title">Clãs aliados na semana</div>
-                    <div className="card-sub">
-                      Valores de cada clã, sem soma entre eles. Abra um clã para editar o plano e as doações.
-                    </div>
+                    <div className="card-title">{t("ce.clanPlans")}</div>
+                    <div className="card-sub">{t("ce.clanPlansSub")}</div>
                   </div>
-                  <span className="badge">{clanPlans.length} clã(s)</span>
+                  <span className="badge">{t("ce.clanCount", { count: clanPlans.length })}</span>
                 </div>
                 <div className="table-wrap">
                   <table className="data">
                     <thead>
                       <tr>
-                        <th>Clã</th>
-                        <th className="num">Membros</th>
-                        <th className="num">Estátuas</th>
-                        <th className="num">DS / energia</th>
-                        <th className="num">Ouro c/ GT</th>
-                        <th className="num">Doações</th>
+                        <th>{t("common.clan")}</th>
+                        <th className="num">{t("clans.colMembers")}</th>
+                        <th className="num">{t("ce.colStatues")}</th>
+                        <th className="num">{t("ce.colDsEnergy")}</th>
+                        <th className="num">{t("ce.colGoldGt")}</th>
+                        <th className="num">{t("ce.colDonations")}</th>
                         <th />
                       </tr>
                     </thead>
@@ -174,30 +176,31 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                             key={entry.clan.id}
                             style={active ? { background: "rgba(124, 108, 245, 0.07)" } : undefined}
                           >
-                            <td className="cell-title" data-label="Clã">
+                            <td className="cell-title" data-label={t("common.clan")}>
                               <Link className="player-name" href={clanHref(entry.clan.id)}>
                                 {entry.clan.name}
                               </Link>{" "}
-                              {active ? <span className="badge gold">aberto</span> : null}
+                              {active ? <span className="badge gold">{t("ce.open")}</span> : null}
                             </td>
-                            <td className="num mono" data-label="Membros">
-                              {formatNumber(entry.clan.members)}
+                            <td className="num mono" data-label={t("clans.colMembers")}>
+                              {formatNumber(entry.clan.members, locale)}
                             </td>
-                            <td className="num mono" data-label="Estátuas">
-                              {formatNumber(entry.summary.statues)}
+                            <td className="num mono" data-label={t("ce.colStatues")}>
+                              {formatNumber(entry.summary.statues, locale)}
                             </td>
-                            <td className="num mono" data-label="DS / energia">
-                              {formatNumber(entry.summary.darksteel)} / {formatNumber(entry.summary.energy)}
+                            <td className="num mono" data-label={t("ce.colDsEnergy")}>
+                              {formatNumber(entry.summary.darksteel, locale)} /{" "}
+                              {formatNumber(entry.summary.energy, locale)}
                             </td>
-                            <td className="num mono" data-label="Ouro c/ GT">
-                              {formatNumber(Math.round(entry.summary.requiredGold))}
+                            <td className="num mono" data-label={t("ce.colGoldGt")}>
+                              {formatNumber(Math.round(entry.summary.requiredGold), locale)}
                             </td>
-                            <td className="num mono" data-label="Doações">
-                              {formatNumber(entry.donated)}/{formatNumber(entry.donors.length)}
+                            <td className="num mono" data-label={t("ce.colDonations")}>
+                              {formatNumber(entry.donated, locale)}/{formatNumber(entry.donors.length, locale)}
                             </td>
                             <td className="num">
                               <Link className={`btn sm ${active ? "primary" : "ghost"}`} href={clanHref(entry.clan.id)}>
-                                Abrir
+                                {t("ce.openAction")}
                               </Link>
                             </td>
                           </tr>
@@ -213,35 +216,40 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                   <div className="row" style={{ marginBottom: 12 }}>
                     <span className="badge gold">{activeClan.clan.name}</span>
                     <span className="small muted">
-                      {formatNumber(activeClan.clan.members)} membro(s) · {ceWeekTitle(weekStart)}
+                      {t("ce.clanLine", {
+                        members: formatNumber(activeClan.clan.members, locale),
+                        week: ceWeekTitle(weekStart, locale),
+                      })}
                     </span>
                     {activeClan.plan.updatedAt ? (
-                      <span className="small muted">salvo em {formatDateTime(activeClan.plan.updatedAt)}</span>
+                      <span className="small muted">
+                        {t("castle.savedAt", { date: formatDateTime(activeClan.plan.updatedAt, locale) })}
+                      </span>
                     ) : (
-                      <span className="small muted">ainda não salvo</span>
+                      <span className="small muted">{t("ce.notSaved")}</span>
                     )}
                   </div>
 
                   <div className="grid cols-4" style={{ marginBottom: 16 }}>
                     <StatCard
-                      label="Estátuas épicas"
-                      value={formatNumber(activeClan.summary.statues)}
-                      foot={`planejadas por ${activeClan.clan.name}`}
+                      label={t("ce.statStatues")}
+                      value={formatNumber(activeClan.summary.statues, locale)}
+                      foot={t("ce.statStatuesFoot", { clan: activeClan.clan.name })}
                     />
                     <StatCard
-                      label="Darksteel"
-                      value={formatNumber(activeClan.summary.darksteel)}
-                      foot="deste clã"
+                      label={t("ce.statDarksteel")}
+                      value={formatNumber(activeClan.summary.darksteel, locale)}
+                      foot={t("ce.fromClan")}
                     />
                     <StatCard
-                      label="Energia"
-                      value={formatNumber(activeClan.summary.energy)}
-                      foot="deste clã"
+                      label={t("ce.statEnergy")}
+                      value={formatNumber(activeClan.summary.energy, locale)}
+                      foot={t("ce.fromClan")}
                     />
                     <StatCard
-                      label="Ouro c/ ghost trade"
-                      value={formatNumber(Math.round(activeClan.summary.requiredGold))}
-                      foot={`ouro das CEs x2: ${formatNumber(activeClan.summary.gold)}`}
+                      label={t("ce.statGold")}
+                      value={formatNumber(Math.round(activeClan.summary.requiredGold), locale)}
+                      foot={t("ce.statGoldFoot", { gold: formatNumber(activeClan.summary.gold, locale) })}
                     />
                   </div>
 
@@ -249,11 +257,11 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                     <section className="card">
                       <div className="card-head">
                         <div>
-                          <div className="card-title">Plano de runs</div>
-                          <div className="card-sub">Somente {activeClan.clan.name}</div>
+                          <div className="card-title">{t("ce.planTitle")}</div>
+                          <div className="card-sub">{t("ce.onlyClan", { clan: activeClan.clan.name })}</div>
                         </div>
                         <span className="badge">
-                          {formatNumber(activeClan.plan.participants)} participante(s)
+                          {t("ce.participantCount", { count: formatNumber(activeClan.plan.participants, locale) })}
                         </span>
                       </div>
 
@@ -266,7 +274,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
 
                         <div className="card-body row" style={{ gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
                           <label className="mini-field narrow">
-                            <span>Participantes</span>
+                            <span>{t("ce.participantsLabel")}</span>
                             <input
                               name="participants"
                               type="number"
@@ -278,12 +286,13 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                             />
                           </label>
                           <span className="small muted" style={{ flex: "1 1 240px" }}>
-                            Padrão: {formatNumber(activeClan.clan.members)} jogador(es) do clã. Doação esperada de
-                            ouro:{" "}
-                            {activeClan.plan.participants > 0
-                              ? formatNumber(Math.round(activeClan.expected))
-                              : "—"}{" "}
-                            por membro.
+                            {t("ce.participantsHint", {
+                              members: formatNumber(activeClan.clan.members, locale),
+                              amount:
+                                activeClan.plan.participants > 0
+                                  ? formatNumber(Math.round(activeClan.expected), locale)
+                                  : "—",
+                            })}
                           </span>
                         </div>
 
@@ -292,9 +301,9 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                             <thead>
                               <tr>
                                 <th>CE</th>
-                                <th>Expedição</th>
-                                <th>Plano do clã</th>
-                                <th className="num">Estátuas</th>
+                                <th>{t("ce.colExpedition")}</th>
+                                <th>{t("ce.colClanPlan")}</th>
+                                <th className="num">{t("ce.colStatues")}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -308,16 +317,16 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                       <select
                                         name={`run_${ce.no}`}
                                         defaultValue={run}
-                                        aria-label={`Runs de ${activeClan.clan.name} na CE${ce.no}`}
+                                        aria-label={t("ce.runsAria", { clan: activeClan.clan.name, no: ce.no })}
                                       >
                                         {CE_RUNS.map((option) => (
                                           <option key={option.value} value={option.value}>
-                                            {option.label}
+                                            {option.value} · {t(`ce.run.${option.value === "x0" ? "none" : option.value === "x1" ? "one" : "two"}`)}
                                           </option>
                                         ))}
                                       </select>
                                     </td>
-                                    <td className="num mono">{formatNumber(epicStatues(ce.no, run))}</td>
+                                    <td className="num mono">{formatNumber(epicStatues(ce.no, run), locale)}</td>
                                   </tr>
                                 );
                               })}
@@ -327,11 +336,13 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
 
                         <div className="panel-body spread" style={{ gap: 12 }}>
                           <span className="small muted">
-                            Estátuas {formatNumber(activeClan.summary.statues)} · DS{" "}
-                            {formatNumber(activeClan.summary.darksteel)} · energia{" "}
-                            {formatNumber(activeClan.summary.energy)} · ouro{" "}
-                            {formatNumber(activeClan.summary.gold)} · ghost trade{" "}
-                            {formatNumber(Math.round(activeClan.summary.requiredGold))}
+                            {t("ce.footer", {
+                              statues: formatNumber(activeClan.summary.statues, locale),
+                              ds: formatNumber(activeClan.summary.darksteel, locale),
+                              energy: formatNumber(activeClan.summary.energy, locale),
+                              gold: formatNumber(activeClan.summary.gold, locale),
+                              gt: formatNumber(Math.round(activeClan.summary.requiredGold), locale),
+                            })}
                           </span>
                         </div>
                       </form>
@@ -340,24 +351,26 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                     <section className="card">
                       <div className="card-head">
                         <div>
-                          <div className="card-title">Doações de ouro</div>
+                          <div className="card-title">{t("ce.donationsTitle")}</div>
                           <div className="card-sub">
-                            Membros de {activeClan.clan.name} · esperado{" "}
-                            {activeClan.plan.participants > 0
-                              ? formatNumber(Math.round(activeClan.expected))
-                              : "—"}{" "}
-                            por membro
+                            {t("ce.donationsSub", {
+                              clan: activeClan.clan.name,
+                              amount:
+                                activeClan.plan.participants > 0
+                                  ? formatNumber(Math.round(activeClan.expected), locale)
+                                  : "—",
+                            })}
                           </div>
                         </div>
                         <span className="badge gold">
-                          {formatNumber(activeClan.donated)}/{formatNumber(activeClan.donors.length)}
+                          {formatNumber(activeClan.donated, locale)}/{formatNumber(activeClan.donors.length, locale)}
                         </span>
                       </div>
 
                       {activeClan.donors.length === 0 ? (
                         <div className="card-body">
                           <p className="small muted" style={{ margin: 0 }}>
-                            Nenhum membro sincronizado neste clã.
+                            {t("ce.noMembersSynced")}
                           </p>
                         </div>
                       ) : (
@@ -365,23 +378,23 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                           <table className="data">
                             <thead>
                               <tr>
-                                <th>Jogador</th>
-                                <th className="num">Poder</th>
-                                <th>Ouro</th>
+                                <th>{t("common.player")}</th>
+                                <th className="num">{t("players.colPower")}</th>
+                                <th>{t("ce.colGold")}</th>
                               </tr>
                             </thead>
                             <tbody>
                               {activeClan.donors.map((donor) => (
                                 <tr key={donor.character_id}>
-                                  <td className="cell-title" data-label="Jogador">
+                                  <td className="cell-title" data-label={t("common.player")}>
                                     <Link className="player-name" href={`/players/${donor.character_id}`}>
                                       {donor.name}
                                     </Link>
                                   </td>
-                                  <td className="num mono" data-label="Poder">
-                                    {formatNumber(donor.power_score)}
+                                  <td className="num mono" data-label={t("players.colPower")}>
+                                    {formatNumber(donor.power_score, locale)}
                                   </td>
-                                  <td data-label="Ouro">
+                                  <td data-label={t("ce.colGold")}>
                                     <form action={saveCeDonationAction} className="row" style={{ gap: 8 }}>
                                       <AutoSave delay={300} />
                                       <input type="hidden" name="serverId" value={selected.id} />
@@ -397,7 +410,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                           value="1"
                                           defaultChecked={donor.gold_done === 1}
                                         />{" "}
-                                        Já doou
+                                        {t("ce.donated")}
                                       </label>
                                     </form>
                                   </td>
@@ -410,10 +423,10 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
 
                       <div className="panel-body">
                         <p className="small muted" style={{ margin: 0 }}>
-                          Ouro só conta em CE x2; o ghost trade cobra{" "}
-                          {Math.round(CE_GHOST_TRADE_TAX * 100)}% e arredonda para{" "}
-                          {Math.round(CE_GHOST_TRADE_TAX_ROUNDED * 100)}% quando necessário para fechar em ouro
-                          inteiro.
+                          {t("ce.ghostTradeNote", {
+                            tax: Math.round(CE_GHOST_TRADE_TAX * 100),
+                            rounded: Math.round(CE_GHOST_TRADE_TAX_ROUNDED * 100),
+                          })}
                         </p>
                       </div>
                     </section>
@@ -421,7 +434,10 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
 
                   <details className="panel" style={{ marginTop: 16 }}>
                     <summary>
-                      Histórico de {activeClan.clan.name} · {activeHistory.length} semana(s)
+                      {t("ce.historyTitle", {
+                        clan: activeClan.clan.name,
+                        count: formatNumber(activeHistory.length, locale),
+                      })}
                     </summary>
                     {activeHistory.length > 0 ? (
                       <div className="list">
@@ -429,16 +445,19 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                           <div key={entry.id} className="list-row">
                             <div>
                               <Link className="player-name" href={clanHref(activeClan.clan.id, entry.week_start)}>
-                                {ceWeekTitle(entry.week_start)}
+                                {ceWeekTitle(entry.week_start, locale)}
                               </Link>
                               <div className="small muted">
-                                {formatNumber(entry.statues)} estátua(s) · ouro{" "}
-                                {entry.donors_gold}/{entry.participants} ·{" "}
-                                {formatNumber(entry.participants)} participante(s)
+                                {t("ce.historyLine", {
+                                  statues: formatNumber(entry.statues, locale),
+                                  gold: entry.donors_gold,
+                                  participants: entry.participants,
+                                  count: formatNumber(entry.participants, locale),
+                                })}
                               </div>
                             </div>
                             <Link className="btn sm ghost" href={clanHref(activeClan.clan.id, entry.week_start)}>
-                              Abrir
+                              {t("ce.openAction")}
                             </Link>
                           </div>
                         ))}
@@ -446,7 +465,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                     ) : (
                       <div className="panel-body">
                         <p className="small muted" style={{ margin: 0 }}>
-                          Nenhum plano salvo para este clã ainda. Preencha as runs acima para começar o histórico.
+                          {t("ce.historyEmpty")}
                         </p>
                       </div>
                     )}

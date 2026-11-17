@@ -1,13 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
+import { getT } from "@/lib/i18n";
 import { listServers, serverPlayerCounts } from "@/lib/queries";
 import { groupServers } from "@/lib/server-groups";
 import { formatDateTime } from "@/lib/time";
-import { Flash, SyncBadge } from "@/components/ui";
+import { Flash, RichText, SyncBadge } from "@/components/ui";
 import { syncServerAction, toggleServerFlagAction } from "./actions";
 
-export const metadata: Metadata = { title: "Servidores" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("servers.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ServersPage({
@@ -16,6 +21,7 @@ export default async function ServersPage({
   searchParams: Promise<{ ok?: string; error?: string }>;
 }) {
   await requireAdmin();
+  const { locale, t } = await getT();
   const flash = await searchParams;
   const servers = listServers();
   const counts = serverPlayerCounts();
@@ -26,43 +32,38 @@ export default async function ServersPage({
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Administração</p>
-          <h1 className="page-title">Servidores</h1>
-          <p className="page-sub">
-            Todos os servidores publicados no fórum do MIR4, com a coleta ativa por padrão. Desative os que não
-            acompanha.
-          </p>
+          <p className="eyebrow">{t("nav.admin")}</p>
+          <h1 className="page-title">{t("servers.title")}</h1>
+          <p className="page-sub">{t("servers.sub")}</p>
         </div>
         <div className="head-actions">
-          <span className="badge ok">{enabledCount} sincronizando</span>
+          <span className="badge ok">{t("servers.syncing", { count: enabledCount })}</span>
         </div>
       </div>
 
       <Flash ok={flash.ok} error={flash.error} />
 
       <div className="alert">
-        A coleta lê o ranking público de poder do fórum (100 jogadores por página, até 1.000 por servidor — o limite de
-        páginas fica em <code>SYNC_MAX_PAGES</code>). Ativar a sincronização não apaga jogadores que saíram do topo — o
-        histórico é preservado.
+        <RichText text={t("servers.alert")} />
       </div>
 
       {groups.map(([group, list]) => (
         <section key={group} className="server-list-group">
           <div className="group-title">
-            {group} <span className="muted">· {list.length} servidor(es)</span>
+            {group} <span className="muted">· {t("servers.groupCount", { count: list.length })}</span>
           </div>
           <div className="card">
             <div className="table-wrap">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>Servidor</th>
-                    <th>IDs do fórum</th>
-                    <th className="num">Jogadores</th>
-                    <th>Sync</th>
-                    <th>Último resultado</th>
+                    <th>{t("common.server")}</th>
+                    <th>{t("servers.colForumIds")}</th>
+                    <th className="num">{t("common.players")}</th>
+                    <th>{t("nav.sync")}</th>
+                    <th>{t("servers.colLastResult")}</th>
                     <th className="num" style={{ textAlign: "right" }}>
-                      Ações
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -81,24 +82,24 @@ export default async function ServersPage({
                         ) : null}
                       </td>
                       <td className="small muted mono nowrap">
-                        group {server.worldgroup_id} · world {server.world_id}
+                        {t("servers.forumIds", { group: server.worldgroup_id, world: server.world_id })}
                       </td>
-                      <td className="num mono">{(counts.get(server.id) ?? 0).toLocaleString("pt-BR")}</td>
+                      <td className="num mono">{counts.get(server.id) ?? 0}</td>
                       <td>
                         <form action={toggleServerFlagAction} className="inline-form">
                           <input type="hidden" name="serverId" value={server.id} />
                           <input type="hidden" name="field" value="sync_enabled" />
                           <input type="hidden" name="redirectTo" value="/servers" />
                           <button className={`btn sm${server.sync_enabled ? "" : " ghost"}`} type="submit">
-                            {server.sync_enabled ? "Ativa" : "Desativada"}
+                            {server.sync_enabled ? t("servers.enabled") : t("servers.disabled")}
                           </button>
                         </form>
                       </td>
                       <td>
                         <div className="stack" style={{ gap: 5 }}>
-                          <SyncBadge status={server.last_sync_status} />
+                          <SyncBadge status={server.last_sync_status} locale={locale} />
                           <span className="small muted">
-                            {server.last_sync_at ? formatDateTime(server.last_sync_at) : "nunca"}
+                            {server.last_sync_at ? formatDateTime(server.last_sync_at, locale) : t("servers.never")}
                           </span>
                         </div>
                       </td>
@@ -108,11 +109,11 @@ export default async function ServersPage({
                             <input type="hidden" name="serverId" value={server.id} />
                             <input type="hidden" name="redirectTo" value="/servers" />
                             <button className="btn sm" type="submit">
-                              Sincronizar
+                              {t("servers.syncNow")}
                             </button>
                           </form>
                           <Link className="btn sm ghost" href={`/players?server=${server.code}`}>
-                            Ver
+                            {t("servers.view")}
                           </Link>
                         </div>
                       </td>

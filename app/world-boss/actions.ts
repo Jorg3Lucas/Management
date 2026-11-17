@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ceWeekStart, shortDay } from "@/lib/ce";
+import { getT } from "@/lib/i18n";
 import { getServerById } from "@/lib/queries";
 import {
   createWorldBossFight,
@@ -56,11 +57,15 @@ export async function addWorldBossFightAction(formData: FormData): Promise<void>
   });
 
   revalidatePath("/world-boss");
+  const { m } = await getT();
   redirect(
     back(
       `/world-boss?server=${server.code}&week=${ceWeekStart(foughtOn)}`,
       "ok",
-      `Encontro de ${shortDay(foughtOn)} às ${foughtAt} registrado.`,
+      m("Encontro de {date} às {time} registrado.", {
+        date: shortDay(foughtOn),
+        time: foughtAt,
+      }),
     ),
   );
 }

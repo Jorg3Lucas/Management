@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { canEditServer, requireAdmin, requireUser } from "@/lib/auth";
 import { getClan, isClanStance, logClanChange, mergeClans, STANCE_LABELS } from "@/lib/clans";
 import { execute, queryOne } from "@/lib/db";
+import { getT } from "@/lib/i18n";
 import { getServerById } from "@/lib/queries";
 
 function back(path: string, kind: "ok" | "error", message: string): string {
@@ -43,7 +44,8 @@ export async function setClanStanceAction(formData: FormData): Promise<void> {
     });
     revalidatePath("/clans");
     revalidatePath("/players");
-    redirect(back(returnTo, "ok", `${clan.name}: postura removida.`));
+    const { m } = await getT();
+    redirect(back(returnTo, "ok", m("{clan}: postura removida.", { clan: clan.name })));
   }
 
   if (!isClanStance(stanceRaw)) redirect(back(returnTo, "error", "Postura inválida."));
@@ -74,7 +76,8 @@ export async function setClanStanceAction(formData: FormData): Promise<void> {
   revalidatePath("/clans");
   revalidatePath("/players");
   revalidatePath("/");
-  redirect(back(returnTo, "ok", `${clan.name}: ${STANCE_LABELS[stanceRaw]}.`));
+  const { t, m } = await getT();
+  redirect(back(returnTo, "ok", m("{clan}: {stance}.", { clan: clan.name, stance: t(`stance.${stanceRaw}`) })));
 }
 
 export async function mergeClansAction(formData: FormData): Promise<void> {
@@ -102,11 +105,16 @@ export async function mergeClansAction(formData: FormData): Promise<void> {
 
   revalidatePath("/clans");
   revalidatePath("/players");
+  const { m } = await getT();
   redirect(
     back(
       returnTo,
       "ok",
-      `${source.name} agora é tratado como ${target.name}: ${result.characters} personagem(ns) reapontado(s).`,
+      m("{source} agora é tratado como {target}: {count} personagem(ns) reapontado(s).", {
+        source: source.name,
+        target: target.name,
+        count: result.characters,
+      }),
     ),
   );
 }
@@ -146,7 +154,8 @@ export async function assignClanPlayerAction(formData: FormData): Promise<void> 
 
   if (mode === "remove") {
     if (character.clan_id !== clanId) {
-      redirect(back(returnTo, "error", `${character.name} não está em ${clan.name}.`));
+      const { m } = await getT();
+      redirect(back(returnTo, "error", m("{player} não está em {clan}.", { player: character.name, clan: clan.name })));
     }
 
     execute("UPDATE characters SET clan = NULL, clan_id = NULL, updated_at = ? WHERE id = ?", now, character.id);
@@ -164,11 +173,13 @@ export async function assignClanPlayerAction(formData: FormData): Promise<void> 
     revalidatePath("/clans");
     revalidatePath("/players");
     revalidatePath("/teams");
-    redirect(back(returnTo, "ok", `${character.name} saiu de ${clan.name}.`));
+    const { m } = await getT();
+    redirect(back(returnTo, "ok", m("{player} saiu de {clan}.", { player: character.name, clan: clan.name })));
   }
 
   if (character.clan_id === clanId) {
-    redirect(back(returnTo, "error", `${character.name} já está em ${clan.name}.`));
+    const { m } = await getT();
+    redirect(back(returnTo, "error", m("{player} já está em {clan}.", { player: character.name, clan: clan.name })));
   }
 
   execute(
@@ -202,5 +213,6 @@ export async function assignClanPlayerAction(formData: FormData): Promise<void> 
   revalidatePath("/clans");
   revalidatePath("/players");
   revalidatePath("/teams");
-  redirect(back(returnTo, "ok", `${character.name} vinculado a ${clan.name}.`));
+  const { m } = await getT();
+  redirect(back(returnTo, "ok", m("{player} vinculado a {clan}.", { player: character.name, clan: clan.name })));
 }

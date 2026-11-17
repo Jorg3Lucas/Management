@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { getT } from "@/lib/i18n";
 import { syncEnabledServers } from "@/lib/sync";
 
 function back(path: string, kind: "ok" | "error", message: string): string {
@@ -27,16 +28,27 @@ export async function syncAllAction(): Promise<void> {
     redirect(back("/sync", "error", "Nenhum servidor está com a sincronização ativada."));
   }
 
+  const { m } = await getT();
   if (failed.length > 0) {
     const detail = failed.map((result) => `${result.serverLabel}: ${result.message ?? result.status}`).join(" | ");
-    redirect(back("/sync", "error", `${successful.length} servidor(es) ok, ${failed.length} com falha. ${detail}`));
+    redirect(
+      back(
+        "/sync",
+        "error",
+        m("Servidores com falha: {failed}. {detail}", { failed: failed.length, detail }),
+      ),
+    );
   }
 
   redirect(
     back(
       "/sync",
       "ok",
-      `${successful.length} servidor(es) sincronizado(s): ${created} novo(s), ${updated} atualizado(s).`,
+      m("Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.", {
+        count: successful.length,
+        created,
+        updated,
+      }),
     ),
   );
 }

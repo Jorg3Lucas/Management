@@ -6,6 +6,7 @@ import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ensureClan, logClanChange } from "@/lib/clans";
 import { execute, queryOne } from "@/lib/db";
+import { getT } from "@/lib/i18n";
 import { playerForCharacter, setHomeServer } from "@/lib/players";
 import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import { zonedInputToUtc } from "@/lib/time";
@@ -357,6 +358,7 @@ export async function setHomeServerAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath(detail);
-  redirect(back(detail, "ok", `Servidor casa definido: ${server.label}.`));
+  const { m } = await getT();
+  redirect(back(detail, "ok", m("Servidor casa definido: {server}.", { server: server.label })));
 }
 

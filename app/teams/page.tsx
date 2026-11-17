@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
-import { formatPower } from "@/lib/format";
+import { formatNumber, formatPower } from "@/lib/format";
+import { getT } from "@/lib/i18n";
 import {
   TEAM_COLORS,
   listTeams,
@@ -21,7 +22,11 @@ import {
   updateTeamAction,
 } from "./actions";
 
-export const metadata: Metadata = { title: "Times" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("teams.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function TeamsPage({
@@ -30,6 +35,7 @@ export default async function TeamsPage({
   searchParams: Promise<{ server?: string; ok?: string; error?: string }>;
 }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const params = await searchParams;
 
   const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
@@ -56,12 +62,9 @@ export default async function TeamsPage({
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Diplomacia</p>
-          <h1 className="page-title">Times</h1>
-          <p className="page-sub">
-            Times agrupam clãs do servidor. O jogador entra no time do clã em que está, então o painel se atualiza
-            sozinho a cada sincronização.
-          </p>
+          <p className="eyebrow">{t("teams.eyebrow")}</p>
+          <h1 className="page-title">{t("teams.title")}</h1>
+          <p className="page-sub">{t("teams.sub")}</p>
         </div>
         <div className="head-actions">
           {managed.slice(0, 6).map((server) => (
@@ -78,27 +81,34 @@ export default async function TeamsPage({
 
       <Flash ok={params.ok} error={params.error} />
 
-      {managed.length === 0 ? (
-        <div className="alert warn">
-          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um servidor em
-          Usuários.
-        </div>
-      ) : null}
+      {managed.length === 0 ? <div className="alert warn">{t("gest.noServers")}</div> : null}
 
       {selected ? (
         <>
           <div className="grid cols-4" style={{ marginBottom: 16 }}>
-            <StatCard label="Times" value={teams.length} foot={`em ${selected.label}`} />
-            <StatCard label="Jogadores em times" value={membersInTeams.toLocaleString("pt-BR")} foot="herdados do clã" />
-            <StatCard label="Poder em times" value={formatPower(powerInTeams)} foot="soma do ranking sincronizado" />
-            <StatCard label="Clãs sem time" value={free.length} foot="ainda não vinculados" />
+            <StatCard
+              label={t("teams.statTeams")}
+              value={teams.length}
+              foot={t("teams.statTeamsFoot", { server: selected.label })}
+            />
+            <StatCard
+              label={t("teams.statPlayers")}
+              value={formatNumber(membersInTeams, locale)}
+              foot={t("teams.statPlayersFoot")}
+            />
+            <StatCard
+              label={t("teams.statPower")}
+              value={formatPower(powerInTeams, locale)}
+              foot={t("teams.statPowerFoot")}
+            />
+            <StatCard label={t("teams.statFree")} value={free.length} foot={t("teams.statFreeFoot")} />
           </div>
 
           <section className="card" style={{ marginBottom: 16 }}>
             <div className="card-head">
               <div>
-                <div className="card-title">Novo time</div>
-                <div className="card-sub">Nome e cor aparecem nos cards de força</div>
+                <div className="card-title">{t("teams.newTeam")}</div>
+                <div className="card-sub">{t("teams.newTeamSub")}</div>
               </div>
             </div>
             <div className="card-body">
@@ -106,11 +116,18 @@ export default async function TeamsPage({
                 <input type="hidden" name="serverId" value={selected.id} />
                 <input type="hidden" name="redirectTo" value={returnTo} />
                 <div className="field">
-                  <label htmlFor="teamName">Nome do time</label>
-                  <input id="teamName" name="name" type="text" maxLength={40} required placeholder="Ex.: Bloco A" />
+                  <label htmlFor="teamName">{t("teams.name")}</label>
+                  <input
+                    id="teamName"
+                    name="name"
+                    type="text"
+                    maxLength={40}
+                    required
+                    placeholder={t("teams.namePlaceholder")}
+                  />
                 </div>
                 <div className="field">
-                  <label htmlFor="teamColor">Cor</label>
+                  <label htmlFor="teamColor">{t("teams.color")}</label>
                   <select id="teamColor" name="color" defaultValue={TEAM_COLORS[0].value}>
                     {TEAM_COLORS.map((color) => (
                       <option key={color.value} value={color.value}>
@@ -121,18 +138,14 @@ export default async function TeamsPage({
                 </div>
                 <div className="full row">
                   <button className="btn primary" type="submit">
-                    Criar time
+                    {t("teams.create")}
                   </button>
                 </div>
               </form>
             </div>
           </section>
 
-          {force.length === 0 ? (
-            <div className="alert">
-              Nenhum time criado em {selected.label}. Crie o primeiro acima e vincule os clãs que jogam com ele.
-            </div>
-          ) : null}
+          {force.length === 0 ? <div className="alert">{t("teams.none", { server: selected.label })}</div> : null}
 
           {force.map((team) => {
             const clans = clanLists.get(team.team_id) ?? [];
@@ -153,28 +166,38 @@ export default async function TeamsPage({
                     <div>
                       <div className="card-title">{team.team_name}</div>
                       <div className="card-sub">
-                        {team.clans} clã(s) · {team.members} jogador(es) · maior poder {formatPower(team.top_power)}
-                        {individuals.length > 0 ? ` · ${individuals.length} vínculo(s) individual(is)` : ""}
+                        {individuals.length > 0
+                          ? t("teams.summaryIndividuals", {
+                              clans: team.clans,
+                              members: formatNumber(team.members, locale),
+                              power: formatPower(team.top_power, locale),
+                              individuals: individuals.length,
+                            })
+                          : t("teams.summary", {
+                              clans: team.clans,
+                              members: formatNumber(team.members, locale),
+                              power: formatPower(team.top_power, locale),
+                            })}
                       </div>
                     </div>
                   </div>
                   <div className="row">
-                    <span className="badge">{formatPower(team.total_power)} de poder</span>
+                    <span className="badge">
+                      {t("teams.powerBadge", { power: formatPower(team.total_power, locale) })}
+                    </span>
                     <form action={deleteTeamAction} className="inline-form">
                       <input type="hidden" name="teamId" value={team.team_id} />
                       <input type="hidden" name="serverId" value={selected.id} />
                       <input type="hidden" name="redirectTo" value={returnTo} />
-                      <ConfirmButton
-                        message={`Remover o time ${team.team_name}? Os clãs voltam para "sem time" e os vínculos individuais são removidos.`}
-                      >
-                        Remover
+                      <ConfirmButton message={t("teams.deleteConfirm", { team: team.team_name })}>
+                        {t("common.remove")}
                       </ConfirmButton>
                     </form>
                   </div>
                 </div>
                 <div className="card-body tight">
                   {clans.length === 0 && individuals.length === 0 ? (
-                    <div className="empty">Nenhum clã ou jogador vinculado a este time.</div>
+                    <div className="empty">{t("teams.emptyTeam")}</div>
                   ) : null}
 
                   {clans.length > 0 ? (
@@ -188,12 +211,12 @@ export default async function TeamsPage({
                                 <span
                                   className={`badge ${clan.stance === "ally" ? "ok" : clan.stance === "enemy" ? "err" : ""}`}
                                 >
-                                  {clan.stance === "ally" ? "aliado" : clan.stance === "neutral" ? "neutro" : "inimigo"}
+                                  {t(`stance.${clan.stance}`)}
                                 </span>
                               ) : null}
                             </div>
                             <div className="small muted">
-                              {clan.members} jogador(es) · {formatPower(clan.total_power)} de poder
+                              {formatNumber(clan.members, locale)} · {formatPower(clan.total_power, locale)}
                             </div>
                           </div>
                           <form action={assignTeamClanAction} className="inline-form">
@@ -202,7 +225,7 @@ export default async function TeamsPage({
                             <input type="hidden" name="teamId" value="" />
                             <input type="hidden" name="redirectTo" value={returnTo} />
                             <button className="btn sm ghost" type="submit">
-                              Desvincular
+                              {t("teams.unlink")}
                             </button>
                           </form>
                         </div>
@@ -213,7 +236,7 @@ export default async function TeamsPage({
                   {individuals.length > 0 ? (
                     <>
                       <div className="roster-toolbar">
-                        <span className="small muted">Vínculos individuais</span>
+                        <span className="small muted">{t("teams.individuals")}</span>
                         <span className="badge">{individuals.length}</span>
                       </div>
                       <div className="list">
@@ -224,7 +247,7 @@ export default async function TeamsPage({
                                 {member.character_name}
                               </Link>
                               <div className="small muted">
-                                {member.clan_name ?? "sem clã"} · {formatPower(member.power_score)}
+                                {member.clan_name ?? t("common.noClan")} · {formatPower(member.power_score, locale)}
                               </div>
                             </div>
                             <form action={assignCharacterTeamAction} className="inline-form">
@@ -232,7 +255,7 @@ export default async function TeamsPage({
                               <input type="hidden" name="teamId" value="" />
                               <input type="hidden" name="redirectTo" value={returnTo} />
                               <button className="btn sm ghost" type="submit">
-                                Voltar ao clã
+                                {t("teams.backToClan")}
                               </button>
                             </form>
                           </div>
@@ -243,21 +266,21 @@ export default async function TeamsPage({
 
                   <div className="list-row" style={{ borderTop: "1px solid var(--border-soft)", flexWrap: "wrap" }}>
                     {free.length === 0 ? (
-                      <span className="small muted">Todos os clãs do servidor já estão em um time.</span>
+                      <span className="small muted">{t("teams.allClansAssigned")}</span>
                     ) : (
                       <form action={assignTeamClanAction} className="inline-form" style={{ flexWrap: "wrap" }}>
                         <input type="hidden" name="serverId" value={selected.id} />
                         <input type="hidden" name="teamId" value={team.team_id} />
                         <input type="hidden" name="redirectTo" value={returnTo} />
-                        <select name="clanId" required aria-label={`Clã para vincular a ${team.team_name}`}>
+                        <select name="clanId" required aria-label={t("teams.clanAria", { team: team.team_name })}>
                           {free.map((clan) => (
                             <option key={clan.clan_id} value={clan.clan_id}>
-                              {clan.clan_name} — {clan.members} jogador(es)
+                              {t("teams.clanOption", { name: clan.clan_name, count: clan.members })}
                             </option>
                           ))}
                         </select>
                         <button className="btn sm" type="submit">
-                          Vincular clã
+                          {t("teams.linkClan")}
                         </button>
                       </form>
                     )}
@@ -275,10 +298,14 @@ export default async function TeamsPage({
                         defaultValue={team.team_name}
                         maxLength={40}
                         required
-                        aria-label={`Nome do time ${team.team_name}`}
+                        aria-label={t("teams.nameAria", { team: team.team_name })}
                         style={{ maxWidth: 220 }}
                       />
-                      <select name="color" defaultValue={team.color ?? TEAM_COLORS[0].value} aria-label="Cor do time">
+                      <select
+                        name="color"
+                        defaultValue={team.color ?? TEAM_COLORS[0].value}
+                        aria-label={t("teams.colorAria")}
+                      >
                         {TEAM_COLORS.map((color) => (
                           <option key={color.value} value={color.value}>
                             {color.label}
@@ -296,8 +323,8 @@ export default async function TeamsPage({
             <section className="card">
               <div className="card-head">
                 <div>
-                  <div className="card-title">Clãs sem time</div>
-                  <div className="card-sub">Vincule pelo card do time; aqui ficam os que faltam</div>
+                  <div className="card-title">{t("teams.freeClans")}</div>
+                  <div className="card-sub">{t("teams.freeClansSub")}</div>
                 </div>
                 <span className="badge warn">{free.length}</span>
               </div>
@@ -308,17 +335,17 @@ export default async function TeamsPage({
                       <div>
                         <div style={{ fontWeight: 600 }}>{clan.clan_name}</div>
                         <div className="small muted">
-                          {clan.members} jogador(es) · {formatPower(clan.total_power)} de poder
+                          {formatNumber(clan.members, locale)} · {formatPower(clan.total_power, locale)}
                         </div>
                       </div>
                       {teams.length === 0 ? (
-                        <span className="small muted">Crie um time primeiro</span>
+                        <span className="small muted">{t("teams.createFirst")}</span>
                       ) : (
                         <form action={assignTeamClanAction} className="inline-form">
                           <input type="hidden" name="serverId" value={selected.id} />
                           <input type="hidden" name="clanId" value={clan.clan_id} />
                           <input type="hidden" name="redirectTo" value={returnTo} />
-                          <select name="teamId" required aria-label={`Time de ${clan.clan_name}`}>
+                          <select name="teamId" required aria-label={t("teams.teamOfAria", { clan: clan.clan_name })}>
                             {teams.map((team) => (
                               <option key={team.id} value={team.id}>
                                 {team.name}
@@ -326,7 +353,7 @@ export default async function TeamsPage({
                             ))}
                           </select>
                           <button className="btn sm" type="submit">
-                            Vincular
+                            {t("teams.link")}
                           </button>
                         </form>
                       )}

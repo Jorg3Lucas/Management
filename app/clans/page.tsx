@@ -9,12 +9,18 @@ import {
   refreshClanLinks,
 } from "@/lib/clans";
 import { formatPower } from "@/lib/format";
+import { getT } from "@/lib/i18n";
+import type { Translator } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { AutoSave } from "@/components/AutoSave";
 import { EmptyState, Flash, StatCard } from "@/components/ui";
 import { mergeClansAction, setClanStanceAction } from "./actions";
 
-export const metadata: Metadata = { title: "Clãs" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { title: t("clans.metadata") };
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ClansPage({
@@ -23,6 +29,7 @@ export default async function ClansPage({
   searchParams: Promise<{ server?: string; ok?: string; error?: string }>;
 }) {
   const user = await requireUser();
+  const { locale, t } = await getT();
   const params = await searchParams;
   refreshClanLinks();
 
@@ -40,11 +47,9 @@ export default async function ClansPage({
     <>
       <div className="page-head">
         <div>
-          <p className="eyebrow">Diplomacia</p>
-          <h1 className="page-title">Clãs</h1>
-          <p className="page-sub">
-            Postura de cada clã no servidor e quem trocou de clã. O nome vem do fórum; a classificação é sua.
-          </p>
+          <p className="eyebrow">{t("clans.eyebrow")}</p>
+          <h1 className="page-title">{t("clans.title")}</h1>
+          <p className="page-sub">{t("clans.sub")}</p>
         </div>
         <div className="head-actions">
           {managed.slice(0, 6).map((server) => (
@@ -61,47 +66,44 @@ export default async function ClansPage({
 
       <Flash ok={params.ok} error={params.error} />
 
-      {managed.length === 0 ? (
-        <div className="alert warn">
-          Você não tem servidor liberado para gestão. Peça ao administrador para dar acesso a um servidor em
-          Usuários.
-        </div>
-      ) : null}
+      {managed.length === 0 ? <div className="alert warn">{t("gest.noServers")}</div> : null}
 
       {selected ? (
         <>
           <div className="grid cols-4" style={{ marginBottom: 16 }}>
-            <StatCard label="Aliados" value={counts.ally} foot="clãs marcados como aliados" />
-            <StatCard label="Neutros" value={counts.neutral} foot="clãs marcados como neutros" />
-            <StatCard label="Inimigos" value={counts.enemy} foot="clãs marcados como inimigos" />
-            <StatCard label="Sem postura" value={counts.unset} foot={`de ${clans.length} clã(s) no ranking`} />
+            <StatCard label={t("players.stanceAlly")} value={counts.ally} foot={t("clans.allyFoot")} />
+            <StatCard label={t("players.stanceNeutral")} value={counts.neutral} foot={t("clans.neutralFoot")} />
+            <StatCard label={t("players.stanceEnemy")} value={counts.enemy} foot={t("clans.enemyFoot")} />
+            <StatCard
+              label={t("clans.unset")}
+              value={counts.unset}
+              foot={t("clans.unsetFoot", { count: clans.length })}
+            />
           </div>
 
           <section className="card" style={{ marginBottom: 16 }}>
             <div className="card-head">
               <div>
-                <div className="card-title">Clãs em {selected.label}</div>
-                <div className="card-sub">Membros e poder somam o ranking sincronizado do servidor</div>
+                <div className="card-title">{t("clans.inServer", { server: selected.label })}</div>
+                <div className="card-sub">{t("clans.inServerSub")}</div>
               </div>
               <Link className="btn sm ghost" href={`/players?server=${selected.code}`}>
-                Ver ranking
+                {t("dash.viewRanking")}
               </Link>
             </div>
             <div className="table-wrap">
               {clans.length === 0 ? (
-                <EmptyState title="Nenhum clã no ranking deste servidor">
-                  Os clãs aparecem depois da primeira sincronização com jogadores que tenham clã.
-                </EmptyState>
+                <EmptyState title={t("clans.empty")}>{t("clans.emptyBody")}</EmptyState>
               ) : (
                 <table className="data">
                   <thead>
                     <tr>
-                      <th>Clã</th>
-                      <th>Postura</th>
-                      <th className="num">Membros</th>
-                      <th className="num">Poder total</th>
-                      <th className="num">Maior poder</th>
-                      <th>Atividade</th>
+                      <th>{t("clans.colClan")}</th>
+                      <th>{t("clans.colStance")}</th>
+                      <th className="num">{t("clans.colMembers")}</th>
+                      <th className="num">{t("clans.colTotalPower")}</th>
+                      <th className="num">{t("clans.colTopPower")}</th>
+                      <th>{t("clans.colActivity")}</th>
                       <th />
                     </tr>
                   </thead>
@@ -116,7 +118,9 @@ export default async function ClansPage({
                           >
                             {clan.clan_name}
                           </Link>
-                          <div className="player-clan">{clan.stance ? stanceLabel(clan.stance) : "não classificada"}</div>
+                          <div className="player-clan">
+                            {clan.stance ? stanceLabel(clan.stance, t) : t("clans.notClassified")}
+                          </div>
                         </td>
                         <td>
                           <form action={setClanStanceAction} className="inline-form">
@@ -127,25 +131,25 @@ export default async function ClansPage({
                             <select
                               name="stance"
                               defaultValue={clan.stance ?? ""}
-                              aria-label={`Postura de ${clan.clan_name}`}
+                              aria-label={t("clans.stanceAria", { clan: clan.clan_name })}
                             >
-                              <option value="">Sem postura</option>
-                              <option value="ally">Aliado</option>
-                              <option value="neutral">Neutro</option>
-                              <option value="enemy">Inimigo</option>
+                              <option value="">{t("clans.stanceUnset")}</option>
+                              <option value="ally">{t("clans.stanceAlly")}</option>
+                              <option value="neutral">{t("clans.stanceNeutral")}</option>
+                              <option value="enemy">{t("clans.stanceEnemy")}</option>
                             </select>
                           </form>
                         </td>
                         <td className="num mono">{clan.members}</td>
-                        <td className="num mono">{formatPower(clan.total_power)}</td>
-                        <td className="num mono muted">{formatPower(clan.top_power)}</td>
+                        <td className="num mono">{formatPower(clan.total_power, locale)}</td>
+                        <td className="num mono muted">{formatPower(clan.top_power, locale)}</td>
                         <td className="small muted nowrap">
-                          {clan.last_seen_at ? formatDateTime(clan.last_seen_at) : "—"}
+                          {clan.last_seen_at ? formatDateTime(clan.last_seen_at, locale) : "—"}
                         </td>
                         <td>
                           <div className="row" style={{ justifyContent: "flex-end" }}>
                             <Link className="btn sm ghost" href={`/clans/${clan.clan_id}?server=${selected.code}`}>
-                              Abrir clã
+                              {t("clans.openClan")}
                             </Link>
                           </div>
                         </td>
@@ -161,16 +165,14 @@ export default async function ClansPage({
             <section className="card">
               <div className="card-head">
                 <div>
-                  <div className="card-title">Trocas de clã recentes</div>
-                  <div className="card-sub">Detectadas no sync ou em edição manual</div>
+                  <div className="card-title">{t("clans.recentChanges")}</div>
+                  <div className="card-sub">{t("clans.recentChangesSub")}</div>
                 </div>
                 <span className="badge">{changes.length}</span>
               </div>
               <div className="card-body tight">
                 {changes.length === 0 ? (
-                  <EmptyState title="Nenhuma troca registrada">
-                    A partir de agora, quando o fórum mostrar outro clã para um jogador, a mudança aparece aqui.
-                  </EmptyState>
+                  <EmptyState title={t("clans.noChanges")}>{t("clans.noChangesBody")}</EmptyState>
                 ) : (
                   <div className="list">
                     {changes.map((change) => (
@@ -180,11 +182,11 @@ export default async function ClansPage({
                             {change.character_name}
                           </Link>
                           <div className="small muted">
-                            {change.previous_clan_name ?? "sem clã"} → <strong>{change.clan_name}</strong>
+                            {change.previous_clan_name ?? t("common.noClan")} → <strong>{change.clan_name}</strong>
                           </div>
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <div className="small muted nowrap">{formatDateTime(change.changed_at)}</div>
+                          <div className="small muted nowrap">{formatDateTime(change.changed_at, locale)}</div>
                           <span className={`badge ${change.source === "manual" ? "gold" : ""}`}>{change.source}</span>
                         </div>
                       </div>
@@ -197,50 +199,44 @@ export default async function ClansPage({
             <section className="card">
               <div className="card-head">
                 <div>
-                  <div className="card-title">Nomes variantes</div>
-                  <div className="card-sub">Mescle grafias diferentes do mesmo clã</div>
+                  <div className="card-title">{t("clans.variants")}</div>
+                  <div className="card-sub">{t("clans.variantsSub")}</div>
                 </div>
               </div>
               <div className="card-body">
                 {mergeOptions.length < 2 ? (
-                  <p className="small muted">
-                    É preciso ter ao menos dois clãs no servidor para vincular um nome variante.
-                  </p>
+                  <p className="small muted">{t("clans.needTwo")}</p>
                 ) : !isAdmin(user) ? (
-                  <p className="small muted">
-                    A mescla vale para todos os servidores, então apenas um administrador global pode fazê-la.
-                  </p>
+                  <p className="small muted">{t("clans.adminOnlyMerge")}</p>
                 ) : (
                   <form action={mergeClansAction} className="stack">
                     <input type="hidden" name="serverId" value={selected.id} />
                     <input type="hidden" name="redirectTo" value={returnTo} />
                     <div className="field">
-                      <label htmlFor="sourceId">Clã variante (será absorvido)</label>
+                      <label htmlFor="sourceId">{t("clans.sourceLabel")}</label>
                       <select id="sourceId" name="sourceId" required>
                         {mergeOptions.map((option) => (
                           <option key={option.id} value={option.id}>
-                            {option.name} — {option.members} membro(s)
+                            {t("clans.optionLabel", { name: option.name, count: option.members })}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div className="field">
-                      <label htmlFor="targetId">Clã definitivo</label>
+                      <label htmlFor="targetId">{t("clans.targetLabel")}</label>
                       <select id="targetId" name="targetId" required>
                         {mergeOptions.map((option) => (
                           <option key={option.id} value={option.id}>
-                            {option.name} — {option.members} membro(s)
+                            {t("clans.optionLabel", { name: option.name, count: option.members })}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div className="row">
                       <button className="btn primary" type="submit">
-                        Vincular clãs
+                        {t("clans.mergeButton")}
                       </button>
-                      <span className="small muted">
-                        Personagens, histórico e posturas são reapontados; o nome antigo vira alias.
-                      </span>
+                      <span className="small muted">{t("clans.mergeNote")}</span>
                     </div>
                   </form>
                 )}
@@ -253,6 +249,10 @@ export default async function ClansPage({
   );
 }
 
-function stanceLabel(stance: "ally" | "neutral" | "enemy"): string {
-  return stance === "ally" ? "aliado" : stance === "neutral" ? "neutro" : "inimigo";
+function stanceLabel(stance: "ally" | "neutral" | "enemy", t: Translator["t"]): string {
+  return stance === "ally"
+    ? t("stance.ally")
+    : stance === "neutral"
+      ? t("stance.neutral")
+      : t("stance.enemy");
 }

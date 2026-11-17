@@ -1,7 +1,9 @@
 /**
- * Prêmio do castelo: um baú semanal com quantidades fixas por raridade.
- * Este módulo é puro (sem banco) para poder ser importado por componentes client.
+ * Prêmio do castelo: um baú mensal com quantidades fixas por raridade,
+ * entregue na guerra de castelo. Este módulo é puro (sem banco) para poder
+ * ser importado por componentes client.
  */
+import { todayInApp } from "./time";
 export const CASTLE_PRIZES = [
   { key: "legendary", label: "Lendário", total: 1 },
   { key: "epic", label: "Épico", total: 3 },
@@ -14,7 +16,7 @@ export type CastlePrizeKey = (typeof CASTLE_PRIZES)[number]["key"];
 
 export type CastlePrizeCounts = Record<CastlePrizeKey, number>;
 
-/** Prêmios já escolhidos para um membro na semana: no máximo um de cada raridade. */
+/** Prêmios já escolhidos para um membro no mês: no máximo um de cada raridade. */
 export type CastlePrizeMember = {
   character_id: number;
   name: string;
@@ -34,6 +36,40 @@ export function sortCastlePrizes(prizes: Iterable<CastlePrizeKey>): CastlePrizeK
 }
 
 export const CASTLE_PRIZE_TOTAL = CASTLE_PRIZES.reduce((total, prize) => total + prize.total, 0);
+
+/**
+ * Chave do período do baú: o baú é mensal, então vale o primeiro dia do mês.
+ * Aceita "2026-11", "2026-11-18" ou vazio (mês atual no fuso da app).
+ */
+export function castleMonthStart(value?: string | null): string {
+  const raw = value && /^\d{4}-\d{2}(-\d{2})?$/.test(value) ? value : todayInApp();
+  const match = /^(\d{4})-(\d{2})/.exec(raw);
+  const month = Number(match?.[2] ?? 0);
+  if (!match || month < 1 || month > 12) return castleMonthStart(null);
+  return `${match[1]}-${match[2]}-01`;
+}
+
+/** Anda meses para frente ou para trás a partir do primeiro dia do mês. */
+export function shiftMonth(start: string, months: number): string {
+  const date = new Date(`${start}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return start;
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+/** "2026-11-01" → "Novembro/2026". */
+export function castleMonthTitle(start: string): string {
+  const date = new Date(`${start}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return start;
+  const name = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", month: "long" }).format(date);
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)}/${date.getUTCFullYear()}`;
+}
+
+/** "2026-11-01" → "2026-11", para nomes de arquivo. */
+export function castleMonthSlug(start: string): string {
+  return start.slice(0, 7);
+}
 
 export function isCastlePrizeKey(value: unknown): value is CastlePrizeKey {
   return CASTLE_PRIZES.some((prize) => prize.key === value);

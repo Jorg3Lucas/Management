@@ -7,10 +7,12 @@ import { castlePrizeMembers, castlePrizeUpdatedAt } from "@/lib/castle";
 import {
   CASTLE_PRIZES,
   CASTLE_PRIZE_TOTAL,
+  castleMonthStart,
+  castleMonthTitle,
   castlePrizeCounts,
+  shiftMonth,
   type CastlePrizeKey,
 } from "@/lib/castle-prizes";
-import { ceWeekStart, ceWeekTitle, shiftWeek } from "@/lib/ce";
 import { formatNumber } from "@/lib/format";
 import { formatDateTime } from "@/lib/time";
 
@@ -19,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = {
   server?: string;
-  week?: string;
+  month?: string;
   ok?: string;
   error?: string;
 };
@@ -32,10 +34,11 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
   const requested = (params.server ?? "").toUpperCase();
   const selected = managed.find((server) => server.code === requested) ?? managed[0] ?? null;
 
-  const currentWeek = ceWeekStart();
-  const weekStart = ceWeekStart(params.week ?? currentWeek);
+  // O baú do castelo é mensal e é entregue na guerra de castelo.
+  const currentMonth = castleMonthStart();
+  const monthStart = castleMonthStart(params.month ?? currentMonth);
 
-  const members = selected ? castlePrizeMembers(selected.id, weekStart) : [];
+  const members = selected ? castlePrizeMembers(selected.id, monthStart) : [];
   const initial: Record<number, CastlePrizeKey[]> = {};
   for (const member of members) {
     if (member.prizes.length > 0) initial[member.character_id] = member.prizes;
@@ -45,10 +48,10 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
   const assigned = members.reduce((total, member) => total + (member.prizes.length > 0 ? 1 : 0), 0);
   const usedTotal = CASTLE_PRIZES.reduce((total, prize) => total + counts[prize.key], 0);
   const clanCount = new Set(members.map((member) => member.clan_id)).size;
-  const updatedAt = selected ? castlePrizeUpdatedAt(selected.id, weekStart) : null;
+  const updatedAt = selected ? castlePrizeUpdatedAt(selected.id, monthStart) : null;
 
-  const weekHref = (week: string) => `/castle?server=${selected?.code ?? ""}&week=${week}`;
-  const returnTo = weekHref(weekStart);
+  const monthHref = (month: string) => `/castle?server=${selected?.code ?? ""}&month=${month}`;
+  const returnTo = monthHref(monthStart);
 
   return (
     <>
@@ -57,8 +60,9 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
           <p className="eyebrow">Recompensas</p>
           <h1 className="page-title">Prêmio do castelo</h1>
           <p className="page-sub">
-            Distribua o baú do castelo entre os clãs aliados: 1 lendário, 3 épicos, 5 raros, 10 incomuns
-            e 50 comuns por semana. Cada membro pode receber vários baús, mas só um de cada raridade.
+            O baú do castelo é mensal e sai na guerra de castelo: 1 lendário, 3 épicos, 5 raros, 10
+            incomuns e 50 comuns por mês. Cada membro pode receber vários baús, mas só um de cada
+            raridade.
           </p>
         </div>
         <div className="head-actions">
@@ -66,7 +70,7 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
             <Link
               key={server.id}
               className={`btn sm${selected?.id === server.id ? " primary" : " ghost"}`}
-              href={`/castle?server=${server.code}&week=${weekStart}`}
+              href={`/castle?server=${server.code}&month=${monthStart}`}
             >
               {server.label}
             </Link>
@@ -86,23 +90,23 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
       {selected ? (
         <>
           <div className="row" style={{ marginBottom: 12, flexWrap: "wrap" }}>
-            <Link className="btn sm ghost" href={weekHref(shiftWeek(weekStart, -1))} aria-label="Semana anterior">
+            <Link className="btn sm ghost" href={monthHref(shiftMonth(monthStart, -1))} aria-label="Mês anterior">
               ←
             </Link>
-            <span className="badge gold">{ceWeekTitle(weekStart)}</span>
-            {weekStart === currentWeek ? <span className="badge">semana atual</span> : null}
-            <Link className="btn sm ghost" href={weekHref(shiftWeek(weekStart, 1))} aria-label="Próxima semana">
+            <span className="badge gold">{castleMonthTitle(monthStart)}</span>
+            {monthStart === currentMonth ? <span className="badge">mês atual</span> : null}
+            <Link className="btn sm ghost" href={monthHref(shiftMonth(monthStart, 1))} aria-label="Próximo mês">
               →
             </Link>
-            {weekStart !== currentWeek ? (
-              <Link className="btn sm" href={weekHref(currentWeek)}>
-                Ir para a semana atual
+            {monthStart !== currentMonth ? (
+              <Link className="btn sm" href={monthHref(currentMonth)}>
+                Ir para o mês atual
               </Link>
             ) : null}
             {updatedAt ? (
               <span className="small muted">salvo em {formatDateTime(updatedAt)}</span>
             ) : (
-              <span className="small muted">semana ainda não distribuída</span>
+              <span className="small muted">mês ainda não distribuído</span>
             )}
           </div>
 
@@ -125,9 +129,9 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
             </div>
           ) : (
             <CastlePrizeBoard
-              key={`${selected.id}-${weekStart}`}
+              key={`${selected.id}-${monthStart}`}
               serverId={selected.id}
-              weekStart={weekStart}
+              monthStart={monthStart}
               redirectTo={returnTo}
               members={members}
               initial={initial}

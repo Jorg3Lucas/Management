@@ -11,10 +11,10 @@ import {
 
 /**
  * Todos os membros dos clãs aliados do servidor, juntos, com os prêmios já
- * escolhidos na semana. Cada membro pode receber vários baús, mas só um de
- * cada raridade.
+ * escolhidos no mês. Cada membro pode receber vários baús, mas só um de cada
+ * raridade.
  */
-export function castlePrizeMembers(serverId: number, weekStart: string): CastlePrizeMember[] {
+export function castlePrizeMembers(serverId: number, monthStart: string): CastlePrizeMember[] {
   const rows = queryAll<Omit<CastlePrizeMember, "prizes">>(
     `SELECT c.id AS character_id, c.name, c.power_score,
             cl.id AS clan_id, cl.name AS clan_name
@@ -28,9 +28,9 @@ export function castlePrizeMembers(serverId: number, weekStart: string): CastleP
   );
 
   const awards = queryAll<{ character_id: number; prize: string }>(
-    "SELECT character_id, prize FROM castle_prize_awards WHERE server_id = ? AND week_start = ?",
+    "SELECT character_id, prize FROM castle_prize_awards WHERE server_id = ? AND month_start = ?",
     serverId,
-    weekStart,
+    monthStart,
   );
 
   const byCharacter = new Map<number, CastlePrizeKey[]>();
@@ -49,12 +49,12 @@ export function castlePrizeMembers(serverId: number, weekStart: string): CastleP
   }));
 }
 
-/** Momento do último salvamento da distribuição na semana. */
-export function castlePrizeUpdatedAt(serverId: number, weekStart: string): string | null {
+/** Momento do último salvamento da distribuição no mês. */
+export function castlePrizeUpdatedAt(serverId: number, monthStart: string): string | null {
   const row = queryOne<{ updated_at: string | null }>(
-    "SELECT MAX(updated_at) AS updated_at FROM castle_prize_awards WHERE server_id = ? AND week_start = ?",
+    "SELECT MAX(updated_at) AS updated_at FROM castle_prize_awards WHERE server_id = ? AND month_start = ?",
     serverId,
-    weekStart,
+    monthStart,
   );
   return row?.updated_at ?? null;
 }
@@ -64,13 +64,13 @@ export type CastlePrizeSaveResult =
   | { ok: false; error: string };
 
 /**
- * Substitui a distribuição da semana. Só aceita membros dos clãs aliados do
+ * Substitui a distribuição do mês. Só aceita membros dos clãs aliados do
  * servidor, no máximo um baú de cada raridade por membro, e recusa quando
  * alguma raridade passa do total do baú.
  */
 export function saveCastlePrizeDistribution(input: {
   serverId: number;
-  weekStart: string;
+  monthStart: string;
   userId: number;
   awards: Record<number, CastlePrizeKey[] | null | undefined>;
 }): CastlePrizeSaveResult {
@@ -121,16 +121,16 @@ export function saveCastlePrizeDistribution(input: {
   const now = new Date().toISOString();
   transaction(() => {
     execute(
-      "DELETE FROM castle_prize_awards WHERE server_id = ? AND week_start = ?",
+      "DELETE FROM castle_prize_awards WHERE server_id = ? AND month_start = ?",
       input.serverId,
-      input.weekStart,
+      input.monthStart,
     );
     for (const entry of chosen) {
       execute(
-        `INSERT INTO castle_prize_awards (server_id, week_start, character_id, prize, updated_by, updated_at)
+        `INSERT INTO castle_prize_awards (server_id, month_start, character_id, prize, updated_by, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
         input.serverId,
-        input.weekStart,
+        input.monthStart,
         entry.characterId,
         entry.prize,
         input.userId,

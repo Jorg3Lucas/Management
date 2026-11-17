@@ -82,3 +82,13 @@ export function formatDate(iso: string | null, timeZone = DEFAULT_TIMEZONE): str
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+/** Dia de hoje no fuso da app, como "YYYY-MM-DD". */
+export function todayInApp(timeZone = DEFAULT_TIMEZONE): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}

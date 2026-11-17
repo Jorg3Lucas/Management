@@ -30,6 +30,13 @@ export function getDb(): DatabaseSync {
 }
 
 function migrate(db: DatabaseSync) {
+  // O baú do castelo virou mensal: a chave do período passou a ser o primeiro
+  // dia do mês e a coluna acompanhou o nome. Roda antes do schema porque o
+  // índice novo aponta para month_start.
+  if (hasColumn(db, "castle_prize_awards", "week_start") && !hasColumn(db, "castle_prize_awards", "month_start")) {
+    db.exec("ALTER TABLE castle_prize_awards RENAME COLUMN week_start TO month_start");
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS servers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -299,18 +306,19 @@ function migrate(db: DatabaseSync) {
       PRIMARY KEY (plan_id, character_id)
     );
 
+    -- O baú do castelo é mensal: month_start guarda o primeiro dia do mês.
     CREATE TABLE IF NOT EXISTS castle_prize_awards (
       server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-      week_start TEXT NOT NULL,
+      month_start TEXT NOT NULL,
       character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
       prize TEXT NOT NULL CHECK (prize IN ('legendary', 'epic', 'rare', 'uncommon', 'common')),
       updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
       updated_at TEXT NOT NULL,
-      PRIMARY KEY (server_id, week_start, character_id, prize)
+      PRIMARY KEY (server_id, month_start, character_id, prize)
     );
 
     CREATE INDEX IF NOT EXISTS idx_castle_prizes_server
-      ON castle_prize_awards (server_id, week_start);
+      ON castle_prize_awards (server_id, month_start);
 
     CREATE TABLE IF NOT EXISTS world_boss_fights (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -554,32 +562,32 @@ function migrate(db: DatabaseSync) {
 
   // Um membro passou a poder receber vários baús, um de cada raridade: a
   // chave primária antiga (que limitava a um prêmio por membro) vira
-  // (servidor, semana, membro, prêmio).
+  // (servidor, mês, membro, prêmio).
   const castleAwardsSql = db
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'castle_prize_awards'")
     .get() as unknown as { sql: string | null } | undefined;
-  if (castleAwardsSql?.sql && !/PRIMARY KEY \(server_id, week_start, character_id, prize\)/.test(castleAwardsSql.sql)) {
+  if (castleAwardsSql?.sql && !/PRIMARY KEY \(server_id, month_start, character_id, prize\)/.test(castleAwardsSql.sql)) {
     db.exec("PRAGMA foreign_keys = OFF");
     db.exec(`
       CREATE TABLE castle_prize_awards_new (
         server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-        week_start TEXT NOT NULL,
+        month_start TEXT NOT NULL,
         character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
         prize TEXT NOT NULL CHECK (prize IN ('legendary', 'epic', 'rare', 'uncommon', 'common')),
         updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         updated_at TEXT NOT NULL,
-        PRIMARY KEY (server_id, week_start, character_id, prize)
+        PRIMARY KEY (server_id, month_start, character_id, prize)
       );
 
-      INSERT INTO castle_prize_awards_new (server_id, week_start, character_id, prize, updated_by, updated_at)
-        SELECT server_id, week_start, character_id, prize, updated_by, updated_at
+      INSERT INTO castle_prize_awards_new (server_id, month_start, character_id, prize, updated_by, updated_at)
+        SELECT server_id, month_start, character_id, prize, updated_by, updated_at
         FROM castle_prize_awards;
 
       DROP TABLE castle_prize_awards;
       ALTER TABLE castle_prize_awards_new RENAME TO castle_prize_awards;
 
       CREATE INDEX IF NOT EXISTS idx_castle_prizes_server
-        ON castle_prize_awards (server_id, week_start);
+        ON castle_prize_awards (server_id, month_start);
     `);
     db.exec("PRAGMA foreign_keys = ON");
   }

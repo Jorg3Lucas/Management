@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canAdminServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { ceWeekStart } from "@/lib/ce";
 import { saveCastlePrizeDistribution } from "@/lib/castle";
-import { CASTLE_PRIZES, isCastlePrizeKey, type CastlePrizeKey } from "@/lib/castle-prizes";
+import {
+  CASTLE_PRIZES,
+  castleMonthStart,
+  castleMonthTitle,
+  isCastlePrizeKey,
+  type CastlePrizeKey,
+} from "@/lib/castle-prizes";
 import { getServerById } from "@/lib/queries";
 
 function back(path: string, kind: "ok" | "error", message: string): string {
@@ -22,7 +27,8 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
   const user = await requireUser();
   const serverId = Number(formData.get("serverId"));
   const redirectTo = safePath(formData.get("redirectTo"), "/castle");
-  const weekStart = ceWeekStart(String(formData.get("week") ?? ""));
+  // Chave do período: primeiro dia do mês do baú (o baú é mensal).
+  const monthStart = castleMonthStart(String(formData.get("month") ?? ""));
   const server = getServerById(serverId);
 
   if (!server || !canAdminServer(user, serverId)) {
@@ -62,7 +68,7 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
     if (prizes.length > 0) awards[characterId] = prizes;
   }
 
-  const result = saveCastlePrizeDistribution({ serverId, weekStart, userId: user.id, awards });
+  const result = saveCastlePrizeDistribution({ serverId, monthStart, userId: user.id, awards });
   if (!result.ok) redirect(back(redirectTo, "error", result.error));
 
   const detail = CASTLE_PRIZES.map(
@@ -75,11 +81,15 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
     entity: "server",
     entityId: serverId,
     serverId,
-    detail: `Semana ${weekStart} · ${result.assigned} baú(s) para ${result.members} membro(s): ${detail}`,
+    detail: `Baú de ${castleMonthTitle(monthStart)} · ${result.assigned} baú(s) para ${result.members} membro(s): ${detail}`,
   });
 
   revalidatePath("/castle");
   redirect(
-    back(redirectTo, "ok", `Distribuição salva: ${result.assigned} baú(s) para ${result.members} membro(s).`),
+    back(
+      redirectTo,
+      "ok",
+      `Baú de ${castleMonthTitle(monthStart)} salvo: ${result.assigned} baú(s) para ${result.members} membro(s).`,
+    ),
   );
 }

@@ -7,6 +7,7 @@ import { KeepScroll } from "@/components/KeepScroll";
 import {
   CASTLE_PRIZES,
   CASTLE_PRIZE_TOTAL,
+  castleMonthSlug,
   castlePrizeCounts,
   sortCastlePrizes,
   type CastlePrizeKey,
@@ -18,7 +19,7 @@ type Awards = Record<number, CastlePrizeKey[]>;
 
 type Props = {
   serverId: number;
-  weekStart: string;
+  monthStart: string;
   redirectTo: string;
   members: CastlePrizeMember[];
   initial: Awards;
@@ -35,7 +36,7 @@ function sameAwards(a: Awards, b: Awards): boolean {
   });
 }
 
-export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, initial }: Props) {
+export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, initial }: Props) {
   const [awards, setAwards] = useState<Awards>(initial);
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
@@ -128,7 +129,7 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `premio-castelo-${weekStart}.csv`;
+    link.download = `premio-castelo-${castleMonthSlug(monthStart)}.csv`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -150,7 +151,7 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
     <form ref={formRef} action={saveCastlePrizesAction}>
       <KeepScroll />
       <input type="hidden" name="serverId" value={serverId} />
-      <input type="hidden" name="week" value={weekStart} />
+      <input type="hidden" name="month" value={monthStart} />
       <input type="hidden" name="redirectTo" value={redirectTo} />
       <input type="hidden" name="awards" value={JSON.stringify(awards)} />
 
@@ -348,7 +349,7 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
           <div>
             <div className="card-title">Resumo por jogador e raridade</div>
             <div className="card-sub">
-              Quem recebeu o quê nesta semana, ordenado por quantidade de baús. O CSV abre no Excel com
+              Quem recebeu o quê neste mês, ordenado por quantidade de baús. O CSV abre no Excel com
               uma coluna por raridade.
             </div>
           </div>
@@ -383,7 +384,7 @@ export function CastlePrizeBoard({ serverId, weekStart, redirectTo, members, ini
               {summary.rows.length === 0 ? (
                 <tr>
                   <td colSpan={CASTLE_PRIZES.length + 3}>
-                    <span className="small muted">Nenhum baú distribuído nesta semana ainda.</span>
+                    <span className="small muted">Nenhum baú distribuído neste mês ainda.</span>
                   </td>
                 </tr>
               ) : (

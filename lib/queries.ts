@@ -5,6 +5,7 @@ import type {
   PowerHistoryRow,
   ServerRow,
   SyncRunRow,
+  WarSessionRow,
   WarSessionWithNames,
 } from "./types";
 
@@ -182,6 +183,32 @@ export function warSessionsForCharacter(characterId: number): WarSessionWithName
      WHERE w.character_id = ?
      ORDER BY (w.ended_at IS NULL) DESC, w.started_at DESC`,
     characterId,
+  );
+}
+
+/** Todas as sessões da mesma guerra em grupo (mesmo servidor, tipo, oponente e janela). */
+export function warGroupSessions(sessionId: number): WarSessionWithNames[] {
+  const seed = queryOne<WarSessionRow>("SELECT * FROM war_sessions WHERE id = ?", sessionId);
+  if (!seed) return [];
+
+  return queryAll<WarSessionWithNames>(
+    `SELECT w.*, c.name AS character_name,
+            hs.code AS home_server_code, hs.label AS home_server_label,
+            ws.code AS war_server_code, ws.label AS war_server_label
+     FROM war_sessions w
+     JOIN characters c ON c.id = w.character_id
+     JOIN servers hs ON hs.id = c.server_id
+     JOIN servers ws ON ws.id = w.server_id
+     WHERE w.server_id = ? AND w.war_type = ?
+       AND IFNULL(w.opponent, '') = ?
+       AND w.started_at = ?
+       AND IFNULL(w.ended_at, '') = ?
+     ORDER BY c.name COLLATE NOCASE ASC`,
+    seed.server_id,
+    seed.war_type,
+    seed.opponent ?? "",
+    seed.started_at,
+    seed.ended_at ?? "",
   );
 }
 

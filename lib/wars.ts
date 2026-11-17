@@ -15,6 +15,42 @@ export function totalWarSeconds(sessions: Pick<WarSessionRow, "started_at" | "en
   return sessions.reduce((sum, session) => sum + sessionSeconds(session, now), 0);
 }
 
+export type WarGroupable = {
+  id: number;
+  server_id: number;
+  war_type: string;
+  opponent: string | null;
+  started_at: string;
+  ended_at: string | null;
+};
+
+/**
+ * Chave de uma guerra em grupo: um mesmo confronto vira várias sessões, uma por
+ * jogador, e todas compartilham servidor, tipo, oponente e janela de tempo.
+ */
+export function warGroupKey(session: WarGroupable): string {
+  return [
+    session.server_id,
+    session.war_type,
+    session.opponent ?? "",
+    session.started_at,
+    session.ended_at ?? "",
+  ].join("|");
+}
+
+export type WarGroup<T> = { key: string; sessions: T[] };
+
+export function groupWarSessions<T extends WarGroupable>(sessions: T[]): WarGroup<T>[] {
+  const map = new Map<string, T[]>();
+  for (const session of sessions) {
+    const key = warGroupKey(session);
+    const list = map.get(key);
+    if (list) list.push(session);
+    else map.set(key, [session]);
+  }
+  return Array.from(map, ([key, list]) => ({ key, sessions: list }));
+}
+
 export type CharacterWarSummary = {
   totalSeconds: number;
   activeSeconds: number;

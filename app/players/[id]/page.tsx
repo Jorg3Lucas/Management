@@ -63,6 +63,9 @@ export default async function PlayerDetailPage({
   const breakdownLabels = new Map(sessions.map((session) => [session.server_id, session.war_server_label]));
   const path = `/players/${character.id}`;
   const editable = canEditServer(user, character.server_id);
+  // Quem administra (admin ou dono) algum servidor liberado também define a casa do jogador,
+  // mesmo que o personagem esteja em outro servidor — é a mesma regra de setHomeServerAction.
+  const canSetHomeServer = editable || servers.some((server) => canAdminServer(user, server.id));
   const clanStance = character.clan_id ? stanceForClan(character.server_id, character.clan_id) : null;
   const player = playerForCharacter(character.id);
   const peers = player
@@ -463,7 +466,7 @@ export default async function PlayerDetailPage({
                   ) : null}
                 </div>
               </div>
-              {editable ? (
+              {canSetHomeServer ? (
                 <form action={setHomeServerAction} className="inline-form">
                   <AutoSave delay={400} />
                   <input type="hidden" name="characterId" value={character.id} />

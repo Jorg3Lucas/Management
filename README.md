@@ -137,7 +137,7 @@ um cron externo chamando a CLI ou a rota:
 - Cada personagem continua sendo um registro por servidor; a identidade do jogador (`players`) atravessa servidores
   pelo nome normalizado. Assim o jogador pode ter um personagem em cada servidor sem perder o histórico.
 - **Servidor casa** (`players.home_server_id`) é definido no primeiro registro e pode ser alterado na ficha do jogador
-  (dono/editor do servidor) ou automaticamente quando uma transferência é detectada.
+  (admin, dono ou editor do servidor) ou automaticamente quando uma transferência é detectada.
 - **Detecção**: quando um personagem novo aparece em um servidor e o mesmo jogador foi visto em outro nos últimos 30
   dias, a transferência é registrada já confirmada e o servidor casa passa a ser o novo servidor; não há etapa de
   aprovação.

@@ -6,7 +6,7 @@ import { canAdminServer, canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ensureClan, logClanChange } from "@/lib/clans";
 import { execute, queryOne } from "@/lib/db";
-import { bulkSetHomeServer, playerForCharacter, playersByIds, setHomeServer } from "@/lib/players";
+import { playerForCharacter, setHomeServer } from "@/lib/players";
 import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import { zonedInputToUtc } from "@/lib/time";
 import { WAR_TYPES } from "@/lib/format";
@@ -357,55 +357,6 @@ export async function setHomeServerAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath(detail);
-  revalidatePath("/players/home");
   redirect(back(detail, "ok", `Servidor casa definido: ${server.label}.`));
 }
 
-/** Define o servidor casa de vários jogadores de uma vez (somente quem administra o servidor destino). */
-export async function setHomeServerBulkAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const serverId = Number(formData.get("serverId"));
-  const server = getServerById(serverId);
-  const redirectTo = safePath(formData.get("redirectTo"), "/players/home");
-
-  if (!server || !canAdminServer(user, serverId)) {
-    redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para administrá-lo."));
-  }
-
-  const playerIds = Array.from(
-    new Set(
-      formData
-        .getAll("playerIds")
-        .map((value) => Number(value))
-        .filter((value) => Number.isInteger(value) && value > 0),
-    ),
-  ).slice(0, 300);
-
-  if (playerIds.length === 0) redirect(back(redirectTo, "error", "Selecione ao menos um jogador."));
-
-  const players = playersByIds(playerIds);
-  if (players.length === 0) redirect(back(redirectTo, "error", "Jogadores não encontrados."));
-
-  bulkSetHomeServer(
-    players.map((player) => player.id),
-    server.id,
-  );
-
-  for (const player of players) {
-    logAudit({
-      user,
-      action: "player.home",
-      entity: "player",
-      entityId: player.id,
-      serverId: server.id,
-      detail: `${player.display_name}: servidor casa em ${server.label} (em massa)`,
-    });
-  }
-
-  revalidatePath("/players/home");
-  revalidatePath("/players");
-  revalidatePath("/");
-  redirect(
-    back(redirectTo, "ok", `Servidor casa de ${players.length} jogador(es) definido: ${server.label}.`),
-  );
-}

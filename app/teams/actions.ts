@@ -212,7 +212,6 @@ export async function assignCharacterTeamAction(formData: FormData): Promise<voi
 
   revalidatePath(`/players/${characterId}`);
   revalidatePath("/players");
-  revalidatePath("/players/home");
   revalidatePath("/teams");
   revalidatePath("/salaries");
   redirect(

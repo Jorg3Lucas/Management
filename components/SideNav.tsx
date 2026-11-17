@@ -25,7 +25,6 @@ const groups = [
     items: [
       { href: "/", label: "Visão geral", icon: IconDashboard, adminOnly: false, managerOnly: false },
       { href: "/players", label: "Ranking", icon: IconRanking, adminOnly: false, managerOnly: false },
-      { href: "/players/home", label: "Servidor casa", icon: IconUsers, adminOnly: false, managerOnly: true },
       { href: "/wars", label: "Guerras", icon: IconSwords, adminOnly: false, managerOnly: false },
     ],
   },

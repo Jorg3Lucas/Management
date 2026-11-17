@@ -279,6 +279,8 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        # Sem porta: o Next valida a Origin das Server Actions contra este host.
+        proxy_set_header X-Forwarded-Host \$host;
         proxy_read_timeout 600s;
     }
 }
@@ -326,7 +328,7 @@ curl -sS -o /dev/null -w "HTTP Next.js: %{http_code}\n" "http://127.0.0.1:$PORT"
 curl -sS -o /dev/null -w "Nginx proxy: %{http_code}\n" "http://127.0.0.1/" || true
 printf '\n'
 
-confirm "Nginx tá configurado e recarregado. Continuar para o HTTPS?"
+if confirm "Nginx tá configurado e recarregado. Continuar para o HTTPS?"; then
 log "10. Configurando HTTPS com Let's Encrypt"
 
 sudo mkdir -p /var/www/certbot

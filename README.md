@@ -21,10 +21,6 @@ servidores e controlar quem acessa cada servidor. Todos os servidores vêm com a
   postura no ranking e histórico na ficha do jogador.
 - **Times por servidor**: agrupe clãs em times (blocos de aliança) e acompanhe clãs, membros, poder total e maior
   poder de cada time; o jogador entra no time do clã.
-- **Territórios**: o líder do servidor registra qual clã domina o **Castelo de Bicheon** e os vales de **Bicheon**,
-  **Redmoon** e **Serpentes**, com membros e poder do clã no ranking — cada troca de dono fica no histórico, com autor
-  e data. No mesmo lugar ele registra o vencedor de cada rodada do **Sabuk Clash** (uma rodada por data, com
-  histórico).
 - **World Boss**: cada encontro é registrado por data e horário no servidor; o painel semanal mostra os membros dos
   clãs aliados em uma matriz de presenças, com total e percentual por jogador, contador por encontro e histórico por
   semana.

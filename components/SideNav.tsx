@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   IconArrowRight,
   IconBoss,
-  IconCastle,
   IconCoins,
   IconDashboard,
   IconExpedition,
@@ -35,7 +34,6 @@ const groups = [
     items: [
       { href: "/clans", label: "Clãs", icon: IconShield, adminOnly: false, managerOnly: true },
       { href: "/teams", label: "Times", icon: IconFlag, adminOnly: false, managerOnly: true },
-      { href: "/territories", label: "Territórios", icon: IconCastle, adminOnly: false, managerOnly: true },
       { href: "/castle", label: "Prêmio do castelo", icon: IconGift, adminOnly: false, managerOnly: true },
       { href: "/salaries", label: "Salários", icon: IconCoins, adminOnly: false, managerOnly: true },
       { href: "/ce", label: "CE", icon: IconExpedition, adminOnly: false, managerOnly: true },

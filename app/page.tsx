@@ -9,7 +9,6 @@ import {
   topCharacters,
   warSessionsForServers,
 } from "@/lib/queries";
-import { TERRITORIES, territoryOwnersByServer } from "@/lib/territories";
 import { formatDateTime } from "@/lib/time";
 import { summarizeByCharacter, summarizeByServer, totalWarSeconds } from "@/lib/wars";
 import { EmptyState, Flash, StatCard, SyncBadge } from "@/components/ui";
@@ -36,8 +35,6 @@ export default async function DashboardPage({
   const totalPlayers = countCharactersForServers(ids);
   const runs = recentSyncRuns(6, ids);
   const daily = lastDailySyncRun(ids);
-  const territoryByServer = territoryOwnersByServer(servers.map((server) => server.id));
-  const canManageTerritories = servers.some((server) => canAdminServer(user, server.id));
 
   const serverCards = servers.map((server) => {
     const war = warByServer.get(server.id);
@@ -124,56 +121,6 @@ export default async function DashboardPage({
           </section>
         ))}
       </div>
-
-      {serverCards.length > 0 ? (
-        <section className="card" style={{ marginBottom: 16 }}>
-          <div className="card-head">
-            <div>
-              <div className="card-title">Territórios</div>
-              <div className="card-sub">Clã que domina o castelo e os vales dos servidores liberados</div>
-            </div>
-            {canManageTerritories ? (
-              <Link className="btn sm ghost" href="/territories">
-                Registrar
-              </Link>
-            ) : null}
-          </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Servidor</th>
-                  {TERRITORIES.map((territory) => (
-                    <th key={territory.key}>{territory.name}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {serverCards.map(({ server }) => (
-                  <tr key={server.id}>
-                    <td>
-                      <span style={{ fontWeight: 650 }}>{server.label}</span>
-                      <div className="player-clan">{server.group_name}</div>
-                    </td>
-                    {TERRITORIES.map((territory) => {
-                      const owner = territoryByServer.get(server.id)?.get(territory.key);
-                      return (
-                        <td key={territory.key}>
-                          {owner ? (
-                            <span style={{ fontWeight: 600 }}>{owner.clan_name}</span>
-                          ) : (
-                            <span className="muted">—</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
 
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <StatCard

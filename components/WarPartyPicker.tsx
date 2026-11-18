@@ -138,85 +138,96 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
         <input key={id} type="hidden" name={name} value={id} />
       ))}
 
-      <div className="party-picker-search">
-        <input
-          type="search"
-          value={rankingTerm}
-          onChange={(event) => setRankingTerm(event.target.value)}
-          placeholder={t("bossCustom.placeholder")}
-          aria-label={t("bossCustom.placeholder")}
-        />
-        {rankingHint ? <span className="small muted">{rankingHint}</span> : null}
-        {addable.length > 0 ? (
-          <div className="party-picker-results">
-            {addable.map((row) => (
-              <div key={row.id} className="party-picker-result">
-                <span className="party-picker-result-name">{row.name}</span>
-                <span className="small muted">{row.clan ?? "—"}</span>
-                <span className="badge">{row.server_label}</span>
-                <button type="button" className="btn sm ghost" onClick={() => addFromRanking(row)}>
-                  {t("bossCustom.add")}
-                </button>
-              </div>
-            ))}
+      <div className="party-picker-columns">
+        <section className="party-picker-pane">
+          <header className="party-picker-pane-head">
+            <span>{t("wars.partyTeamTitle")}</span>
+            <span className="badge">
+              {t("castleBoard.visible", {
+                visible: String(visible.length),
+                total: String(allMembers.length),
+              })}
+            </span>
+          </header>
+
+          <div className="party-picker-tools">
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("castleBoard.searchPlaceholder")}
+              aria-label={t("castleBoard.searchAria")}
+            />
+            <select value={clan} onChange={(event) => setClan(event.target.value)} aria-label={t("common.clan")}>
+              <option value="all">{t("wars.partyAllClans")}</option>
+              {clans.map((name) => (
+                <option key={name || "none"} value={name}>
+                  {name || t("wars.partyNoClan")}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : null}
-      </div>
 
-      <div className="party-picker-tools">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("castleBoard.searchPlaceholder")}
-          aria-label={t("castleBoard.searchAria")}
-        />
-        <select value={clan} onChange={(event) => setClan(event.target.value)} aria-label={t("common.clan")}>
-          <option value="all">{t("wars.partyAllClans")}</option>
-          {clans.map((name) => (
-            <option key={name || "none"} value={name}>
-              {name || t("wars.partyNoClan")}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="btn sm ghost" onClick={selectVisible}>
-          {t("wars.partySelectVisible")}
-        </button>
-        <span className="badge gold">{t("wars.partyCount", { count: selected.size })}</span>
-      </div>
+          <div className="party-picker-list">
+            {visible.length === 0 ? (
+              <span className="small muted">{t("castleBoard.noMember")}</span>
+            ) : (
+              visible.map((member) => (
+                <label key={member.id} className={`party-picker-row${selected.has(member.id) ? " on" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(member.id)}
+                    onChange={() => toggle(member.id)}
+                    aria-label={member.name}
+                  />
+                  <span className="party-picker-name">{member.name}</span>
+                  <span className="party-picker-clan small muted">{member.clan ?? "—"}</span>
+                  <span className="badge">{member.server_label}</span>
+                </label>
+              ))
+            )}
+          </div>
 
-      <div className="party-picker-list">
-        {visible.length === 0 ? (
-          <span className="small muted">{t("castleBoard.noMember")}</span>
-        ) : (
-          visible.map((member) => (
-            <label key={member.id} className={`party-picker-row${selected.has(member.id) ? " on" : ""}`}>
-              <input
-                type="checkbox"
-                checked={selected.has(member.id)}
-                onChange={() => toggle(member.id)}
-                aria-label={member.name}
-              />
-              <span className="party-picker-name">{member.name}</span>
-              <span className="small muted">{member.clan ?? "—"}</span>
-              <span className="badge">{member.server_label}</span>
-            </label>
-          ))
-        )}
-      </div>
+          <div className="party-picker-foot">
+            <button type="button" className="btn sm ghost" onClick={selectVisible}>
+              {t("wars.partySelectVisible")}
+            </button>
+            <span className="badge gold">{t("wars.partyCount", { count: selected.size })}</span>
+            {selected.size > 0 ? (
+              <button type="button" className="btn sm ghost" onClick={() => setSelected(new Set())}>
+                {t("castleBoard.clear")}
+              </button>
+            ) : null}
+          </div>
+        </section>
 
-      <div className="party-picker-tools">
-        <span className="small muted">
-          {t("castleBoard.visible", {
-            visible: String(visible.length),
-            total: String(allMembers.length),
-          })}
-        </span>
-        {selected.size > 0 ? (
-          <button type="button" className="btn sm ghost" onClick={() => setSelected(new Set())}>
-            {t("castleBoard.clear")}
-          </button>
-        ) : null}
+        <section className="party-picker-pane party-picker-ranking">
+          <header className="party-picker-pane-head">
+            <span>{t("wars.partyRankingTitle")}</span>
+          </header>
+
+          <input
+            type="search"
+            value={rankingTerm}
+            onChange={(event) => setRankingTerm(event.target.value)}
+            placeholder={t("bossCustom.placeholder")}
+            aria-label={t("bossCustom.placeholder")}
+          />
+          {rankingHint ? <span className="small muted">{rankingHint}</span> : null}
+          {addable.length > 0 ? (
+            <div className="party-picker-results">
+              {addable.map((row) => (
+                <div key={row.id} className="party-picker-result">
+                  <span className="party-picker-result-name">{row.name}</span>
+                  <span className="badge">{row.server_label}</span>
+                  <button type="button" className="btn sm ghost" onClick={() => addFromRanking(row)}>
+                    {t("bossCustom.add")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
       </div>
     </div>
   );

@@ -263,6 +263,8 @@ const en: Record<MessageKey, string> = {
   "wars.partyNoClan": "No clan",
   "wars.partySelectVisible": "Select visible",
   "wars.partyCount": "{count} selected",
+  "wars.partyTeamTitle": "Server roster",
+  "wars.partyRankingTitle": "Other servers",
 
   "war.errServer": "Invalid war server or no access.",
   "war.errType": "Invalid war type.",

@@ -1763,10 +1763,37 @@ table.data th a.th-sort.active {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Time do servidor e convidados do ranking lado a lado. */
+.party-picker-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: 10px;
+  align-items: start;
+}
+
+.party-picker-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
   padding: 10px;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
+}
+
+.party-picker-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
 }
 
 .party-picker-tools {
@@ -1777,21 +1804,24 @@ table.data th a.th-sort.active {
 }
 
 .party-picker-tools input[type="search"] {
-  max-width: 240px;
-}
-
-/* Busca no ranking geral: convidados de outros servidores entram na guerra. */
-.party-picker-search {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 9px 10px;
-  border: 1px dashed var(--border-soft);
-  border-radius: 10px;
-}
-
-.party-picker-search input[type="search"] {
+  flex: 1 1 150px;
   max-width: none;
+}
+
+.party-picker-tools select {
+  flex: 0 1 150px;
+  width: auto;
+}
+
+.party-picker-ranking input[type="search"] {
+  width: 100%;
+}
+
+.party-picker-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .party-picker-results {
@@ -1828,16 +1858,18 @@ table.data th a.th-sort.active {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  max-height: 260px;
+  min-height: 96px;
+  max-height: 240px;
   overflow-y: auto;
   padding-right: 4px;
 }
 
 .party-picker-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 92px) auto;
   align-items: center;
   gap: 8px;
-  padding: 5px 7px;
+  padding: 4px 6px;
   border-radius: 8px;
   font-size: 12.5px;
   cursor: pointer;
@@ -1852,11 +1884,24 @@ table.data th a.th-sort.active {
 }
 
 .party-picker-name {
-  flex: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.party-picker-clan {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .party-picker-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .war-party {

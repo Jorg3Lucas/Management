@@ -263,6 +263,8 @@ const ko: Record<MessageKey, string> = {
   "wars.partyNoClan": "클랜 없음",
   "wars.partySelectVisible": "보이는 항목 선택",
   "wars.partyCount": "{count}명 선택됨",
+  "wars.partyTeamTitle": "서버 팀",
+  "wars.partyRankingTitle": "다른 서버",
 
   "war.errServer": "전쟁 서버가 잘못되었거나 접근 권한이 없습니다.",
   "war.errType": "전쟁 유형이 잘못되었습니다.",

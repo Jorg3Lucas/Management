@@ -359,6 +359,17 @@ function migrate(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_world_boss_custom_attendance_member
       ON world_boss_custom_attendance (custom_member_id);
 
+    -- Escalação da distribuição do World Boss: até 3 nomes por mapa (labyrinth,
+    -- vale ou canal do Mirage) e por horário. O total de baús do mapa é
+    -- dividido entre os nomes escalados na hora de exibir.
+    CREATE TABLE IF NOT EXISTS world_boss_distribution (
+      slot_key TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      member_name TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (slot_key, position)
+    );
+
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name_key TEXT NOT NULL UNIQUE,

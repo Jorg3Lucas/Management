@@ -841,10 +841,10 @@ const en: Record<MessageKey, string> = {
   "boss.mapsEyebrow": "Events",
   "boss.mapsTitle": "World Boss Distribution",
   "boss.mapsSub":
-    "World Boss maps and times to plan the team's distribution. Cells stay empty until players are assigned.",
+    "World Boss maps and times to plan the team's distribution. Add up to 3 members per map and the chests for that time are split between them.",
   "boss.mapsListTitle": "Labyrinths and valleys",
   "boss.mapsListSub":
-    "Bosses by period. Each cell is a slot for one player; the number next to each boss is the chest count per time on each map.",
+    "Bosses by period. Each cell takes up to 3 members; the number next to each boss is the chest count per time, split between them.",
   "boss.mapsLabyrinths": "Labyrinths — morning and night",
   "boss.mapsValleys": "Valleys — morning and night",
   "boss.mapsChests": "Chests per time on each map",
@@ -859,8 +859,14 @@ const en: Record<MessageKey, string> = {
   "boss.mapsMinPower": "Minimum power",
   "boss.mapsServer": "Server",
   "boss.mapsLayersTitle": "Layers and channels",
+  "boss.slotPlaceholder": "Member",
+  "boss.slotAdd": "Add member",
+  "boss.slotRemove": "Remove",
+  "boss.slotFull": "Up to 3 members per map.",
+  "boss.slotShare": "Chests for this member",
+  "boss.slotError": "Could not save. Try again.",
   "boss.mapsLayersSub":
-    "Mirage maps (W1 to W8) for each layer. The number next to the channel is the chest count per time; each channel is a slot for one player.",
+    "Mirage maps (W1 to W8) for each layer. The number next to the channel is the chest count per time, split between up to 3 members.",
 
   "player.metadata": "Player",
   "player.noClass": "class not reported",

@@ -862,10 +862,10 @@ const pt = {
   "boss.mapsEyebrow": "Eventos",
   "boss.mapsTitle": "Distribuição World Boss",
   "boss.mapsSub":
-    "Mapas e horários do World Boss para montar a distribuição do time. As células ficam vazias até a escalação dos jogadores.",
+    "Mapas e horários do World Boss para montar a distribuição do time. Adicione até 3 membros por mapa e os baús do horário são divididos entre eles.",
   "boss.mapsListTitle": "Labirintos e vales",
   "boss.mapsListSub":
-    "Bosses por período. Cada célula é um espaço para um jogador; o número ao lado do boss é a quantidade de baús por horário em cada mapa.",
+    "Bosses por período. Cada célula aceita até 3 membros; o número ao lado do boss é a quantidade de baús por horário, dividida entre os escalados.",
   "boss.mapsLabyrinths": "Labirintos — manhã e noite",
   "boss.mapsValleys": "Vales — manhã e noite",
   "boss.mapsChests": "Baús por horário em cada mapa",
@@ -881,8 +881,14 @@ const pt = {
   "boss.mapsMinPower": "Poder mínimo",
   "boss.mapsServer": "Servidor",
   "boss.mapsLayersTitle": "Camadas e canais",
+  "boss.slotPlaceholder": "Membro",
+  "boss.slotAdd": "Adicionar membro",
+  "boss.slotRemove": "Remover",
+  "boss.slotFull": "Máximo de 3 membros por mapa.",
+  "boss.slotShare": "Baús deste membro",
+  "boss.slotError": "Não foi possível salvar. Tente de novo.",
   "boss.mapsLayersSub":
-    "Mapas do Mirage (W1 a W8) em cada camada. O número ao lado do canal é a quantidade de baús por horário; cada canal é um espaço para um jogador.",
+    "Mapas do Mirage (W1 a W8) em cada camada. O número ao lado do canal é a quantidade de baús por horário, dividida entre até 3 membros.",
 
   // Ficha do jogador
   "player.metadata": "Jogador",

@@ -6,6 +6,11 @@
 
 import type { MessageKey } from "@/lib/i18n/pt";
 
+/** Limite de membros por mapa/horário. */
+export const MAX_SLOT_MEMBERS = 3;
+
+export type WorldBossPeriod = "dawn" | "night";
+
 export type WorldBossMapBoss = {
   name: string;
   /** Baús por horário em cada mapa (labirintos do primeiro bloco). */
@@ -90,6 +95,27 @@ export type WorldBossLayer = {
   channels: string[];
 };
 
+/* ---------- Identificadores de mapa (chave usada para salvar a escalação) ---------- */
+
+export function mapBossKey(groupKey: string, bossIndex: number, period: WorldBossPeriod): string {
+  return `${groupKey}:${bossIndex}:${period}`;
+}
+
+export function mirageSlotKey(layerKey: string, channel: string): string {
+  return `${layerKey}:${channel}`;
+}
+
+/**
+ * Divide os baús do mapa entre os membros escalados. A sobra vai para os
+ * primeiros, então a soma dos valores é sempre o total de baús.
+ */
+export function splitChests(chests: number, members: number): number[] {
+  if (members <= 0 || chests <= 0) return [];
+  const base = Math.floor(chests / members);
+  const rest = chests % members;
+  return Array.from({ length: members }, (_, index) => base + (index < rest ? 1 : 0));
+}
+
 /** Canais (W) de cada camada, na ordem em que aparecem no quadro. */
 export const WORLD_BOSS_LAYERS: WorldBossLayer[] = [
   {
@@ -106,4 +132,17 @@ export const WORLD_BOSS_LAYERS: WorldBossLayer[] = [
     chests: 30,
     channels: ["W1", "W3", "W2"],
   },
+];
+
+/** Todas as chaves válidas: usada para não gravar escalação em mapa inexistente. */
+export const WORLD_BOSS_SLOT_KEYS: string[] = [
+  ...WORLD_BOSS_MAP_GROUPS.flatMap((group) =>
+    group.bosses.flatMap((_, index) => [
+      mapBossKey(group.key, index, "dawn"),
+      mapBossKey(group.key, index, "night"),
+    ]),
+  ),
+  ...WORLD_BOSS_LAYERS.flatMap((layer) =>
+    layer.channels.map((channel) => mirageSlotKey(layer.key, channel)),
+  ),
 ];

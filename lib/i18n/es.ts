@@ -841,10 +841,9 @@ const es: Record<MessageKey, string> = {
   "boss.mapsEyebrow": "Eventos",
   "boss.mapsTitle": "Distribución World Boss",
   "boss.mapsSub":
-    "Mapas y horarios del World Boss para armar la distribución del equipo. Las celdas quedan vacías hasta asignar jugadores.",
-  "boss.mapsListTitle": "Laberintos y valles",
-  "boss.mapsListSub":
-    "Bosses por periodo. Cada celda es un hueco para un jugador; el número junto al boss es la cantidad de cofres por horario en cada mapa.",
+    "Mapas y horarios del World Boss para armar la distribución del equipo. Agrega hasta 3 miembros por mapa y los cofres del horario se reparten entre ellos.",
+  "boss.mapsListTitle": "Laberintos y valles",  "boss.mapsListSub":
+    "Bosses por periodo. Cada celda acepta hasta 3 miembros; el número junto al boss es la cantidad de cofres por horario, repartida entre ellos.",
   "boss.mapsLabyrinths": "Laberintos — mañana y noche",
   "boss.mapsValleys": "Valles — mañana y noche",
   "boss.mapsChests": "Cofres por horario en cada mapa",
@@ -859,8 +858,14 @@ const es: Record<MessageKey, string> = {
   "boss.mapsMinPower": "Poder mínimo",
   "boss.mapsServer": "Servidor",
   "boss.mapsLayersTitle": "Capas y canales",
+  "boss.slotPlaceholder": "Miembro",
+  "boss.slotAdd": "Agregar miembro",
+  "boss.slotRemove": "Quitar",
+  "boss.slotFull": "Máximo de 3 miembros por mapa.",
+  "boss.slotShare": "Cofres de este miembro",
+  "boss.slotError": "No se pudo guardar. Inténtalo de nuevo.",
   "boss.mapsLayersSub":
-    "Mapas del Mirage (W1 a W8) de cada capa. El número junto al canal es la cantidad de cofres por horario; cada canal es un hueco para un jugador.",
+    "Mapas del Mirage (W1 a W8) de cada capa. El número junto al canal es la cantidad de cofres por horario, repartida entre hasta 3 miembros.",
 
   "player.metadata": "Jugador",
   "player.noClass": "clase no informada",

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { WorldBossTabs } from "@/components/WorldBossTabs";
 import { getT } from "@/lib/i18n";
+import { WorldBossSlotEditor } from "@/components/WorldBossSlotEditor";
+import { listMemberSuggestions, listSlotMembers } from "@/lib/world-boss-distribution";
 import {
+  mapBossKey,
+  mirageSlotKey,
   PURGATORY_FLOORS,
   WORLD_BOSS_FFA_BOSSES,
   WORLD_BOSS_LAYERS,
@@ -19,6 +23,8 @@ export const dynamic = "force-dynamic";
 export default async function WorldBossDistributionPage() {
   await requireUser();
   const { t } = await getT();
+  const assignments = listSlotMembers();
+  const memberNames = listMemberSuggestions();
 
   return (
     <>
@@ -65,11 +71,18 @@ export default async function WorldBossDistributionPage() {
                     {(["dawn", "night"] as const).map((period) => (
                       <tr key={period}>
                         <th scope="row">{t(period === "dawn" ? "boss.mapsDawn" : "boss.mapsNight")}</th>
-                        {group.bosses.map((boss) => (
-                          <td key={boss.name}>
-                            <span className="wb-slot" aria-hidden="true" />
-                          </td>
-                        ))}
+                        {group.bosses.map((boss, index) => {
+                          const slotKey = mapBossKey(group.key, index, period);
+                          return (
+                            <td key={boss.name}>
+                              <WorldBossSlotEditor
+                                slotKey={slotKey}
+                                chests={boss.chests}
+                                members={assignments.get(slotKey) ?? []}
+                              />
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -163,7 +176,11 @@ export default async function WorldBossDistributionPage() {
                           {layer.chests}
                         </span>
                       </div>
-                      <span className="wb-slot" aria-hidden="true" />
+                      <WorldBossSlotEditor
+                        slotKey={mirageSlotKey(layer.key, channel)}
+                        chests={layer.chests}
+                        members={assignments.get(mirageSlotKey(layer.key, channel)) ?? []}
+                      />
                     </div>
                   ))}
                 </div>
@@ -172,6 +189,12 @@ export default async function WorldBossDistributionPage() {
           </div>
         </section>
       </div>
+
+      <datalist id="wb-member-names">
+        {memberNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
     </>
   );
 }

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canManageWar, requireUser } from "@/lib/auth";
+import { stanceIndex } from "@/lib/clans";
 import { warTypeLabel } from "@/lib/format";
 import { getT } from "@/lib/i18n";
-import { listCharacters, warGroupSessions } from "@/lib/queries";
+import { listCharacters, listServers, warGroupSessions } from "@/lib/queries";
 import { formatDateTime, utcToZonedInput } from "@/lib/time";
 import { Flash } from "@/components/ui";
 import { WarPartyPicker, type WarPartyMember } from "@/components/WarPartyPicker";
@@ -36,30 +37,26 @@ export default async function EditWarPage({
   if (group.length === 0) notFound();
 
   const head = group[0];
-  if (!canEditServer(user, head.server_id)) notFound();
+  if (!canManageWar(user, group)) notFound();
 
-  // Servidores em que o usuário pode mexer, mais o servidor da guerra em si.
-  const warServers = accessibleServers(user).filter((server) => canEditServer(user, server.id));
-  const optionServers = warServers.map((server) => ({
-    id: server.id,
-    label: server.label,
-    group_name: server.group_name,
-  }));
-  if (!optionServers.some((server) => server.id === head.server_id)) {
-    optionServers.unshift({
-      id: head.server_id,
-      label: head.war_server_label,
-      group_name: head.war_server_code,
-    });
-  }
+  // A guerra pode ter acontecido em qualquer servidor do jogo.
+  const optionServers = listServers();
 
+  const visibleServers = accessibleServers(user);
+  const stances = stanceIndex(visibleServers.map((server) => server.id));
   const roster: WarPartyMember[] =
-    warServers.length > 0
+    visibleServers.length > 0
       ? listCharacters({
-          serverIds: warServers.map((server) => server.id),
+          serverIds: visibleServers.map((server) => server.id),
           pageSize: 2000,
           sort: "name",
-        }).rows.map((row) => ({ id: row.id, name: row.name, clan: row.clan, server_label: row.server_label }))
+        }).rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          clan: row.clan,
+          server_label: row.server_label,
+          ally: row.clan_id !== null && stances.get(`${row.server_id}:${row.clan_id}`) === "ally",
+        }))
       : [];
 
   // Quem já está na guerra continua listado mesmo sem servidor editável.
@@ -70,6 +67,7 @@ export default async function EditWarPage({
         name: session.character_name,
         clan: null,
         server_label: session.home_server_label,
+        ally: false,
       });
     }
   }

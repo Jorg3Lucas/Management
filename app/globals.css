@@ -1866,7 +1866,7 @@ table.data th a.th-sort.active {
 
 .party-picker-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 92px) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 88px) auto auto;
   align-items: center;
   gap: 8px;
   padding: 4px 6px;

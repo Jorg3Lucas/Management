@@ -144,6 +144,20 @@ export function canEditServer(user: SessionUser, serverId: number): boolean {
   return role === "owner" || role === "editor";
 }
 
+/**
+ * Guerra pode ser cadastrada em qualquer servidor do jogo — às vezes o time
+ * luta como convidado fora dos servidores que a pessoa administra. Quem criou
+ * o registro continua podendo editá-lo, encerrá-lo ou removê-lo.
+ */
+export function canManageWar(
+  user: SessionUser,
+  sessions: { server_id: number; created_by: number | null }[],
+): boolean {
+  if (sessions.length === 0) return false;
+  if (canEditServer(user, sessions[0].server_id)) return true;
+  return sessions.every((session) => session.created_by === user.id);
+}
+
 export function editableServerIds(user: SessionUser): number[] {
   if (user.role === "ADMIN") {
     return queryAll<{ id: number }>("SELECT id FROM servers ORDER BY id").map((row) => row.id);

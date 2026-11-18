@@ -11,6 +11,8 @@ export type WarPartyMember = {
   name: string;
   clan: string | null;
   server_label: string;
+  /** Jogador de um clã marcado como aliado no servidor dele. */
+  ally?: boolean;
 };
 
 type Props = {
@@ -116,7 +118,16 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
     setExtra((previous) =>
       previous.some((member) => member.id === row.id)
         ? previous
-        : [...previous, { id: row.id, name: row.name, clan: row.clan, server_label: row.server_label }],
+        : [
+            ...previous,
+            {
+              id: row.id,
+              name: row.name,
+              clan: row.clan,
+              server_label: row.server_label,
+              ally: Boolean(row.ally),
+            },
+          ],
     );
     setSelected((previous) => new Set(previous).add(row.id));
     setRankingTerm("");
@@ -182,6 +193,7 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
                   />
                   <span className="party-picker-name">{member.name}</span>
                   <span className="party-picker-clan small muted">{member.clan ?? "—"}</span>
+                  {member.ally ? <span className="badge ok">{t("stance.ally")}</span> : null}
                   <span className="badge">{member.server_label}</span>
                 </label>
               ))
@@ -219,6 +231,7 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
               {addable.map((row) => (
                 <div key={row.id} className="party-picker-result">
                   <span className="party-picker-result-name">{row.name}</span>
+                  {row.ally ? <span className="badge ok">{t("stance.ally")}</span> : null}
                   <span className="badge">{row.server_label}</span>
                   <button type="button" className="btn sm ghost" onClick={() => addFromRanking(row)}>
                     {t("bossCustom.add")}

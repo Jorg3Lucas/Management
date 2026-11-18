@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canEditServer, canManageWar, requireUser } from "@/lib/auth";
+import { stanceIndex } from "@/lib/clans";
 import { formatDuration, warTypeLabel } from "@/lib/format";
 import { getT } from "@/lib/i18n";
-import { listCharacters, warSessionsForWarServers } from "@/lib/queries";
+import { getServerById, listCharacters, listServers, warSessionsForUser } from "@/lib/queries";
+import type { ServerRow } from "@/lib/types";
 import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
 import { groupWarSessions, totalWarWindowSeconds, warWindowSeconds } from "@/lib/wars";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -29,12 +31,10 @@ export default async function WarsPage({
   const params = await searchParams;
   const servers = accessibleServers(user);
   const ids = servers.map((server) => server.id);
-
-  const requested = (params.server ?? "").toUpperCase();
-  const selected = servers.find((server) => server.code === requested) ?? null;
+  const allServers = listServers();
 
   const editable = servers.filter((server) => canEditServer(user, server.id));
-  const warServers = editable.length > 0 ? editable : [];
+  const stances = stanceIndex(editable.map((server) => server.id));
   const roster =
     editable.length > 0
       ? listCharacters({ serverIds: editable.map((server) => server.id), pageSize: 2000, sort: "name" }).rows.map(
@@ -43,11 +43,27 @@ export default async function WarsPage({
             name: row.name,
             clan: row.clan,
             server_label: row.server_label,
+            ally: row.clan_id !== null && stances.get(`${row.server_id}:${row.clan_id}`) === "ally",
           }),
         )
       : [];
 
-  const allSessions = warSessionsForWarServers(ids, 1000);
+  // Servidores acessíveis mais as guerras que o usuário cadastrou em qualquer
+  // servidor do jogo (ele pode enviar o time para fora dos seus servidores).
+  const allSessions = warSessionsForUser(user.id, ids, 1000);
+
+  const seenServers = new Set(ids);
+  const extraServers: ServerRow[] = [];
+  for (const session of allSessions) {
+    if (seenServers.has(session.server_id)) continue;
+    seenServers.add(session.server_id);
+    const server = getServerById(session.server_id);
+    if (server) extraServers.push(server);
+  }
+  const filterServers = [...servers, ...extraServers];
+
+  const requested = (params.server ?? "").toUpperCase();
+  const selected = filterServers.find((server) => server.code === requested) ?? null;
   const sessions = selected ? allSessions.filter((session) => session.server_id === selected.id) : allSessions;
   const groups = groupWarSessions(sessions);
   const now = Date.now();
@@ -88,7 +104,7 @@ export default async function WarsPage({
             <div className="war-live-grid">
               {active.map((group) => {
                 const head = group.sessions[0];
-                const editableGroup = canEditServer(user, head.server_id);
+                const editableGroup = canManageWar(user, group.sessions);
                 const shown = group.sessions.slice(0, 6);
                 const hidden = group.sessions.length - shown.length;
 
@@ -133,12 +149,7 @@ export default async function WarsPage({
         )}
       </section>
 
-      {warServers.length === 0 ? (
-        <div className="alert warn" style={{ marginBottom: 16 }}>
-          {t("wars.noEditableServers")}
-        </div>
-      ) : (
-        <details className="panel" open={groups.length === 0}>
+      <details className="panel" open={groups.length === 0}>
           <summary>{t("wars.newTitle")}</summary>
           <div className="panel-body">
             <p className="small muted" style={{ marginTop: 0 }}>
@@ -150,9 +161,9 @@ export default async function WarsPage({
                 <select
                   id="warServerId"
                   name="warServerId"
-                  defaultValue={selected && canEditServer(user, selected.id) ? selected.id : warServers[0].id}
+                  defaultValue={selected ? selected.id : allServers[0].id}
                 >
-                  {warServers.map((server) => (
+                  {allServers.map((server) => (
                     <option key={server.id} value={server.id}>
                       {server.label} — {server.group_name}
                     </option>
@@ -209,8 +220,7 @@ export default async function WarsPage({
               </div>
             </form>
           </div>
-        </details>
-      )}
+      </details>
 
       <section className="card">
         <div className="card-head">
@@ -221,7 +231,7 @@ export default async function WarsPage({
           <form className="row" action="/wars" method="get">
             <select name="server" defaultValue={selected?.code ?? ""} aria-label={t("wars.warServer")}>
               <option value="">{t("wars.allServers")}</option>
-              {servers.map((server) => (
+              {filterServers.map((server) => (
                 <option key={server.id} value={server.code}>
                   {server.label} — {server.group_name}
                 </option>
@@ -255,7 +265,7 @@ export default async function WarsPage({
               <tbody>
                 {closed.map((group) => {
                   const head = group.sessions[0];
-                  const editableGroup = canEditServer(user, head.server_id);
+                  const editableGroup = canManageWar(user, group.sessions);
                   const shown = group.sessions.slice(0, 4);
                   const hidden = group.sessions.length - shown.length;
 

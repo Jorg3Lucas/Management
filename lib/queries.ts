@@ -156,11 +156,18 @@ export function warSessionsForServers(serverIds: number[], limit = 500): WarSess
 }
 
 /**
- * Sessões das guerras que aconteceram nos servidores informados — pelo servidor
- * da guerra, não pelo servidor casa de cada participante.
+ * Guerras que o usuário acompanha: as dos servidores a que ele tem acesso mais
+ * as que ele mesmo cadastrou em qualquer servidor do jogo.
  */
-export function warSessionsForWarServers(serverIds: number[], limit = 1000): WarSessionWithNames[] {
-  if (serverIds.length === 0) return [];
+export function warSessionsForUser(
+  userId: number,
+  serverIds: number[],
+  limit = 1000,
+): WarSessionWithNames[] {
+  const filter =
+    serverIds.length > 0
+      ? `(w.server_id IN (${serverIds.map(() => "?").join(",")}) OR w.created_by = ?)`
+      : "w.created_by = ?";
   return queryAll<WarSessionWithNames>(
     `SELECT w.*, c.name AS character_name,
             hs.code AS home_server_code, hs.label AS home_server_label,
@@ -169,10 +176,11 @@ export function warSessionsForWarServers(serverIds: number[], limit = 1000): War
      JOIN characters c ON c.id = w.character_id
      JOIN servers hs ON hs.id = c.server_id
      JOIN servers ws ON ws.id = w.server_id
-     WHERE w.server_id IN (${serverIds.map(() => "?").join(",")})
+     WHERE ${filter}
      ORDER BY (w.ended_at IS NULL) DESC, w.started_at DESC
      LIMIT ?`,
     ...serverIds,
+    userId,
     limit,
   );
 }
@@ -181,9 +189,13 @@ export type CharacterSearchRow = {
   id: number;
   name: string;
   clan: string | null;
+  clan_id: number | null;
+  server_id: number;
   power_score: number;
   server_code: string;
   server_label: string;
+  /** 1 quando o clã do jogador é aliado no servidor dele. */
+  ally: number;
 };
 
 /** Busca personagens pelo nome em todos os servidores (ranking geral do jogo). */
@@ -193,7 +205,10 @@ export function searchCharacters(term: string, limit = 20): CharacterSearchRow[]
 
   const like = `%${clean.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
   return queryAll<CharacterSearchRow>(
-    `SELECT c.id, c.name, c.clan, c.power_score, s.code AS server_code, s.label AS server_label
+    `SELECT c.id, c.name, c.clan, c.clan_id, c.server_id, c.power_score,
+            s.code AS server_code, s.label AS server_label,
+            EXISTS (SELECT 1 FROM clan_relations r
+                    WHERE r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally') AS ally
      FROM characters c JOIN servers s ON s.id = c.server_id
      WHERE c.name LIKE ? ESCAPE '\\'
      ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC

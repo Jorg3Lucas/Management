@@ -385,7 +385,10 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                             </thead>
                             <tbody>
                               {activeClan.donors.map((donor) => (
-                                <tr key={donor.character_id}>
+                                <tr
+                                  key={donor.character_id}
+                                  className={donor.gold_done === 1 ? "row-ok" : undefined}
+                                >
                                   <td className="cell-title" data-label={t("common.player")}>
                                     <Link className="player-name" href={`/players/${donor.character_id}`}>
                                       {donor.name}

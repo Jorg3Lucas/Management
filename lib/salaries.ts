@@ -167,6 +167,7 @@ export type SalaryMemberRow = {
   preference: SalaryPreference;
   stone_split: StoneSplit;
   note: string | null;
+  paid_at: string | null;
   team_name: string | null;
   team_color: string | null;
 };
@@ -425,6 +426,7 @@ export function salaryMembers(periodId: number): SalaryMemberRow[] {
             m.preference,
             m.stone_split,
             m.note,
+            m.paid_at,
             COALESCE(ti.name, t.name) AS team_name,
             COALESCE(ti.color, t.color) AS team_color
      FROM salary_members m
@@ -526,6 +528,28 @@ export function updateSalaryMember(input: {
 
 export function removeSalaryMember(periodId: number, characterId: number): void {
   execute("DELETE FROM salary_members WHERE period_id = ? AND character_id = ?", periodId, characterId);
+}
+
+/**
+ * Alterna o pagamento de um membro do elenco. Devolve o novo estado ou null
+ * quando o personagem não está nessa semana.
+ */
+export function toggleSalaryMemberPaid(periodId: number, characterId: number): boolean | null {
+  const row = queryOne<{ paid_at: string | null }>(
+    "SELECT paid_at FROM salary_members WHERE period_id = ? AND character_id = ?",
+    periodId,
+    characterId,
+  );
+  if (!row) return null;
+
+  const paidAt = row.paid_at ? null : new Date().toISOString();
+  execute(
+    "UPDATE salary_members SET paid_at = ? WHERE period_id = ? AND character_id = ?",
+    paidAt,
+    periodId,
+    characterId,
+  );
+  return paidAt !== null;
 }
 
 /** Quantos clãs do servidor estão marcados como aliados. */

@@ -240,6 +240,7 @@ function migrate(db: DatabaseSync) {
       preference TEXT NOT NULL DEFAULT 'darksteel',
       stone_split TEXT NOT NULL DEFAULT 'half',
       note TEXT,
+      paid_at TEXT,
       updated_at TEXT NOT NULL,
       PRIMARY KEY (period_id, character_id)
     );
@@ -289,6 +290,16 @@ function migrate(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_castle_prizes_server
       ON castle_prize_awards (server_id, month_start);
+
+    -- Entrega do baú: um membro do mês recebe todos os baús dele de uma vez.
+    CREATE TABLE IF NOT EXISTS castle_prize_deliveries (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      month_start TEXT NOT NULL,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      delivered_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      delivered_at TEXT NOT NULL,
+      PRIMARY KEY (server_id, month_start, character_id)
+    );
 
     CREATE TABLE IF NOT EXISTS world_boss_fights (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -596,6 +607,7 @@ function migrate(db: DatabaseSync) {
   ensureColumn(db, "salary_members", "attended_heist", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "salary_members", "attended_altar", "INTEGER NOT NULL DEFAULT 0");
   const valeAdded = ensureColumn(db, "salary_members", "attended_vale", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "salary_members", "paid_at", "TEXT");
   const powerAdded = ensureColumn(db, "salary_tiers", "min_power", "INTEGER NOT NULL DEFAULT 0");
 
   // Presença única antiga vira presença no vale; faixas criadas antes ganham o poder mínimo padrão.

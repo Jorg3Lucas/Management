@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { saveCastlePrizeDistribution } from "@/lib/castle";
+import { saveCastlePrizeDistribution, toggleCastlePrizeDelivery } from "@/lib/castle";
 import { getT } from "@/lib/i18n";
 import {
   CASTLE_PRIZES,
@@ -96,6 +96,47 @@ export async function saveCastlePrizesAction(formData: FormData): Promise<void> 
         chests: result.assigned,
         members: result.members,
       }),
+    ),
+  );
+}
+
+/** Marca (ou desmarca) a entrega dos baús de um membro no mês. */
+export async function toggleCastleDeliveryAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const serverId = Number(formData.get("serverId"));
+  const redirectTo = safePath(formData.get("redirectTo"), "/castle");
+  const monthStart = castleMonthStart(String(formData.get("month") ?? ""));
+  const characterId = Number(formData.get("characterId"));
+  const server = getServerById(serverId);
+
+  if (!server || !canEditServer(user, serverId)) {
+    redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para distribuir o prêmio."));
+  }
+  if (!Number.isInteger(characterId) || characterId <= 0) {
+    redirect(back(redirectTo, "error", "Membro inválido."));
+  }
+
+  const result = toggleCastlePrizeDelivery({ serverId, monthStart, characterId, userId: user.id });
+  if (!result) redirect(back(redirectTo, "error", "Membro não tem baú neste mês."));
+
+  logAudit({
+    user,
+    action: result.delivered ? "castle.prize.delivered" : "castle.prize.pending",
+    entity: "server",
+    entityId: serverId,
+    serverId,
+    detail: `${result.name}: baús de ${castleMonthTitle(monthStart)} ${result.delivered ? "entregues" : "com entrega desmarcada"}`,
+  });
+
+  revalidatePath("/castle");
+  const { m } = await getT();
+  redirect(
+    back(
+      redirectTo,
+      "ok",
+      result.delivered
+        ? m("Baús de {name} marcados como entregues.", { name: result.name })
+        : m("Entrega dos baús de {name} desmarcada.", { name: result.name }),
     ),
   );
 }

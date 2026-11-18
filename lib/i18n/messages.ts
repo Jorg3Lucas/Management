@@ -188,6 +188,12 @@ const en: Record<string, string> = {
     "Custom block attendance saved: {marks} in {fights} encounter(s).",
   "A seleção inclui um membro que não está no bloco custom deste servidor.":
     "The selection includes a member that is not in this server's custom block.",
+  "Pagamento do jogador marcado como pago.": "Player payment marked as paid.",
+  "Pagamento do jogador marcado como pendente.": "Player payment marked as pending.",
+  "Membro inválido.": "Invalid member.",
+  "Membro não tem baú neste mês.": "The member has no chest this month.",
+  "Baús de {name} marcados como entregues.": "{name}'s chests marked as delivered.",
+  "Entrega dos baús de {name} desmarcada.": "{name}'s chest delivery unmarked.",
 };
 
 const es: Record<string, string> = {
@@ -379,6 +385,12 @@ const es: Record<string, string> = {
     "Presencias del bloque custom guardadas: {marks} en {fights} encuentro(s).",
   "A seleção inclui um membro que não está no bloco custom deste servidor.":
     "La selección incluye un miembro que no está en el bloque custom de este servidor.",
+  "Pagamento do jogador marcado como pago.": "Pago del jugador marcado como pagado.",
+  "Pagamento do jogador marcado como pendente.": "Pago del jugador marcado como pendiente.",
+  "Membro inválido.": "Miembro inválido.",
+  "Membro não tem baú neste mês.": "El miembro no tiene cofre este mes.",
+  "Baús de {name} marcados como entregues.": "Cofres de {name} marcados como entregados.",
+  "Entrega dos baús de {name} desmarcada.": "Entrega de los cofres de {name} desmarcada.",
 };
 
 const ko: Record<string, string> = {
@@ -568,6 +580,12 @@ const ko: Record<string, string> = {
     "커스텀 블록 참석 저장됨: {marks}건 · {fights}개 일정.",
   "A seleção inclui um membro que não está no bloco custom deste servidor.":
     "선택에 이 서버의 커스텀 블록에 없는 멤버가 포함되어 있습니다.",
+  "Pagamento do jogador marcado como pago.": "플레이어 급여를 지급으로 표시했습니다.",
+  "Pagamento do jogador marcado como pendente.": "플레이어 급여를 미지급으로 표시했습니다.",
+  "Membro inválido.": "멤버가 잘못되었습니다.",
+  "Membro não tem baú neste mês.": "이번 달에 상자가 없는 멤버입니다.",
+  "Baús de {name} marcados como entregues.": "{name}님의 상자를 전달로 표시했습니다.",
+  "Entrega dos baús de {name} desmarcada.": "{name}님의 상자 전달 표시를 취소했습니다.",
 };
 
 const tables: Record<Locale, Record<string, string>> = { pt: {}, en, es, ko };

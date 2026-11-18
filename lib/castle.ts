@@ -15,7 +15,7 @@ import {
  * raridade.
  */
 export function castlePrizeMembers(serverId: number, monthStart: string): CastlePrizeMember[] {
-  const rows = queryAll<Omit<CastlePrizeMember, "prizes">>(
+  const rows = queryAll<Omit<CastlePrizeMember, "prizes" | "delivered_at">>(
     `SELECT c.id AS character_id, c.name, c.power_score,
             cl.id AS clan_id, cl.name AS clan_name
      FROM characters c
@@ -41,11 +41,19 @@ export function castlePrizeMembers(serverId: number, monthStart: string): Castle
     byCharacter.set(award.character_id, list);
   }
 
+  const deliveries = queryAll<{ character_id: number; delivered_at: string }>(
+    "SELECT character_id, delivered_at FROM castle_prize_deliveries WHERE server_id = ? AND month_start = ?",
+    serverId,
+    monthStart,
+  );
+  const deliveredAt = new Map(deliveries.map((row) => [row.character_id, row.delivered_at]));
+
   // O driver do SQLite devolve objetos com protótipo nulo; o client component
   // só aceita objetos simples, então normalizamos as linhas antes de enviar.
   return rows.map((row) => ({
     ...row,
     prizes: sortCastlePrizes(byCharacter.get(row.character_id) ?? []),
+    delivered_at: deliveredAt.get(row.character_id) ?? null,
   }));
 }
 
@@ -137,8 +145,76 @@ export function saveCastlePrizeDistribution(input: {
         now,
       );
     }
+    // Quem perdeu todos os baús na edição também perde a entrega registrada.
+    execute(
+      `DELETE FROM castle_prize_deliveries
+       WHERE server_id = ? AND month_start = ?
+         AND character_id NOT IN (
+           SELECT character_id FROM castle_prize_awards WHERE server_id = ? AND month_start = ?
+         )`,
+      input.serverId,
+      input.monthStart,
+      input.serverId,
+      input.monthStart,
+    );
   });
 
   const members = new Set(chosen.map((entry) => entry.characterId)).size;
   return { ok: true, assigned: chosen.length, members, counts };
+}
+
+export type CastlePrizeDeliveryResult = { delivered: boolean; name: string };
+
+/**
+ * Alterna a entrega dos baús de um membro no mês. Só vale para quem tem baú
+ * recebido naquele mês do servidor.
+ */
+export function toggleCastlePrizeDelivery(input: {
+  serverId: number;
+  monthStart: string;
+  characterId: number;
+  userId: number;
+}): CastlePrizeDeliveryResult | null {
+  const member = queryOne<{ name: string; prizes: number }>(
+    `SELECT c.name,
+            (SELECT COUNT(*) FROM castle_prize_awards a
+              WHERE a.server_id = ? AND a.month_start = ? AND a.character_id = c.id) AS prizes
+     FROM characters c
+     JOIN clan_relations r
+       ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
+     WHERE c.server_id = ? AND c.id = ?`,
+    input.serverId,
+    input.monthStart,
+    input.serverId,
+    input.characterId,
+  );
+  if (!member || member.prizes === 0) return null;
+
+  const delivery = queryOne<{ delivered_at: string }>(
+    "SELECT delivered_at FROM castle_prize_deliveries WHERE server_id = ? AND month_start = ? AND character_id = ?",
+    input.serverId,
+    input.monthStart,
+    input.characterId,
+  );
+
+  if (delivery) {
+    execute(
+      "DELETE FROM castle_prize_deliveries WHERE server_id = ? AND month_start = ? AND character_id = ?",
+      input.serverId,
+      input.monthStart,
+      input.characterId,
+    );
+    return { delivered: false, name: member.name };
+  }
+
+  execute(
+    `INSERT INTO castle_prize_deliveries (server_id, month_start, character_id, delivered_by, delivered_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    input.serverId,
+    input.monthStart,
+    input.characterId,
+    input.userId,
+    new Date().toISOString(),
+  );
+  return { delivered: true, name: member.name };
 }

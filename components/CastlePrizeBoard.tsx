@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { saveCastlePrizesAction } from "@/app/castle/actions";
+import { saveCastlePrizesAction, toggleCastleDeliveryAction } from "@/app/castle/actions";
 import { useT } from "@/components/I18nProvider";
 import {
   CASTLE_PRIZES,
@@ -50,6 +50,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
   const lists = useMemo(() => Object.values(awards), [awards]);
   const counts = useMemo(() => castlePrizeCounts(lists.flat()), [lists]);
   const assigned = lists.filter((list) => list.length > 0).length;
+  const delivered = members.filter((member) => member.delivered_at).length;
   const used = CASTLE_PRIZES.reduce((total, prize) => total + counts[prize.key], 0);
   const dirty = useMemo(() => !sameAwards(initial, awards), [initial, awards]);
 
@@ -165,6 +166,12 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           </div>
           <div className="row">
             {dirty ? <span className="badge warn">{t("castleBoard.unsaved")}</span> : null}
+            <span className="badge">
+              {t("castleBoard.delivered", {
+                delivered: formatNumber(delivered, locale),
+                assigned: formatNumber(assigned, locale),
+              })}
+            </span>
             <span className="badge gold">
               {t("castleBoard.distributed", {
                 used: formatNumber(used, locale),
@@ -379,12 +386,15 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                   </th>
                 ))}
                 <th className="num">{t("common.total")}</th>
+                <th className="num" title={t("castleBoard.deliveryHint")}>
+                  {t("castleBoard.colDelivered")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {summary.rows.length === 0 ? (
                 <tr>
-                  <td colSpan={CASTLE_PRIZES.length + 3}>
+                  <td colSpan={CASTLE_PRIZES.length + 4}>
                     <span className="small muted">{t("castleBoard.noChests")}</span>
                   </td>
                 </tr>
@@ -411,6 +421,25 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                     <td className="num mono" data-label={t("common.total")}>
                       {formatNumber(row.total, locale)}
                     </td>
+                    <td className="cell-action" data-label={t("castleBoard.colDelivered")}>
+                      <button
+                        type="submit"
+                        formAction={toggleCastleDeliveryAction}
+                        name="characterId"
+                        value={row.member.character_id}
+                        className={`btn sm${row.member.delivered_at ? " primary" : " ghost"}`}
+                        aria-pressed={Boolean(row.member.delivered_at)}
+                        title={
+                          row.member.delivered_at
+                            ? t("castleBoard.markUndelivered")
+                            : t("castleBoard.markDelivered")
+                        }
+                      >
+                        {row.member.delivered_at
+                          ? t("castleBoard.deliveredLabel")
+                          : t("castleBoard.markDelivered")}
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -425,6 +454,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                     </td>
                   ))}
                   <td className="num mono">{formatNumber(summary.totalChests, locale)}</td>
+                  <td />
                 </tr>
               </tfoot>
             ) : null}

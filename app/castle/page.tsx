@@ -52,6 +52,7 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
 
   const counts = castlePrizeCounts(members.flatMap((member) => member.prizes));
   const assigned = members.reduce((total, member) => total + (member.prizes.length > 0 ? 1 : 0), 0);
+  const delivered = members.filter((member) => member.delivered_at).length;
   const usedTotal = CASTLE_PRIZES.reduce((total, prize) => total + counts[prize.key], 0);
   const clanCount = new Set(members.map((member) => member.clan_id)).size;
   const updatedAt = selected ? castlePrizeUpdatedAt(selected.id, monthStart) : null;
@@ -130,6 +131,12 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
                 })}
               </span>
               <span className="badge">{t("castle.assignedBadge", { count: formatNumber(assigned, locale) })}</span>
+              <span className="badge">
+                {t("castle.deliveredBadge", {
+                  delivered: formatNumber(delivered, locale),
+                  assigned: formatNumber(assigned, locale),
+                })}
+              </span>
             </div>
           ) : null}
 

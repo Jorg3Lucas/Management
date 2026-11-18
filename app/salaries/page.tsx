@@ -40,6 +40,7 @@ import {
   removeSalaryMemberAction,
   setSalaryProductionSlotAction,
   setSalaryWeightsAction,
+  toggleSalaryPaidAction,
   updateSalaryMemberAction,
 } from "./actions";
 
@@ -117,6 +118,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     });
 
   const withPresence = members.filter((member) => member.attendedCount > 0).length;
+  const paidMembers = members.filter((member) => member.paid_at).length;
   const visiblePaid = visibleMembers.reduce((sum, member) => sum + member.salary, 0);
   const filtered = presence !== "all";
 
@@ -519,9 +521,14 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       })}
                     </div>
                   </div>
-                  <span className="badge">
-                    {summary.attended}/{summary.members.length}
-                  </span>
+                  <div className="row">
+                    <span className="badge">
+                      {summary.attended}/{summary.members.length}
+                    </span>
+                    <span className="badge gold">
+                      {t("salary.paidCount", { paid: paidMembers, total: members.length })}
+                    </span>
+                  </div>
                 </div>
                 {members.length > 0 ? (
                   <div className="roster-toolbar">
@@ -642,13 +649,16 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                           <th className="num" title={t("salary.stonesHint")}>
                             {t("salary.colStones")}
                           </th>
+                          <th className="num" title={t("salary.paidHint")}>
+                            {t("salary.colPaid")}
+                          </th>
                           <th />
                         </tr>
                       </thead>
                       <tbody>
                         {visibleMembers.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="small muted" style={{ textAlign: "center", padding: "18px 14px" }}>
+                            <td colSpan={8} className="small muted" style={{ textAlign: "center", padding: "18px 14px" }}>
                               {presence === "with" ? t("salary.noMemberWith") : t("salary.noMemberWithout")}
                             </td>
                           </tr>
@@ -771,6 +781,21 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                             <td className="num" data-label={t("salary.colStones")}>
                               <MemberStones member={member} locale={locale} t={t} />
                             </td>
+                            <td className="cell-action" data-label={t("salary.colPaid")}>
+                              <form action={toggleSalaryPaidAction} className="inline-form" style={{ justifyContent: "flex-end" }}>
+                                <input type="hidden" name="periodId" value={period.id} />
+                                <input type="hidden" name="characterId" value={member.character_id} />
+                                <input type="hidden" name="redirectTo" value={returnTo} />
+                                <button
+                                  type="submit"
+                                  className={`btn sm${member.paid_at ? " primary" : " ghost"}`}
+                                  aria-pressed={Boolean(member.paid_at)}
+                                  title={member.paid_at ? t("salary.markUnpaid") : t("salary.markPaid")}
+                                >
+                                  {member.paid_at ? t("salary.paidLabel") : t("salary.markPaid")}
+                                </button>
+                              </form>
+                            </td>
                             <td className="cell-action">
                               <form
                                 action={removeSalaryMemberAction}
@@ -796,6 +821,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                           <td className="num mono" style={{ fontWeight: 650 }}>
                             {formatNumber(visiblePaid, locale)}
                           </td>
+                          <td />
                           <td />
                           <td />
                         </tr>

@@ -25,6 +25,8 @@ export type CastlePrizeMember = {
   clan_id: number;
   clan_name: string;
   prizes: CastlePrizeKey[];
+  /** Quando os baús do mês foram entregues; null enquanto pendentes. */
+  delivered_at: string | null;
 };
 
 const PRIZE_ORDER = new Map<string, number>(CASTLE_PRIZES.map((prize, index) => [prize.key, index]));

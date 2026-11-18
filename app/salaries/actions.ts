@@ -24,6 +24,7 @@ import {
   setSalaryProductionSlot,
   setSalaryTier,
   stoneSplitLabel,
+  toggleSalaryMemberPaid,
   updateSalaryMember,
   type SalaryPeriodRow,
 } from "@/lib/salaries";
@@ -405,6 +406,40 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
 
   revalidatePath("/salaries");
   redirect(back(periodPath(period), "ok", "Pagamento do jogador atualizado."));
+}
+
+/** Marca (ou desmarca) o pagamento de um membro do elenco. */
+export async function toggleSalaryPaidAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const periodId = Number(formData.get("periodId"));
+  const characterId = Number(formData.get("characterId"));
+  const period = await requirePeriod(
+    user,
+    periodId,
+    safePath(formData.get("redirectTo"), "/salaries"),
+  );
+
+  const paid = toggleSalaryMemberPaid(period.id, characterId);
+  if (paid === null) redirect(back(periodPath(period), "error", "Jogador não está no elenco desta semana."));
+
+  logAudit({
+    user,
+    action: paid ? "salary.member.paid" : "salary.member.unpaid",
+    entity: "salary_period",
+    entityId: period.id,
+    serverId: period.server_id,
+    detail: `Personagem ${characterId}: pagamento ${paid ? "marcado como pago" : "marcado como pendente"}`,
+  });
+
+  revalidatePath("/salaries");
+  const { m } = await getT();
+  redirect(
+    back(
+      periodPath(period),
+      "ok",
+      paid ? m("Pagamento do jogador marcado como pago.") : m("Pagamento do jogador marcado como pendente."),
+    ),
+  );
 }
 
 export async function removeSalaryMemberAction(formData: FormData): Promise<void> {

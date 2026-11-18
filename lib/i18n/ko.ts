@@ -712,6 +712,8 @@ const ko: Record<MessageKey, string> = {
   "salary.teamFilter": "팀",
   "salary.teamAll": "전체 · {count}",
   "salary.teamNone": "팀 없음 · {count}",
+  "salary.prefFilter": "보상",
+  "salary.prefAll": "전체 · {count}",
   "salary.noMemberSearch": "이 필터에 맞는 멤버가 없습니다.",
   "salary.searchPlaceholder": "예: Arke",
   "salary.noClans": "이 서버에 동맹으로 지정된 클랜이 없어 추가할 플레이어가 없습니다.",

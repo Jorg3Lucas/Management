@@ -712,6 +712,8 @@ const es: Record<MessageKey, string> = {
   "salary.teamFilter": "Equipo",
   "salary.teamAll": "Todos · {count}",
   "salary.teamNone": "Sin equipo · {count}",
+  "salary.prefFilter": "Recompensa",
+  "salary.prefAll": "Todos · {count}",
   "salary.noMemberSearch": "Ningún miembro con estos filtros.",
   "salary.searchPlaceholder": "Ej.: Arke",
   "salary.noClans": "Ningún clan aliado marcado en este servidor, así que no hay nadie para añadir.",

@@ -60,6 +60,7 @@ type SearchParams = {
   clan?: string;
   tier?: string;
   team?: string;
+  pref?: string;
   sort?: string;
   dir?: string;
   presence?: string;
@@ -73,6 +74,7 @@ type RosterSort = "name" | "power" | "salary" | "presence";
 type PresenceFilter = "all" | "with" | "without";
 type PaidFilter = "all" | "pending" | "paid";
 type TeamFilter = "all" | "none";
+type PrefFilter = "all" | "darksteel" | "stone";
 
 function isRosterSort(value: string | undefined): value is RosterSort {
   return value === "name" || value === "power" || value === "salary" || value === "presence";
@@ -98,6 +100,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const requestedTier = (params.tier ?? "").trim();
   const tierFilter = (SALARY_TIERS as readonly string[]).includes(requestedTier) ? requestedTier : null;
   const teamFilter: TeamFilter = params.team === "none" ? "none" : "all";
+  const prefFilter: PrefFilter =
+    params.pref === "darksteel" || params.pref === "stone" ? params.pref : "all";
 
   const periods = selected ? listSalaryPeriods(selected.id) : [];
   const requestedPeriod = Number(params.period);
@@ -124,8 +128,14 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     new Set(members.map((member) => member.clan).filter((clan): clan is string => Boolean(clan))),
   ).sort((a, b) => a.localeCompare(b, INTL_LOCALE[locale], { sensitivity: "base" }));
   const membersWithTeam = members.filter((member) => Boolean(member.team_name)).length;
+  const darksteelMembers = members.filter((member) => member.preference === "darksteel").length;
+  const stonePreferenceMembers = members.filter((member) => member.preference === "stone").length;
   const rosterFiltered =
-    rosterQuery !== "" || clanFilter !== "" || tierFilter !== null || teamFilter !== "all";
+    rosterQuery !== "" ||
+    clanFilter !== "" ||
+    tierFilter !== null ||
+    teamFilter !== "all" ||
+    prefFilter !== "all";
   const visibleMembers = members
     .filter((member) =>
       presence === "all" ? true : presence === "with" ? member.attendedCount > 0 : member.attendedCount === 0,
@@ -137,6 +147,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     .filter((member) => clanFilter === "" || member.clan === clanFilter)
     .filter((member) => tierFilter === null || member.tier === tierFilter)
     .filter((member) => teamFilter === "all" || !member.team_name)
+    .filter((member) => prefFilter === "all" || member.preference === prefFilter)
     .sort((a, b) => {
       const factor = sortDir === "asc" ? 1 : -1;
       const byName = a.name.localeCompare(b.name, INTL_LOCALE[locale], { sensitivity: "base" });
@@ -176,6 +187,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     clan?: string;
     tier?: string | null;
     team?: TeamFilter;
+    pref?: PrefFilter;
   }) => {
     const next = {
       sort: sortKey,
@@ -186,6 +198,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
       clan: clanFilter,
       tier: tierFilter,
       team: teamFilter,
+      pref: prefFilter,
       ...overrides,
     };
     const query = new URLSearchParams();
@@ -202,6 +215,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     if (next.clan) query.set("clan", next.clan);
     if (next.tier !== null) query.set("tier", next.tier);
     if (next.team !== "all") query.set("team", next.team);
+    if (next.pref !== "all") query.set("pref", next.pref);
     return `/salaries?${query.toString()}`;
   };
 
@@ -643,6 +657,27 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                           {t("salary.teamNone", { count: members.length - membersWithTeam })}
                         </Link>
                       </div>
+                      <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                        <span className="small muted">{t("salary.prefFilter")}</span>
+                        <Link
+                          className={`btn sm${prefFilter === "all" ? " primary" : " ghost"}`}
+                          href={rosterHref({ pref: "all" })}
+                        >
+                          {t("salary.prefAll", { count: members.length })}
+                        </Link>
+                        <Link
+                          className={`btn sm${prefFilter === "darksteel" ? " primary" : " ghost"}`}
+                          href={rosterHref({ pref: "darksteel" })}
+                        >
+                          {t("salary.pref.darksteel")} · {darksteelMembers}
+                        </Link>
+                        <Link
+                          className={`btn sm${prefFilter === "stone" ? " primary" : " ghost"}`}
+                          href={rosterHref({ pref: "stone" })}
+                        >
+                          {t("salary.pref.stone")} · {stonePreferenceMembers}
+                        </Link>
+                      </div>
                       <form className="filters roster-filters" action="/salaries" method="get">
                         <input type="hidden" name="server" value={selected.code} />
                         <input type="hidden" name="period" value={period.id} />
@@ -655,6 +690,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         {presence !== "all" ? <input type="hidden" name="presence" value={presence} /> : null}
                         {paidFilter !== "all" ? <input type="hidden" name="paid" value={paidFilter} /> : null}
                         {teamFilter !== "all" ? <input type="hidden" name="team" value={teamFilter} /> : null}
+                        {prefFilter !== "all" ? <input type="hidden" name="pref" value={prefFilter} /> : null}
                         <div className="field" style={{ flex: "1 1 180px" }}>
                           <label htmlFor="rq">{t("salary.filterName")}</label>
                           <input
@@ -700,7 +736,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         {rosterFiltered ? (
                           <Link
                             className="btn sm ghost"
-                            href={rosterHref({ rq: "", clan: "", tier: null, team: "all" })}
+                            href={rosterHref({ rq: "", clan: "", tier: null, team: "all", pref: "all" })}
                           >
                             {t("players.clear")}
                           </Link>
@@ -1025,6 +1061,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     {clanFilter ? <input type="hidden" name="clan" value={clanFilter} /> : null}
                     {tierFilter !== null ? <input type="hidden" name="tier" value={tierFilter} /> : null}
                     {teamFilter !== "all" ? <input type="hidden" name="team" value={teamFilter} /> : null}
+                    {prefFilter !== "all" ? <input type="hidden" name="pref" value={prefFilter} /> : null}
                     <div className="field" style={{ flex: "1 1 260px" }}>
                       <label htmlFor="q">{t("salary.searchLabel")}</label>
                       <input

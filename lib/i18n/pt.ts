@@ -731,6 +731,8 @@ const pt = {
   "salary.teamFilter": "Time",
   "salary.teamAll": "Todos · {count}",
   "salary.teamNone": "Sem time · {count}",
+  "salary.prefFilter": "Recompensa",
+  "salary.prefAll": "Todos · {count}",
   "salary.noMemberSearch": "Nenhum membro com esses filtros.",
   "salary.noClans": "Nenhum clã aliado marcado neste servidor, então não há ninguém para adicionar.",
   "salary.noCandidateSearch": "Nenhum jogador aliado com essa busca.",

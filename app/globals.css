@@ -626,8 +626,13 @@ details.card > summary.card-head .card-sub {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
   padding: 17px 20px;
   border-bottom: 1px solid var(--border-soft);
+}
+
+.card-head form {
+  max-width: 100%;
 }
 
 .card-title {
@@ -1775,6 +1780,50 @@ table.data th a.th-sort.active {
   max-width: 240px;
 }
 
+/* Busca no ranking geral: convidados de outros servidores entram na guerra. */
+.party-picker-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px dashed var(--border-soft);
+  border-radius: 10px;
+}
+
+.party-picker-search input[type="search"] {
+  max-width: none;
+}
+
+.party-picker-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.party-picker-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.party-picker-result:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.party-picker-result-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .party-picker-list {
   display: flex;
   flex-direction: column;
@@ -1814,6 +1863,61 @@ table.data th a.th-sort.active {
   display: flex;
   flex-wrap: wrap;
   gap: 2px 10px;
+}
+
+/* Guerras em andamento: cada confronto é um cartão com cronômetro. */
+.war-live-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.war-live {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 16px 15px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.war-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.war-live-vs {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.war-live-clock {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--gold);
+}
+
+.war-live-meta {
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+.war-live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 /* ---------- Lists / misc ---------- */

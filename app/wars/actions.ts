@@ -2,13 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canEditServer, requireUser } from "@/lib/auth";
+import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { execute, transaction } from "@/lib/db";
 import { WAR_TYPES } from "@/lib/format";
 import { getT } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n/pt";
-import { getCharacterWithServer, getServerById, warGroupSessions } from "@/lib/queries";
+import {
+  getCharacterWithServer,
+  getServerById,
+  searchCharacters,
+  warGroupSessions,
+  type CharacterSearchRow,
+} from "@/lib/queries";
 import { zonedInputToUtc } from "@/lib/time";
 import type { SessionUser } from "@/lib/types";
 
@@ -78,20 +84,14 @@ function parseWarForm(formData: FormData, t: T): { war: WarInput } | { error: st
   };
 }
 
-/** Confere o servidor da guerra e o servidor casa de cada jogador. */
-function checkPermissions(
-  user: SessionUser,
-  war: WarInput,
-  allowed: Set<number> = new Set(),
-): { error?: MessageKey } {
+/**
+ * A permissão é do servidor onde a guerra aconteceu. Os participantes podem vir
+ * de qualquer servidor: quem lutou como convidado continua valendo no registro.
+ */
+function checkPermissions(user: SessionUser, war: WarInput): { error?: MessageKey } {
   if (!canEditServer(user, war.serverId)) return { error: "war.errServer" };
   for (const characterId of war.characterIds) {
-    const character = getCharacterWithServer(characterId);
-    if (!character) return { error: "war.errPlayer" };
-    // Quem já está na guerra continua valendo mesmo sem permissão no servidor casa.
-    if (!allowed.has(characterId) && !canEditServer(user, character.server_id)) {
-      return { error: "war.errPlayer" };
-    }
+    if (!getCharacterWithServer(characterId)) return { error: "war.errPlayer" };
   }
   return {};
 }
@@ -161,7 +161,7 @@ export async function updateWarAction(formData: FormData): Promise<void> {
 
   const { war } = parsed;
   const current = new Set(group.map((session) => session.character_id));
-  const permissions = checkPermissions(user, war, current);
+  const permissions = checkPermissions(user, war);
   if (permissions.error) redirect(back(editPath, "error", t(permissions.error)));
 
   const keep = new Set(war.characterIds);
@@ -255,4 +255,12 @@ export async function deleteWarGroupAction(formData: FormData): Promise<void> {
 
   revalidateWars();
   redirect(back(redirectTo, "ok", t("war.removed")));
+}
+
+/** Busca no ranking geral do jogo quem pode entrar na guerra (outros servidores). */
+export async function searchWarRankingAction(term: string): Promise<CharacterSearchRow[]> {
+  const user = await requireUser();
+  const canRegister = accessibleServers(user).some((server) => canEditServer(user, server.id));
+  if (!canRegister) return [];
+  return searchCharacters(String(term ?? ""));
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { searchWarRankingAction } from "@/app/wars/actions";
 import { useT } from "@/components/I18nProvider";
 import { INTL_LOCALE } from "@/lib/i18n/locales";
+import type { CharacterSearchRow } from "@/lib/queries";
 
 export type WarPartyMember = {
   id: number;
@@ -17,29 +19,77 @@ type Props = {
   name?: string;
 };
 
-/** Seletor de participantes da guerra: marcar vários jogadores de uma vez. */
+/**
+ * Seletor de participantes da guerra: o time do servidor vem pronto e o resto
+ * pode ser buscado no ranking geral do jogo (jogador convidado de outro servidor).
+ */
 export function WarPartyPicker({ members, initial = [], name = "characterIds" }: Props) {
   const { locale, t } = useT();
   const [selected, setSelected] = useState<Set<number>>(() => new Set(initial));
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
+  const [extra, setExtra] = useState<WarPartyMember[]>([]);
+  const [rankingTerm, setRankingTerm] = useState("");
+  const [rankingResults, setRankingResults] = useState<CharacterSearchRow[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const collator = useMemo(() => new Intl.Collator(INTL_LOCALE[locale], { sensitivity: "base" }), [locale]);
 
+  // Quem vem da busca no ranking não está no elenco do servidor: fica num extra.
+  const allMembers = useMemo(() => {
+    const merged = [...members];
+    for (const member of extra) {
+      if (!merged.some((entry) => entry.id === member.id)) merged.push(member);
+    }
+    return merged.sort((a, b) => collator.compare(a.name, b.name));
+  }, [members, extra, collator]);
+
+  useEffect(() => {
+    const term = rankingTerm.trim();
+    if (term.length < 2) {
+      setRankingResults([]);
+      setSearching(false);
+      return;
+    }
+
+    let active = true;
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const rows = await searchWarRankingAction(term);
+        if (active) setRankingResults(rows);
+      } catch {
+        if (active) setRankingResults([]);
+      } finally {
+        if (active) setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [rankingTerm]);
+
   const clans = useMemo(() => {
     const names = new Set<string>();
-    for (const member of members) names.add(member.clan ?? "");
+    for (const member of allMembers) names.add(member.clan ?? "");
     return Array.from(names).sort((a, b) => collator.compare(a, b));
-  }, [members, collator]);
+  }, [allMembers, collator]);
 
   const visible = useMemo(() => {
     const term = query.trim().toLocaleLowerCase(INTL_LOCALE[locale]);
-    return members.filter((member) => {
+    return allMembers.filter((member) => {
       if (clan !== "all" && (member.clan ?? "") !== clan) return false;
       if (term && !member.name.toLocaleLowerCase(INTL_LOCALE[locale]).includes(term)) return false;
       return true;
     });
-  }, [members, clan, query, locale]);
+  }, [allMembers, clan, query, locale]);
+
+  const addable = useMemo(
+    () => rankingResults.filter((row) => !allMembers.some((member) => member.id === row.id)),
+    [rankingResults, allMembers],
+  );
 
   function toggle(id: number) {
     setSelected((previous) => {
@@ -62,11 +112,56 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
     });
   }
 
+  function addFromRanking(row: CharacterSearchRow) {
+    setExtra((previous) =>
+      previous.some((member) => member.id === row.id)
+        ? previous
+        : [...previous, { id: row.id, name: row.name, clan: row.clan, server_label: row.server_label }],
+    );
+    setSelected((previous) => new Set(previous).add(row.id));
+    setRankingTerm("");
+    setRankingResults([]);
+  }
+
+  const rankingHint =
+    rankingTerm.trim().length < 2
+      ? t("bossCustom.searchHint")
+      : searching
+        ? t("bossCustom.searching")
+        : addable.length === 0
+          ? t("bossCustom.noResults")
+          : null;
+
   return (
     <div className="party-picker">
       {Array.from(selected).map((id) => (
         <input key={id} type="hidden" name={name} value={id} />
       ))}
+
+      <div className="party-picker-search">
+        <input
+          type="search"
+          value={rankingTerm}
+          onChange={(event) => setRankingTerm(event.target.value)}
+          placeholder={t("bossCustom.placeholder")}
+          aria-label={t("bossCustom.placeholder")}
+        />
+        {rankingHint ? <span className="small muted">{rankingHint}</span> : null}
+        {addable.length > 0 ? (
+          <div className="party-picker-results">
+            {addable.map((row) => (
+              <div key={row.id} className="party-picker-result">
+                <span className="party-picker-result-name">{row.name}</span>
+                <span className="small muted">{row.clan ?? "—"}</span>
+                <span className="badge">{row.server_label}</span>
+                <button type="button" className="btn sm ghost" onClick={() => addFromRanking(row)}>
+                  {t("bossCustom.add")}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className="party-picker-tools">
         <input
@@ -114,7 +209,7 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
         <span className="small muted">
           {t("castleBoard.visible", {
             visible: String(visible.length),
-            total: String(members.length),
+            total: String(allMembers.length),
           })}
         </span>
         {selected.size > 0 ? (

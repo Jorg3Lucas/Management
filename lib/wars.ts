@@ -15,6 +15,31 @@ export function totalWarSeconds(sessions: Pick<WarSessionRow, "started_at" | "en
   return sessions.reduce((sum, session) => sum + sessionSeconds(session, now), 0);
 }
 
+type WarWindowSpan = Pick<WarSessionRow, "started_at" | "ended_at">;
+
+/**
+ * Tempo da guerra como janela única: do início mais cedo ao fim mais tarde.
+ * Somar as sessões contaria a mesma hora uma vez por jogador.
+ */
+export function warWindowSeconds(sessions: WarWindowSpan[], now = Date.now()): number {
+  let start = Number.POSITIVE_INFINITY;
+  let end = Number.NEGATIVE_INFINITY;
+
+  for (const session of sessions) {
+    const sessionStart = Date.parse(session.started_at);
+    if (!Number.isNaN(sessionStart)) start = Math.min(start, sessionStart);
+    const sessionEnd = session.ended_at ? Date.parse(session.ended_at) : now;
+    if (!Number.isNaN(sessionEnd)) end = Math.max(end, sessionEnd);
+  }
+
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.max(0, Math.floor((end - start) / 1000));
+}
+
+export function totalWarWindowSeconds(groups: WarWindowSpan[][], now = Date.now()): number {
+  return groups.reduce((sum, group) => sum + warWindowSeconds(group, now), 0);
+}
+
 export type WarGroupable = {
   id: number;
   server_id: number;

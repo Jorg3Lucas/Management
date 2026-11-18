@@ -155,6 +155,54 @@ export function warSessionsForServers(serverIds: number[], limit = 500): WarSess
   );
 }
 
+/**
+ * Sessões das guerras que aconteceram nos servidores informados — pelo servidor
+ * da guerra, não pelo servidor casa de cada participante.
+ */
+export function warSessionsForWarServers(serverIds: number[], limit = 1000): WarSessionWithNames[] {
+  if (serverIds.length === 0) return [];
+  return queryAll<WarSessionWithNames>(
+    `SELECT w.*, c.name AS character_name,
+            hs.code AS home_server_code, hs.label AS home_server_label,
+            ws.code AS war_server_code, ws.label AS war_server_label
+     FROM war_sessions w
+     JOIN characters c ON c.id = w.character_id
+     JOIN servers hs ON hs.id = c.server_id
+     JOIN servers ws ON ws.id = w.server_id
+     WHERE w.server_id IN (${serverIds.map(() => "?").join(",")})
+     ORDER BY (w.ended_at IS NULL) DESC, w.started_at DESC
+     LIMIT ?`,
+    ...serverIds,
+    limit,
+  );
+}
+
+export type CharacterSearchRow = {
+  id: number;
+  name: string;
+  clan: string | null;
+  power_score: number;
+  server_code: string;
+  server_label: string;
+};
+
+/** Busca personagens pelo nome em todos os servidores (ranking geral do jogo). */
+export function searchCharacters(term: string, limit = 20): CharacterSearchRow[] {
+  const clean = term.replace(/\s+/g, " ").trim().slice(0, 60);
+  if (clean.length < 2) return [];
+
+  const like = `%${clean.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+  return queryAll<CharacterSearchRow>(
+    `SELECT c.id, c.name, c.clan, c.power_score, s.code AS server_code, s.label AS server_label
+     FROM characters c JOIN servers s ON s.id = c.server_id
+     WHERE c.name LIKE ? ESCAPE '\\'
+     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
+     LIMIT ?`,
+    like,
+    limit,
+  );
+}
+
 export function warSessionsForCharacters(characterIds: number[]): WarSessionWithNames[] {
   if (characterIds.length === 0) return [];
   return queryAll<WarSessionWithNames>(

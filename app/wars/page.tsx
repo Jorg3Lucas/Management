@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { formatDuration, warTypeLabel } from "@/lib/format";
 import { getT } from "@/lib/i18n";
-import { listCharacters, warSessionsForServers } from "@/lib/queries";
+import { listCharacters, warSessionsForWarServers } from "@/lib/queries";
 import { formatDateTime, nowIso, utcToZonedInput } from "@/lib/time";
-import { groupWarSessions, sessionSeconds, totalWarSeconds } from "@/lib/wars";
+import { groupWarSessions, totalWarWindowSeconds, warWindowSeconds } from "@/lib/wars";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ElapsedTime } from "@/components/ElapsedTime";
 import { EmptyState, Flash } from "@/components/ui";
 import { WarPartyPicker } from "@/components/WarPartyPicker";
 import { createWarAction, deleteWarGroupAction, endWarGroupAction } from "./actions";
@@ -46,12 +47,16 @@ export default async function WarsPage({
         )
       : [];
 
-  const allSessions = warSessionsForServers(ids, 1000);
+  const allSessions = warSessionsForWarServers(ids, 1000);
   const sessions = selected ? allSessions.filter((session) => session.server_id === selected.id) : allSessions;
   const groups = groupWarSessions(sessions);
   const now = Date.now();
-  const activeCount = sessions.filter((session) => !session.ended_at).length;
-  const totalSeconds = totalWarSeconds(sessions, now);
+  const active = groups.filter((group) => group.sessions.some((session) => !session.ended_at));
+  const closed = groups.filter((group) => group.sessions.every((session) => session.ended_at));
+  const totalSeconds = totalWarWindowSeconds(
+    groups.map((group) => group.sessions),
+    now,
+  );
 
   return (
     <>
@@ -62,48 +67,83 @@ export default async function WarsPage({
           <p className="page-sub">{t("wars.sub")}</p>
         </div>
         <div className="head-actions">
-          <span className="badge err live">{t("wars.runningCount", { count: activeCount })}</span>
+          <span className="badge err live">{t("wars.runningCount", { count: active.length })}</span>
           <span className="badge">{t("wars.total", { duration: formatDuration(totalSeconds, locale) })}</span>
         </div>
       </div>
 
       <Flash ok={params.ok} error={params.error} />
 
-      <form className="filters" action="/wars" method="get" style={{ marginBottom: 18 }}>
-        <div className="field">
-          <label htmlFor="server">{t("wars.warServer")}</label>
-          <select id="server" name="server" defaultValue={selected?.code ?? ""}>
-            <option value="">{t("wars.allServers")}</option>
-            {servers.map((server) => (
-              <option key={server.id} value={server.code}>
-                {server.label} — {server.group_name}
-              </option>
-            ))}
-          </select>
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <div>
+            <div className="card-title">{t("wars.activeTitle")}</div>
+            <div className="card-sub">{t("wars.activeSub")}</div>
+          </div>
         </div>
-        <button className="btn" type="submit">
-          {t("common.filter")}
-        </button>
-        {selected ? (
-          <Link className="btn ghost" href="/wars">
-            {t("players.clear")}
-          </Link>
-        ) : null}
-      </form>
+        {active.length === 0 ? (
+          <EmptyState title={t("wars.activeEmpty")}>{t("wars.activeEmptyBody")}</EmptyState>
+        ) : (
+          <div className="card-body">
+            <div className="war-live-grid">
+              {active.map((group) => {
+                const head = group.sessions[0];
+                const editableGroup = canEditServer(user, head.server_id);
+                const shown = group.sessions.slice(0, 6);
+                const hidden = group.sessions.length - shown.length;
 
-      {warServers.length === 0 || roster.length === 0 ? (
+                return (
+                  <article className="war-live" key={group.key}>
+                    <div className="war-live-head">
+                      <span className="badge gold">{head.war_server_label}</span>
+                      <span className="small muted">{warTypeLabel(head.war_type, locale)}</span>
+                    </div>
+                    <div className="war-live-vs">{head.opponent ? `vs ${head.opponent}` : t("wars.noOpponent")}</div>
+                    <ElapsedTime since={head.started_at} initialSeconds={warWindowSeconds(group.sessions, now)} />
+                    <span className="war-live-meta">
+                      {t("wars.liveSince", { time: formatDateTime(head.started_at, locale) })}
+                    </span>
+                    <div className="war-party">
+                      {shown.map((session) => (
+                        <Link key={session.id} className="player-name" href={`/players/${session.character_id}`}>
+                          {session.character_name}
+                        </Link>
+                      ))}
+                      {hidden > 0 ? <span className="small muted">+{hidden}</span> : null}
+                    </div>
+                    {editableGroup ? (
+                      <div className="war-live-actions">
+                        <Link className="btn sm" href={`/wars/${head.id}`}>
+                          {t("common.edit")}
+                        </Link>
+                        <form action={endWarGroupAction} className="inline-form">
+                          <input type="hidden" name="sessionId" value={head.id} />
+                          <input type="hidden" name="redirectTo" value="/wars" />
+                          <button className="btn sm" type="submit">
+                            {t("wars.end")}
+                          </button>
+                        </form>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {warServers.length === 0 ? (
         <div className="alert warn" style={{ marginBottom: 16 }}>
           {t("wars.noEditableServers")}
         </div>
       ) : (
-        <section className="card" style={{ marginBottom: 16 }}>
-          <div className="card-head">
-            <div>
-              <div className="card-title">{t("wars.newTitle")}</div>
-              <div className="card-sub">{t("wars.newSub")}</div>
-            </div>
-          </div>
-          <div className="card-body">
+        <details className="panel" open={groups.length === 0}>
+          <summary>{t("wars.newTitle")}</summary>
+          <div className="panel-body">
+            <p className="small muted" style={{ marginTop: 0 }}>
+              {t("wars.newSub")}
+            </p>
             <form action={createWarAction} className="form-grid">
               <div className="field">
                 <label htmlFor="warServerId">{t("wars.warServer")}</label>
@@ -169,12 +209,36 @@ export default async function WarsPage({
               </div>
             </form>
           </div>
-        </section>
+        </details>
       )}
 
-      <div className="card">
+      <section className="card">
+        <div className="card-head">
+          <div>
+            <div className="card-title">{t("wars.historyTitle")}</div>
+            <div className="card-sub">{t("wars.historySub")}</div>
+          </div>
+          <form className="row" action="/wars" method="get">
+            <select name="server" defaultValue={selected?.code ?? ""} aria-label={t("wars.warServer")}>
+              <option value="">{t("wars.allServers")}</option>
+              {servers.map((server) => (
+                <option key={server.id} value={server.code}>
+                  {server.label} — {server.group_name}
+                </option>
+              ))}
+            </select>
+            <button className="btn sm" type="submit">
+              {t("common.filter")}
+            </button>
+            {selected ? (
+              <Link className="btn sm ghost" href="/wars">
+                {t("players.clear")}
+              </Link>
+            ) : null}
+          </form>
+        </div>
         <div className="table-wrap">
-          {groups.length === 0 ? (
+          {closed.length === 0 ? (
             <EmptyState title={t("wars.empty")}>{t("wars.emptyBefore")}</EmptyState>
           ) : (
             <table className="data">
@@ -182,52 +246,40 @@ export default async function WarsPage({
                 <tr>
                   <th>{t("wars.colWar")}</th>
                   <th>{t("wars.warServer")}</th>
-                  <th>{t("wars.colType")}</th>
                   <th>{t("wars.colStart")}</th>
                   <th className="num">{t("wars.colDuration")}</th>
                   <th>{t("wars.participants")}</th>
-                  <th>{t("common.status")}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {groups.map((group) => {
+                {closed.map((group) => {
                   const head = group.sessions[0];
-                  const open = group.sessions.some((session) => !session.ended_at);
-                  const seconds = group.sessions.reduce((sum, session) => sum + sessionSeconds(session, now), 0);
                   const editableGroup = canEditServer(user, head.server_id);
+                  const shown = group.sessions.slice(0, 4);
+                  const hidden = group.sessions.length - shown.length;
+
                   return (
                     <tr key={group.key}>
                       <td>
-                        <div className="war-party">
-                          {group.sessions.map((session) => (
-                            <Link key={session.id} className="player-name" href={`/players/${session.character_id}`}>
-                              {session.character_name}
-                            </Link>
-                          ))}
-                        </div>
+                        <div>{warTypeLabel(head.war_type, locale)}</div>
                         {head.opponent ? <div className="player-clan">vs {head.opponent}</div> : null}
                       </td>
                       <td>
                         <span className="badge gold">{head.war_server_label}</span>
                       </td>
-                      <td className="small">{warTypeLabel(head.war_type, locale)}</td>
-                      <td className="small nowrap">
-                        {formatDateTime(head.started_at, locale)}
-                        {head.ended_at ? (
-                          <div className="player-clan">{formatDateTime(head.ended_at, locale)}</div>
-                        ) : null}
-                      </td>
-                      <td className="num mono">{formatDuration(seconds, locale)}</td>
+                      <td className="small nowrap">{formatDateTime(head.started_at, locale)}</td>
+                      <td className="num mono">{formatDuration(warWindowSeconds(group.sessions, now), locale)}</td>
                       <td>
-                        <span className="badge">{t("wars.playerCount", { count: group.sessions.length })}</span>
-                      </td>
-                      <td>
-                        {open ? (
-                          <span className="badge err live">{t("wars.open")}</span>
-                        ) : (
-                          <span className="badge">{t("wars.closed")}</span>
-                        )}
+                        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+                          <span className="badge">{t("wars.playerCount", { count: group.sessions.length })}</span>
+                          {shown.map((session) => (
+                            <Link key={session.id} className="player-name" href={`/players/${session.character_id}`}>
+                              {session.character_name}
+                            </Link>
+                          ))}
+                          {hidden > 0 ? <span className="small muted">+{hidden}</span> : null}
+                        </div>
                       </td>
                       <td>
                         <div className="row" style={{ justifyContent: "flex-end" }}>
@@ -235,15 +287,6 @@ export default async function WarsPage({
                             <Link className="btn sm" href={`/wars/${head.id}`}>
                               {t("common.edit")}
                             </Link>
-                          ) : null}
-                          {open ? (
-                            <form action={endWarGroupAction} className="inline-form">
-                              <input type="hidden" name="sessionId" value={head.id} />
-                              <input type="hidden" name="redirectTo" value="/wars" />
-                              <button className="btn sm" type="submit">
-                                {t("wars.end")}
-                              </button>
-                            </form>
                           ) : null}
                           {editableGroup ? (
                             <form action={deleteWarGroupAction} className="inline-form">
@@ -263,7 +306,7 @@ export default async function WarsPage({
             </table>
           )}
         </div>
-      </div>
+      </section>
     </>
   );
 }

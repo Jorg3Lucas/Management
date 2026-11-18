@@ -277,6 +277,15 @@ function migrate(db: DatabaseSync) {
       PRIMARY KEY (plan_id, character_id)
     );
 
+    -- Convidados da CE: gente de outro clã aliado que roda no clã do plano
+    -- naquela semana (troca de horário ou clã alternativo).
+    CREATE TABLE IF NOT EXISTS ce_plan_guests (
+      plan_id INTEGER NOT NULL REFERENCES ce_plans(id) ON DELETE CASCADE,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY (plan_id, character_id)
+    );
+
     -- O baú do castelo é mensal: month_start guarda o primeiro dia do mês.
     CREATE TABLE IF NOT EXISTS castle_prize_awards (
       server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,

@@ -331,22 +331,112 @@ export type CeDonor = {
   character_id: number;
   name: string;
   power_score: number;
+  clan_id: number;
+  clan_name: string;
+  /** 1 quando o membro é de outro clã aliado e foi trazido como convidado. */
+  is_guest: number;
   gold_done: number;
 };
 
-/** Membros do clã do plano, com a marca de ouro daquela semana. */
+/**
+ * Membros do clã do plano mais os convidados de outros clãs aliados, com a
+ * marca de ouro daquela semana.
+ */
 export function ceDonors(serverId: number, clanId: number, planId: number | null): CeDonor[] {
   return queryAll<CeDonor>(
     `SELECT c.id AS character_id, c.name, c.power_score,
+            c.clan_id, cl.name AS clan_name,
+            CASE WHEN c.clan_id = ? THEN 0 ELSE 1 END AS is_guest,
             COALESCE(d.gold_done, 0) AS gold_done
      FROM characters c
+     JOIN clans cl ON cl.id = c.clan_id
      LEFT JOIN ce_donations d ON d.character_id = c.id AND d.plan_id = ?
-     WHERE c.server_id = ? AND c.clan_id = ?
-     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
+     WHERE c.server_id = ?
+       AND (c.clan_id = ? OR c.id IN (SELECT character_id FROM ce_plan_guests WHERE plan_id = ?))
+     ORDER BY is_guest ASC, c.power_score DESC, c.name COLLATE NOCASE ASC
      LIMIT 300`,
+    clanId,
     planId ?? 0,
     serverId,
     clanId,
+    planId ?? 0,
+  );
+}
+
+/** Membro de outro clã aliado que pode entrar como convidado no plano. */
+export type CeGuestCandidate = {
+  id: number;
+  name: string;
+  power_score: number;
+  clan_id: number;
+  clan_name: string;
+};
+
+/** Elenco de fora do clã (outros aliados), para escolher um convidado. */
+export function ceGuestCandidates(serverId: number, clanId: number): CeGuestCandidate[] {
+  return queryAll<CeGuestCandidate>(
+    `SELECT c.id, c.name, c.power_score, cl.id AS clan_id, cl.name AS clan_name
+     FROM characters c
+     JOIN clans cl ON cl.id = c.clan_id
+     JOIN clan_relations r
+       ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
+     WHERE c.server_id = ? AND c.clan_id <> ?
+     ORDER BY cl.name COLLATE NOCASE ASC, c.power_score DESC, c.name COLLATE NOCASE ASC
+     LIMIT 500`,
+    serverId,
+    clanId,
+  );
+}
+
+/** Convidado válido: personagem do servidor, de outro clã aliado. */
+export function ceGuestCandidate(
+  serverId: number,
+  clanId: number,
+  characterId: number,
+): { id: number; name: string } | undefined {
+  return queryOne<{ id: number; name: string }>(
+    `SELECT c.id, c.name
+     FROM characters c
+     JOIN clan_relations r
+       ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
+     WHERE c.server_id = ? AND c.id = ? AND c.clan_id <> ?`,
+    serverId,
+    characterId,
+    clanId,
+  );
+}
+
+/** Coloca o membro de outro clã na lista de doações do plano. */
+export function addCeGuest(planId: number, characterId: number): void {
+  execute(
+    `INSERT OR IGNORE INTO ce_plan_guests (plan_id, character_id, added_at)
+     VALUES (?, ?, ?)`,
+    planId,
+    characterId,
+    new Date().toISOString(),
+  );
+}
+
+/** Tira o convidado do plano junto com a doação dele. */
+export function removeCeGuest(planId: number, characterId: number): void {
+  execute("DELETE FROM ce_plan_guests WHERE plan_id = ? AND character_id = ?", planId, characterId);
+  execute("DELETE FROM ce_donations WHERE plan_id = ? AND character_id = ?", planId, characterId);
+}
+
+/** Doação permitida para membro do clã do plano ou convidado já registrado. */
+export function ceDonorAllowed(
+  planId: number,
+  characterId: number,
+  serverId: number,
+  clanId: number,
+): boolean {
+  if (characterInClan(characterId, serverId, clanId)) return true;
+  return Boolean(
+    queryOne<{ character_id: number }>(
+      "SELECT character_id FROM ce_plan_guests WHERE plan_id = ? AND character_id = ?",
+      planId,
+      characterId,
+    ),
   );
 }
 

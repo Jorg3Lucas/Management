@@ -194,6 +194,10 @@ const en: Record<string, string> = {
   "Membro não tem baú neste mês.": "The member has no chest this month.",
   "Baús de {name} marcados como entregues.": "{name}'s chests marked as delivered.",
   "Entrega dos baús de {name} desmarcada.": "{name}'s chest delivery unmarked.",
+  "Escolha um membro de outro clã aliado.": "Pick a member from another allied clan.",
+  "Esse membro não é convidado deste plano.": "That member is not a guest of this plan.",
+  "{name} entrou na CE de {clan} como convidado.": "{name} joined {clan}'s CE as a guest.",
+  "Convidado removido da CE de {clan}.": "Guest removed from {clan}'s CE.",
 };
 
 const es: Record<string, string> = {
@@ -391,6 +395,10 @@ const es: Record<string, string> = {
   "Membro não tem baú neste mês.": "El miembro no tiene cofre este mes.",
   "Baús de {name} marcados como entregues.": "Cofres de {name} marcados como entregados.",
   "Entrega dos baús de {name} desmarcada.": "Entrega de los cofres de {name} desmarcada.",
+  "Escolha um membro de outro clã aliado.": "Elige un miembro de otro clan aliado.",
+  "Esse membro não é convidado deste plano.": "Ese miembro no es invitado de este plan.",
+  "{name} entrou na CE de {clan} como convidado.": "{name} entró en la CE de {clan} como invitado.",
+  "Convidado removido da CE de {clan}.": "Invitado eliminado de la CE de {clan}.",
 };
 
 const ko: Record<string, string> = {
@@ -586,6 +594,10 @@ const ko: Record<string, string> = {
   "Membro não tem baú neste mês.": "이번 달에 상자가 없는 멤버입니다.",
   "Baús de {name} marcados como entregues.": "{name}님의 상자를 전달로 표시했습니다.",
   "Entrega dos baús de {name} desmarcada.": "{name}님의 상자 전달 표시를 취소했습니다.",
+  "Escolha um membro de outro clã aliado.": "다른 동맹 클랜 멤버를 선택하세요.",
+  "Esse membro não é convidado deste plano.": "이 멤버는 이 계획의 게스트가 아닙니다.",
+  "{name} entrou na CE de {clan} como convidado.": "{name}님이 {clan} CE에 게스트로 참여했습니다.",
+  "Convidado removido da CE de {clan}.": "{clan} CE에서 게스트를 제거했습니다.",
 };
 
 const tables: Record<Locale, Record<string, string>> = { pt: {}, en, es, ko };

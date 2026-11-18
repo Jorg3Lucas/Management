@@ -13,6 +13,7 @@ import {
   CE_RUNS,
   ceAlliedClans,
   ceDonors,
+  ceGuestCandidates,
   ceSummary,
   ceWeekStart,
   ceWeekTitle,
@@ -21,7 +22,7 @@ import {
   listCePlans,
   shiftWeek,
 } from "@/lib/ce";
-import { saveCeDonationAction, saveCePlanAction } from "./actions";
+import { addCeGuestAction, removeCeGuestAction, saveCeDonationAction, saveCePlanAction } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
@@ -71,6 +72,16 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
   const activeHistory = activeClan
     ? weeks.filter((entry) => entry.clan_id === activeClan.clan.id)
     : [];
+
+  // Gente de outro clã aliado que pode entrar na CE desta semana como convidada.
+  const guestCandidates =
+    selected && activeClan ? ceGuestCandidates(selected.id, activeClan.clan.id) : [];
+  const guestGroups = new Map<string, typeof guestCandidates>();
+  for (const candidate of guestCandidates) {
+    const list = guestGroups.get(candidate.clan_name) ?? [];
+    list.push(candidate);
+    guestGroups.set(candidate.clan_name, list);
+  }
 
   const weekHref = (week: string) => `/ce?server=${selected?.code ?? ""}&week=${week}`;
   const clanHref = (clanId: number, week = weekStart) =>
@@ -381,6 +392,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                 <th>{t("common.player")}</th>
                                 <th className="num">{t("players.colPower")}</th>
                                 <th>{t("ce.colGold")}</th>
+                                <th />
                               </tr>
                             </thead>
                             <tbody>
@@ -392,7 +404,12 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                   <td className="cell-title" data-label={t("common.player")}>
                                     <Link className="player-name" href={`/players/${donor.character_id}`}>
                                       {donor.name}
-                                    </Link>
+                                    </Link>{" "}
+                                    {donor.is_guest === 1 ? (
+                                      <span className="badge" title={t("ce.guestTag")}>
+                                        {donor.clan_name}
+                                      </span>
+                                    ) : null}
                                   </td>
                                   <td className="num mono" data-label={t("players.colPower")}>
                                     {formatNumber(donor.power_score, locale)}
@@ -417,12 +434,76 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                       </label>
                                     </form>
                                   </td>
+                                  <td className="cell-action">
+                                    {donor.is_guest === 1 ? (
+                                      <form
+                                        action={removeCeGuestAction}
+                                        className="inline-form"
+                                        style={{ justifyContent: "flex-end" }}
+                                      >
+                                        <input type="hidden" name="serverId" value={selected.id} />
+                                        <input type="hidden" name="clanId" value={activeClan.clan.id} />
+                                        <input type="hidden" name="week" value={weekStart} />
+                                        <input type="hidden" name="redirectTo" value={returnTo} />
+                                        <input
+                                          type="hidden"
+                                          name="characterId"
+                                          value={donor.character_id}
+                                        />
+                                        <button
+                                          className="btn sm ghost"
+                                          type="submit"
+                                          title={t("ce.removeGuestHint")}
+                                        >
+                                          {t("ce.removeGuest")}
+                                        </button>
+                                      </form>
+                                    ) : null}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
                       )}
+
+                      <div className="card-body" style={{ borderTop: "1px solid var(--border-soft)" }}>
+                        {guestCandidates.length === 0 ? (
+                          <p className="small muted" style={{ margin: 0 }}>
+                            {t("ce.guestEmpty")}
+                          </p>
+                        ) : (
+                          <form action={addCeGuestAction} className="filters" style={{ margin: 0 }}>
+                            <input type="hidden" name="serverId" value={selected.id} />
+                            <input type="hidden" name="clanId" value={activeClan.clan.id} />
+                            <input type="hidden" name="week" value={weekStart} />
+                            <input type="hidden" name="redirectTo" value={returnTo} />
+                            <div className="field" style={{ flex: "1 1 240px" }}>
+                              <label htmlFor="ce-guest">{t("ce.guestLabel")}</label>
+                              <select id="ce-guest" name="characterId" defaultValue="" required>
+                                <option value="" disabled>
+                                  {t("ce.guestPlaceholder")}
+                                </option>
+                                {Array.from(guestGroups.entries()).map(([clanName, list]) => (
+                                  <optgroup key={clanName} label={clanName}>
+                                    {list.map((candidate) => (
+                                      <option key={candidate.id} value={candidate.id}>
+                                        {candidate.name} · {formatNumber(candidate.power_score, locale)}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </div>
+                            <button className="btn" type="submit">
+                              {t("ce.addGuestAction")}
+                            </button>
+                          </form>
+                        )}
+                        <p className="small muted" style={{ marginTop: 8 }}>
+                          {t("ce.guestHint", { clan: activeClan.clan.name })}
+                        </p>
+                      </div>
 
                       <div className="panel-body">
                         <p className="small muted" style={{ margin: 0 }}>

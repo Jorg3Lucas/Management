@@ -42,7 +42,9 @@ export default async function WorldBossDistributionPage() {
           </div>
           <div className="card-body wb-map-lists">
             {WORLD_BOSS_MAP_GROUPS.map((group) => (
-              <div key={group.key} className="table-wrap wb-map-table">
+              <div key={group.key} className="wb-map-group">
+                <div className="wb-layer-title">{t(group.titleKey)}</div>
+                <div className="table-wrap wb-map-table">
                 <table className="data wb-maps">
                   <thead>
                     <tr>
@@ -71,7 +73,8 @@ export default async function WorldBossDistributionPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
             ))}
           </div>
@@ -154,7 +157,12 @@ export default async function WorldBossDistributionPage() {
                 <div className={`wb-layer-grid cols-${layer.columns}`}>
                   {layer.channels.map((channel) => (
                     <div key={channel} className="wb-channel">
-                      <span className="wb-channel-name">{channel}</span>
+                      <div className="wb-channel-head">
+                        <span className="wb-channel-name">{channel}</span>
+                        <span className="wb-chest" title={t("boss.mapsChests")}>
+                          {layer.chests}
+                        </span>
+                      </div>
                       <span className="wb-slot" aria-hidden="true" />
                     </div>
                   ))}

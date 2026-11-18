@@ -842,9 +842,11 @@ const es: Record<MessageKey, string> = {
   "boss.mapsTitle": "Distribución World Boss",
   "boss.mapsSub":
     "Mapas y horarios del World Boss para armar la distribución del equipo. Las celdas quedan vacías hasta asignar jugadores.",
-  "boss.mapsListTitle": "Laberintos — mañana y noche",
+  "boss.mapsListTitle": "Laberintos y valles",
   "boss.mapsListSub":
     "Bosses por periodo. Cada celda es un hueco para un jugador; el número junto al boss es la cantidad de cofres por horario en cada mapa.",
+  "boss.mapsLabyrinths": "Laberintos — mañana y noche",
+  "boss.mapsValleys": "Valles — mañana y noche",
   "boss.mapsChests": "Cofres por horario en cada mapa",
   "boss.mapsTime": "Horario",
   "boss.mapsDawn": "Mañana",
@@ -857,7 +859,8 @@ const es: Record<MessageKey, string> = {
   "boss.mapsMinPower": "Poder mínimo",
   "boss.mapsServer": "Servidor",
   "boss.mapsLayersTitle": "Capas y canales",
-  "boss.mapsLayersSub": "Canales (W1 a W8) de cada capa. Cada canal es un hueco para un jugador.",
+  "boss.mapsLayersSub":
+    "Mapas del Mirage (W1 a W8) de cada capa. El número junto al canal es la cantidad de cofres por horario; cada canal es un hueco para un jugador.",
 
   "player.metadata": "Jugador",
   "player.noClass": "clase no informada",

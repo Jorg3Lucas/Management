@@ -4,6 +4,8 @@
  * para o time montar a escalação.
  */
 
+import type { MessageKey } from "@/lib/i18n/pt";
+
 export type WorldBossMapBoss = {
   name: string;
   /** Baús por horário em cada mapa (labirintos do primeiro bloco). */
@@ -12,13 +14,15 @@ export type WorldBossMapBoss = {
 
 export type WorldBossMapGroup = {
   key: string;
+  titleKey: MessageKey;
   bosses: WorldBossMapBoss[];
 };
 
-/** Labirintos da manhã e da noite, como na planilha do time. */
+/** Mapas da manhã e da noite: labirintos e vales, como na planilha do time. */
 export const WORLD_BOSS_MAP_GROUPS: WorldBossMapGroup[] = [
   {
     key: "list-1",
+    titleKey: "boss.mapsLabyrinths",
     bosses: [
       { name: "Bicheon", chests: 12 },
       { name: "Demon Bull", chests: 12 },
@@ -27,19 +31,20 @@ export const WORLD_BOSS_MAP_GROUPS: WorldBossMapGroup[] = [
       { name: "Heavens Way", chests: 16 },
       { name: "Redmoon", chests: 16 },
       { name: "Phantasia", chests: 16 },
-      { name: "Rockut", chests: 18 },
+      { name: "Rockcut", chests: 18 },
       { name: "Sabuk", chests: 18 },
       { name: "Nine Dragon", chests: 18 },
     ],
   },
   {
     key: "list-2",
+    titleKey: "boss.mapsValleys",
     bosses: [
-      { name: "Bicheon" },
-      { name: "Snake" },
-      { name: "Redmoon" },
-      { name: "Phantasia" },
-      { name: "Sagitarion" },
+      { name: "Bicheon", chests: 12 },
+      { name: "Snake", chests: 14 },
+      { name: "Redmoon", chests: 16 },
+      { name: "Phantasia", chests: 16 },
+      { name: "Sagitarion", chests: 18 },
     ],
   },
 ];
@@ -80,6 +85,8 @@ export type WorldBossLayer = {
   key: string;
   label: string;
   columns: number;
+  /** Baús por horário em cada mapa do Mirage. */
+  chests: number;
   channels: string[];
 };
 
@@ -89,12 +96,14 @@ export const WORLD_BOSS_LAYERS: WorldBossLayer[] = [
     key: "layer-3",
     label: "Layer 3",
     columns: 4,
+    chests: 30,
     channels: ["W1", "W7", "W2", "W3", "W8", "W4", "W5", "W6"],
   },
   {
     key: "layer-1",
     label: "Layer 1",
     columns: 2,
+    chests: 30,
     channels: ["W1", "W3", "W2"],
   },
 ];

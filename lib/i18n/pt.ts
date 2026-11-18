@@ -863,9 +863,11 @@ const pt = {
   "boss.mapsTitle": "Distribuição World Boss",
   "boss.mapsSub":
     "Mapas e horários do World Boss para montar a distribuição do time. As células ficam vazias até a escalação dos jogadores.",
-  "boss.mapsListTitle": "Labirintos — manhã e noite",
+  "boss.mapsListTitle": "Labirintos e vales",
   "boss.mapsListSub":
     "Bosses por período. Cada célula é um espaço para um jogador; o número ao lado do boss é a quantidade de baús por horário em cada mapa.",
+  "boss.mapsLabyrinths": "Labirintos — manhã e noite",
+  "boss.mapsValleys": "Vales — manhã e noite",
   "boss.mapsChests": "Baús por horário em cada mapa",
   "boss.mapsTime": "Horário",
   "boss.mapsDawn": "Manhã",
@@ -880,7 +882,7 @@ const pt = {
   "boss.mapsServer": "Servidor",
   "boss.mapsLayersTitle": "Camadas e canais",
   "boss.mapsLayersSub":
-    "Canais (W1 a W8) de cada camada. Cada canal é um espaço para um jogador.",
+    "Mapas do Mirage (W1 a W8) em cada camada. O número ao lado do canal é a quantidade de baús por horário; cada canal é um espaço para um jogador.",
 
   // Ficha do jogador
   "player.metadata": "Jogador",

@@ -842,9 +842,11 @@ const ko: Record<MessageKey, string> = {
   "boss.mapsTitle": "월드보스 분배",
   "boss.mapsSub":
     "팀 분배를 짜기 위한 월드보스 맵과 시간입니다. 플레이어를 배정하기 전까지 칸은 비어 있습니다.",
-  "boss.mapsListTitle": "미궁 — 아침·밤",
+  "boss.mapsListTitle": "미궁과 계곡",
   "boss.mapsListSub":
     "시간대별 보스입니다. 각 칸은 플레이어 한 명 자리이며, 보스 옆 숫자는 맵별 시간당 상자 수입니다.",
+  "boss.mapsLabyrinths": "미궁 — 아침·밤",
+  "boss.mapsValleys": "계곡 — 아침·밤",
   "boss.mapsChests": "맵별 시간당 상자 수",
   "boss.mapsTime": "시간",
   "boss.mapsDawn": "아침",
@@ -857,7 +859,8 @@ const ko: Record<MessageKey, string> = {
   "boss.mapsMinPower": "최소 전투력",
   "boss.mapsServer": "서버",
   "boss.mapsLayersTitle": "레이어와 채널",
-  "boss.mapsLayersSub": "레이어별 채널(W1~W8)입니다. 각 채널은 플레이어 한 명 자리입니다.",
+  "boss.mapsLayersSub":
+    "레이어별 미라지 맵(W1~W8)입니다. 채널 옆 숫자는 시간당 상자 수이며, 각 채널은 플레이어 한 명 자리입니다.",
 
   "player.metadata": "플레이어",
   "player.noClass": "클래스 미입력",

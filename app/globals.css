@@ -3285,6 +3285,12 @@ table.data tfoot td.num {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.wb-map-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .wb-map-table {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
@@ -3452,6 +3458,17 @@ table.data tfoot td.num {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.wb-channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wb-channel-head .wb-chest {
+  margin-top: 0;
 }
 
 .wb-channel-name {

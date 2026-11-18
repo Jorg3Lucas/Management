@@ -842,9 +842,11 @@ const en: Record<MessageKey, string> = {
   "boss.mapsTitle": "World Boss Distribution",
   "boss.mapsSub":
     "World Boss maps and times to plan the team's distribution. Cells stay empty until players are assigned.",
-  "boss.mapsListTitle": "Labyrinths — morning and night",
+  "boss.mapsListTitle": "Labyrinths and valleys",
   "boss.mapsListSub":
     "Bosses by period. Each cell is a slot for one player; the number next to each boss is the chest count per time on each map.",
+  "boss.mapsLabyrinths": "Labyrinths — morning and night",
+  "boss.mapsValleys": "Valleys — morning and night",
   "boss.mapsChests": "Chests per time on each map",
   "boss.mapsTime": "Time",
   "boss.mapsDawn": "Morning",
@@ -857,7 +859,8 @@ const en: Record<MessageKey, string> = {
   "boss.mapsMinPower": "Minimum power",
   "boss.mapsServer": "Server",
   "boss.mapsLayersTitle": "Layers and channels",
-  "boss.mapsLayersSub": "Channels (W1 to W8) for each layer. Each channel is a slot for one player.",
+  "boss.mapsLayersSub":
+    "Mirage maps (W1 to W8) for each layer. The number next to the channel is the chest count per time; each channel is a slot for one player.",
 
   "player.metadata": "Player",
   "player.noClass": "class not reported",

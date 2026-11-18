@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveCastlePrizesAction, toggleCastleDeliveryAction } from "@/app/castle/actions";
+import { CopyPlayerName } from "@/components/CopyPlayerName";
 import { useT } from "@/components/I18nProvider";
 import {
   CASTLE_PRIZES,
@@ -328,9 +329,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                   return (
                     <tr key={member.character_id}>
                       <td className="cell-title" data-label={t("common.player")}>
-                        <Link className="player-name" href={`/players/${member.character_id}`}>
-                          {member.name}
-                        </Link>
+                        <CopyPlayerName name={member.name} href={`/players/${member.character_id}`} />
                       </td>
                       <td data-label={t("common.clan")}>
                         <span className="badge">{member.clan_name}</span>
@@ -458,9 +457,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                 visibleSummary.map((row) => (
                   <tr key={row.member.character_id} className={row.member.delivered_at ? "row-ok" : undefined}>
                     <td className="cell-title" data-label={t("common.player")}>
-                      <Link className="player-name" href={`/players/${row.member.character_id}`}>
-                        {row.member.name}
-                      </Link>
+                      <CopyPlayerName name={row.member.name} href={`/players/${row.member.character_id}`} />
                     </td>
                     <td data-label={t("common.clan")}>
                       <span className="badge">{row.member.clan_name}</span>

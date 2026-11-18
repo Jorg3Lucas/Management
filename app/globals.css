@@ -962,6 +962,37 @@ td.nowrap {
   color: var(--gold);
 }
 
+.copy-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.copy-name-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.copy-name-link {
+  color: var(--muted-2);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.copy-name-link:hover {
+  color: var(--gold);
+}
+
+.copy-name-flag {
+  font-size: 10.5px;
+}
+
 .player-clan {
   font-size: 11.5px;
   color: var(--muted-2);

@@ -28,6 +28,9 @@ const pt = {
   "common.back": "Voltar",
   "common.details": "Detalhes",
   "common.language": "Idioma",
+  "common.copyName": "Copiar nome",
+  "common.copied": "Copiado!",
+  "common.openPlayer": "Abrir ficha do jogador",
 
   // Status de sincronização
   "syncBadge.success": "Sincronizado",
@@ -719,6 +722,11 @@ const pt = {
   "salary.addAllNote": "Coloca no elenco, de uma vez, todos os jogadores dos clãs aliados que ainda não estão na semana.",
   "salary.searchLabel": "Buscar jogador ou clã",
   "salary.searchPlaceholder": "Ex.: Arke",
+  "salary.filterName": "Nome",
+  "salary.filterNamePlaceholder": "Filtrar por nome",
+  "salary.filterClan": "Clã",
+  "salary.clanAll": "Todos os clãs",
+  "salary.noMemberSearch": "Nenhum membro com esses filtros.",
   "salary.noClans": "Nenhum clã aliado marcado neste servidor, então não há ninguém para adicionar.",
   "salary.noCandidateSearch": "Nenhum jogador aliado com essa busca.",
   "salary.noCandidateAll": "Todos os jogadores aliados deste servidor já estão no elenco.",

@@ -4,6 +4,7 @@ import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { AutoSave } from "@/components/AutoSave";
 import { ClearValueButton } from "@/components/ClearValueButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { CopyPlayerName } from "@/components/CopyPlayerName";
 import { EmptyState, Flash, StatCard } from "@/components/ui";
 import { formatNumber, formatPower } from "@/lib/format";
 import { getT } from "@/lib/i18n";
@@ -55,6 +56,8 @@ type SearchParams = {
   server?: string;
   period?: string;
   q?: string;
+  rq?: string;
+  clan?: string;
   sort?: string;
   dir?: string;
   presence?: string;
@@ -86,6 +89,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const requested = (params.server ?? "").toUpperCase();
   const selected = managed.find((server) => server.code === requested) ?? managed[0] ?? null;
   const search = (params.q ?? "").trim().slice(0, 60);
+  // Filtros do elenco: busca por nome e clã, separados da busca de candidatos.
+  const rosterQuery = (params.rq ?? "").trim().slice(0, 60);
+  const clanFilter = (params.clan ?? "").trim().slice(0, 60);
 
   const periods = selected ? listSalaryPeriods(selected.id) : [];
   const requestedPeriod = Number(params.period);
@@ -107,6 +113,11 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const sortDir: SortDir = params.dir === "desc" ? "desc" : "asc";
 
   const members = summary ? summary.members : [];
+  const rosterTerm = rosterQuery.toLocaleLowerCase(INTL_LOCALE[locale]);
+  const clanOptions = Array.from(
+    new Set(members.map((member) => member.clan).filter((clan): clan is string => Boolean(clan))),
+  ).sort((a, b) => a.localeCompare(b, INTL_LOCALE[locale], { sensitivity: "base" }));
+  const rosterFiltered = rosterQuery !== "" || clanFilter !== "";
   const visibleMembers = members
     .filter((member) =>
       presence === "all" ? true : presence === "with" ? member.attendedCount > 0 : member.attendedCount === 0,
@@ -114,6 +125,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     .filter((member) =>
       paidFilter === "all" ? true : paidFilter === "paid" ? Boolean(member.paid_at) : !member.paid_at,
     )
+    .filter((member) =>
+      rosterQuery === "" || member.name.toLocaleLowerCase(INTL_LOCALE[locale]).includes(rosterTerm),
+    )
+    .filter((member) => clanFilter === "" || member.clan === clanFilter)
     .sort((a, b) => {
       const factor = sortDir === "asc" ? 1 : -1;
       const byName = a.name.localeCompare(b.name, INTL_LOCALE[locale], { sensitivity: "base" });
@@ -126,7 +141,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const withPresence = members.filter((member) => member.attendedCount > 0).length;
   const paidMembers = members.filter((member) => member.paid_at).length;
   const visiblePaid = visibleMembers.reduce((sum, member) => sum + member.salary, 0);
-  const filtered = presence !== "all" || paidFilter !== "all";
+  const filtered = presence !== "all" || paidFilter !== "all" || rosterFiltered;
 
   // Pedras da semana: soma as compras de cada membro, na mesma conversão da tabela.
   const stoneMembers = members.filter((member) => member.preference === "stone" && member.salary > 0);
@@ -149,8 +164,18 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     dir?: SortDir;
     presence?: PresenceFilter;
     paid?: PaidFilter;
+    rq?: string;
+    clan?: string;
   }) => {
-    const next = { sort: sortKey, dir: sortDir, presence, paid: paidFilter, ...overrides };
+    const next = {
+      sort: sortKey,
+      dir: sortDir,
+      presence,
+      paid: paidFilter,
+      rq: rosterQuery,
+      clan: clanFilter,
+      ...overrides,
+    };
     const query = new URLSearchParams();
     if (selected) query.set("server", selected.code);
     if (period) query.set("period", String(period.id));
@@ -161,6 +186,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     }
     if (next.presence !== "all") query.set("presence", next.presence);
     if (next.paid !== "all") query.set("paid", next.paid);
+    if (next.rq) query.set("rq", next.rq);
+    if (next.clan) query.set("clan", next.clan);
     return `/salaries?${query.toString()}`;
   };
 
@@ -587,6 +614,47 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                           {t("salary.paymentPaid", { count: paidMembers })}
                         </Link>
                       </div>
+                      <form className="filters roster-filters" action="/salaries" method="get">
+                        <input type="hidden" name="server" value={selected.code} />
+                        <input type="hidden" name="period" value={period.id} />
+                        {sortKey !== "name" || sortDir !== "asc" ? (
+                          <>
+                            <input type="hidden" name="sort" value={sortKey} />
+                            <input type="hidden" name="dir" value={sortDir} />
+                          </>
+                        ) : null}
+                        {presence !== "all" ? <input type="hidden" name="presence" value={presence} /> : null}
+                        {paidFilter !== "all" ? <input type="hidden" name="paid" value={paidFilter} /> : null}
+                        <div className="field" style={{ flex: "1 1 180px" }}>
+                          <label htmlFor="rq">{t("salary.filterName")}</label>
+                          <input
+                            id="rq"
+                            name="rq"
+                            type="search"
+                            defaultValue={rosterQuery}
+                            placeholder={t("salary.filterNamePlaceholder")}
+                          />
+                        </div>
+                        <div className="field" style={{ flex: "1 1 160px" }}>
+                          <label htmlFor="roster-clan">{t("salary.filterClan")}</label>
+                          <select id="roster-clan" name="clan" defaultValue={clanFilter}>
+                            <option value="">{t("salary.clanAll")}</option>
+                            {clanOptions.map((clan) => (
+                              <option key={clan} value={clan}>
+                                {clan}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button className="btn sm" type="submit">
+                          {t("common.filter")}
+                        </button>
+                        {rosterFiltered ? (
+                          <Link className="btn sm ghost" href={rosterHref({ rq: "", clan: "" })}>
+                            {t("players.clear")}
+                          </Link>
+                        ) : null}
+                      </form>
                     </div>
                     <span className="small muted">
                       {t("salary.showing", { visible: visibleMembers.length, total: members.length })}
@@ -694,22 +762,22 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         {visibleMembers.length === 0 ? (
                           <tr>
                             <td colSpan={8} className="small muted" style={{ textAlign: "center", padding: "18px 14px" }}>
-                              {presence === "with"
-                                ? t("salary.noMemberWith")
-                                : presence === "without"
-                                  ? t("salary.noMemberWithout")
-                                  : paidFilter === "paid"
-                                    ? t("salary.noMemberPaid")
-                                    : t("salary.noMemberPending")}
+                              {rosterFiltered
+                                ? t("salary.noMemberSearch")
+                                : presence === "with"
+                                  ? t("salary.noMemberWith")
+                                  : presence === "without"
+                                    ? t("salary.noMemberWithout")
+                                    : paidFilter === "paid"
+                                      ? t("salary.noMemberPaid")
+                                      : t("salary.noMemberPending")}
                             </td>
                           </tr>
                         ) : null}
                         {visibleMembers.map((member) => (
                           <tr key={member.character_id} className={member.paid_at ? "row-ok" : undefined}>
                             <td className="cell-title">
-                              <Link className="player-name" href={`/players/${member.character_id}`}>
-                                {member.name}
-                              </Link>
+                              <CopyPlayerName name={member.name} href={`/players/${member.character_id}`} />
                               <div className="player-clan">
                                 {member.team_name ? (
                                   <span

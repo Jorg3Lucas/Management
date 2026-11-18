@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { AutoSave } from "@/components/AutoSave";
+import { CopyPlayerName } from "@/components/CopyPlayerName";
 import { Flash, StatCard } from "@/components/ui";
 import { formatNumber } from "@/lib/format";
 import { getT } from "@/lib/i18n";
@@ -402,9 +403,10 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                   className={donor.gold_done === 1 ? "row-ok" : undefined}
                                 >
                                   <td className="cell-title" data-label={t("common.player")}>
-                                    <Link className="player-name" href={`/players/${donor.character_id}`}>
-                                      {donor.name}
-                                    </Link>{" "}
+                                    <CopyPlayerName
+                                      name={donor.name}
+                                      href={`/players/${donor.character_id}`}
+                                    />{" "}
                                     {donor.is_guest === 1 ? (
                                       <span className="badge" title={t("ce.guestTag")}>
                                         {donor.clan_name}

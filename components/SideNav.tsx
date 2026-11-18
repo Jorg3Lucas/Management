@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { SVGProps } from "react";
+import { useEffect, useRef, type SVGProps } from "react";
 import type { MessageKey } from "@/lib/i18n/pt";
 import { useT } from "./I18nProvider";
 import {
@@ -65,6 +65,13 @@ const groups: { labelKey: MessageKey; items: NavItem[] }[] = [
 export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canManageServers: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  // No celular o menu é uma faixa que rola: a aba ativa pode nascer fora da tela.
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    activeRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
 
   return (
     <nav className="nav" aria-label={t("nav.label")}>
@@ -86,7 +93,13 @@ export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canMa
                     : pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href} className={`nav-link${active ? " active" : ""}`}>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  ref={active ? activeRef : undefined}
+                  className={`nav-link${active ? " active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                >
                   <Icon />
                   <span>{t(item.labelKey)}</span>
                 </Link>

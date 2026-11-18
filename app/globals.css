@@ -49,6 +49,8 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
@@ -68,6 +70,7 @@ body {
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-wrap: break-word;
   background:
     radial-gradient(1100px 620px at 88% -12%, rgba(124, 108, 245, 0.11), transparent 62%),
     radial-gradient(900px 520px at -8% 8%, rgba(56, 189, 248, 0.07), transparent 60%),
@@ -170,6 +173,9 @@ p {
   position: sticky;
   top: 0;
   height: 100vh;
+  /* Notebooks baixos: o menu rola e o rodapé (sair/conta) continua alcançável. */
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 26px 16px 22px;
   display: flex;
   flex-direction: column;
@@ -479,6 +485,7 @@ p {
 .main {
   position: relative;
   flex: 1;
+  width: 100%;
   min-width: 0;
   padding: 38px 40px 80px;
   max-width: 1460px;
@@ -514,6 +521,7 @@ p {
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.035em;
+  text-wrap: balance;
   background: linear-gradient(180deg, #ffffff, #c7cff0);
   -webkit-background-clip: text;
   background-clip: text;
@@ -524,7 +532,8 @@ p {
   color: var(--muted);
   font-size: 13px;
   margin-top: 7px;
-  max-width: 60ch;
+  max-width: 68ch;
+  text-wrap: pretty;
 }
 
 .head-actions {
@@ -557,6 +566,7 @@ p {
 
 .card {
   position: relative;
+  min-width: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent 55%),
     linear-gradient(180deg, var(--panel), var(--bg-soft));
@@ -682,6 +692,7 @@ details.card > summary.card-head .card-sub {
 
 .stat {
   position: relative;
+  min-width: 0;
   overflow: hidden;
   padding: 18px 20px 17px;
   border: 1px solid var(--border-soft);
@@ -703,10 +714,12 @@ details.card > summary.card-head .card-sub {
   opacity: 0.75;
 }
 
-.stat:hover {
-  transform: translateY(-2px);
-  border-color: rgba(124, 108, 245, 0.24);
-  box-shadow: var(--shadow-glow);
+@media (hover: hover) {
+  .stat:hover {
+    transform: translateY(-2px);
+    border-color: rgba(124, 108, 245, 0.24);
+    box-shadow: var(--shadow-glow);
+  }
 }
 
 .stat-label {
@@ -720,6 +733,7 @@ details.card > summary.card-head .card-sub {
 .stat-value {
   font-size: 27px;
   font-weight: 700;
+  line-height: 1.12;
   margin-top: 9px;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
@@ -844,23 +858,31 @@ table.data th {
   text-align: left;
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.11em;
-  color: var(--muted-2);
+  letter-spacing: 0.09em;
+  color: var(--muted);
   font-weight: 700;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(6, 9, 17, 0.55);
 }
 
 table.data td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-soft);
   vertical-align: middle;
+  overflow-wrap: break-word;
 }
 
 table.data tbody tr {
   transition: background 0.14s ease;
+}
+
+/* Zebra discreta nas tabelas de desktop: linhas longas ficam fáceis de seguir. */
+@media (min-width: 761px) {
+  table.data tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.018);
+  }
 }
 
 table.data tbody tr:hover {
@@ -1134,6 +1156,7 @@ td.nowrap {
 
 .alert {
   border-radius: var(--radius-sm);
+  border-left-width: 3px;
   padding: 12px 16px;
   font-size: 13px;
   border: 1px solid var(--border);
@@ -1260,6 +1283,15 @@ select {
   height: 15px;
   margin: 1px 0 0;
   flex: 0 0 auto;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--gold);
+}
+
+input[type="number"] {
+  font-variant-numeric: tabular-nums;
 }
 
 .inline-form {
@@ -2121,6 +2153,13 @@ details.panel > .panel-body {
   margin: 0;
 }
 
+@media (min-width: 1440px) {
+  .main {
+    max-width: 1560px;
+    padding: 44px 52px 96px;
+  }
+}
+
 @media (max-width: 1180px) {
   .main {
     padding: 32px 28px 70px;
@@ -2148,15 +2187,31 @@ details.panel > .panel-body {
     top: 0;
     z-index: 30;
     padding: 13px 16px;
-    gap: 12px;
+    /* Duas faixas: marca + conta em cima, menu rolando embaixo. */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand foot"
+      "nav nav";
+    align-items: center;
+    gap: 10px;
+    overflow: visible;
     border-right: none;
     border-bottom: 1px solid var(--border-soft);
+    box-shadow: 0 16px 34px -30px rgba(0, 0, 0, 0.95);
     background: linear-gradient(180deg, rgba(10, 13, 23, 0.97), rgba(7, 9, 17, 0.92));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
   }
   .brand {
+    grid-area: brand;
     padding: 0;
+    min-width: 0;
+  }
+  .brand-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .brand-mark {
     width: 33px;
@@ -2169,11 +2224,14 @@ details.panel > .panel-body {
     font-size: 14px;
   }
   .nav {
+    grid-area: nav;
     flex-direction: row;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     padding-bottom: 2px;
     gap: 6px;
+    scroll-padding-inline: 14px;
     scrollbar-width: none;
   }
   .nav-group {
@@ -2205,15 +2263,29 @@ details.panel > .panel-body {
     flex: 0 0 15px;
   }
   .sidebar-foot {
-    position: absolute;
-    top: 12px;
-    right: 16px;
+    grid-area: foot;
+    position: static;
     border: none;
     padding: 0;
     margin: 0;
     flex-direction: row;
     align-items: center;
     gap: 7px;
+  }
+  /* O rótulo "Idioma" some para o seletor caber na linha do cabeçalho. */
+  .lang-switch {
+    gap: 0;
+  }
+  .lang-label {
+    display: none;
+  }
+  .lang-options {
+    gap: 2px;
+    padding: 2px;
+  }
+  .lang-option {
+    padding: 4px 6px;
+    font-size: 10.5px;
   }
   /* No celular a conta já abre pelo bloco do usuário; sobra espaço só para sair. */
   .foot-actions {
@@ -2247,6 +2319,12 @@ details.panel > .panel-body {
   }
   .main {
     padding: 22px 16px 64px;
+  }
+  /* O cabeçalho fixo come o topo: âncoras não ficam escondidas atrás dele. */
+  .page-head,
+  .card,
+  .stat {
+    scroll-margin-top: 104px;
   }
   .grid.cols-2 {
     grid-template-columns: minmax(0, 1fr);
@@ -2507,10 +2585,6 @@ details.panel > .panel-body {
 
   .sidebar {
     padding: calc(11px + env(safe-area-inset-top)) 14px 11px;
-  }
-
-  .sidebar-foot {
-    top: calc(12px + env(safe-area-inset-top));
   }
 
   .page-head {
@@ -2834,10 +2908,6 @@ details.panel > .panel-body {
     padding-right: 11px;
   }
 
-  .sidebar-foot {
-    right: 11px;
-  }
-
   .user-box {
     display: none;
   }
@@ -2858,6 +2928,21 @@ details.panel > .panel-body {
 
   .page-title {
     font-size: 21px;
+  }
+}
+
+/* Toque: nada de hover "preso" depois do tap. */
+@media (hover: none) {
+  .btn:hover {
+    transform: none;
+  }
+
+  .card:hover {
+    border-color: var(--border-soft);
+  }
+
+  .nav-link:hover svg {
+    transform: none;
   }
 }
 

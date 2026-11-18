@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canEditServer, canManageWar, requireUser } from "@/lib/auth";
-import { stanceIndex } from "@/lib/clans";
 import { formatDuration, warTypeLabel } from "@/lib/format";
 import { getT } from "@/lib/i18n";
 import { getServerById, listCharacters, listServers, warSessionsForUser } from "@/lib/queries";
@@ -34,18 +33,20 @@ export default async function WarsPage({
   const allServers = listServers();
 
   const editable = servers.filter((server) => canEditServer(user, server.id));
-  const stances = stanceIndex(editable.map((server) => server.id));
+  // O time é só dos clãs aliados; quem está fora deles entra pela busca do ranking.
   const roster =
     editable.length > 0
-      ? listCharacters({ serverIds: editable.map((server) => server.id), pageSize: 2000, sort: "name" }).rows.map(
-          (row) => ({
-            id: row.id,
-            name: row.name,
-            clan: row.clan,
-            server_label: row.server_label,
-            ally: row.clan_id !== null && stances.get(`${row.server_id}:${row.clan_id}`) === "ally",
-          }),
-        )
+      ? listCharacters({
+          serverIds: editable.map((server) => server.id),
+          pageSize: 2000,
+          sort: "name",
+          stance: "ally",
+        }).rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          clan: row.clan,
+          server_label: row.server_label,
+        }))
       : [];
 
   // Servidores acessíveis mais as guerras que o usuário cadastrou em qualquer

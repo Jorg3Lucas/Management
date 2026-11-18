@@ -272,7 +272,7 @@ const pt = {
   "wars.partyNoClan": "Sem clã",
   "wars.partySelectVisible": "Marcar visíveis",
   "wars.partyCount": "{count} selecionado(s)",
-  "wars.partyTeamTitle": "Time do servidor",
+  "wars.partyTeamTitle": "Membros aliados",
   "wars.partyRankingTitle": "Outros servidores",
 
   "war.errServer": "Servidor da guerra inválido ou sem acesso.",

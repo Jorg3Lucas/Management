@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { accessibleServers, canManageWar, requireUser } from "@/lib/auth";
-import { stanceIndex } from "@/lib/clans";
 import { warTypeLabel } from "@/lib/format";
 import { getT } from "@/lib/i18n";
 import { listCharacters, listServers, warGroupSessions } from "@/lib/queries";
@@ -42,20 +41,20 @@ export default async function EditWarPage({
   // A guerra pode ter acontecido em qualquer servidor do jogo.
   const optionServers = listServers();
 
+  // O time é só dos clãs aliados; quem está fora deles entra pela busca do ranking.
   const visibleServers = accessibleServers(user);
-  const stances = stanceIndex(visibleServers.map((server) => server.id));
   const roster: WarPartyMember[] =
     visibleServers.length > 0
       ? listCharacters({
           serverIds: visibleServers.map((server) => server.id),
           pageSize: 2000,
           sort: "name",
+          stance: "ally",
         }).rows.map((row) => ({
           id: row.id,
           name: row.name,
           clan: row.clan,
           server_label: row.server_label,
-          ally: row.clan_id !== null && stances.get(`${row.server_id}:${row.clan_id}`) === "ally",
         }))
       : [];
 
@@ -67,7 +66,6 @@ export default async function EditWarPage({
         name: session.character_name,
         clan: null,
         server_label: session.home_server_label,
-        ally: false,
       });
     }
   }

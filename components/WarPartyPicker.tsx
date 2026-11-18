@@ -11,8 +11,6 @@ export type WarPartyMember = {
   name: string;
   clan: string | null;
   server_label: string;
-  /** Jogador de um clã marcado como aliado no servidor dele. */
-  ally?: boolean;
 };
 
 type Props = {
@@ -118,16 +116,7 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
     setExtra((previous) =>
       previous.some((member) => member.id === row.id)
         ? previous
-        : [
-            ...previous,
-            {
-              id: row.id,
-              name: row.name,
-              clan: row.clan,
-              server_label: row.server_label,
-              ally: Boolean(row.ally),
-            },
-          ],
+        : [...previous, { id: row.id, name: row.name, clan: row.clan, server_label: row.server_label }],
     );
     setSelected((previous) => new Set(previous).add(row.id));
     setRankingTerm("");
@@ -193,7 +182,6 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
                   />
                   <span className="party-picker-name">{member.name}</span>
                   <span className="party-picker-clan small muted">{member.clan ?? "—"}</span>
-                  {member.ally ? <span className="badge ok">{t("stance.ally")}</span> : null}
                   <span className="badge">{member.server_label}</span>
                 </label>
               ))

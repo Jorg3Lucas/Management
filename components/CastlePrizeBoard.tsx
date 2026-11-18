@@ -43,6 +43,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
+  const [delivery, setDelivery] = useState<"all" | "pending" | "delivered">("all");
 
   const formRef = useRef<HTMLFormElement>(null);
   const collator = useMemo(() => new Intl.Collator(INTL_LOCALE[locale], { sensitivity: "base" }), [locale]);
@@ -108,13 +109,37 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
     return { rows, totals, totalChests: rows.reduce((total, row) => total + row.total, 0) };
   }, [members, awards, collator]);
 
+  const deliveredAssigned = summary.rows.filter((row) => row.member.delivered_at).length;
+  const pendingDelivery = summary.rows.length - deliveredAssigned;
+  const visibleSummary = useMemo(
+    () =>
+      summary.rows.filter((row) =>
+        delivery === "all"
+          ? true
+          : delivery === "delivered"
+            ? Boolean(row.member.delivered_at)
+            : !row.member.delivered_at,
+      ),
+    [summary.rows, delivery],
+  );
+  const visibleTotals = useMemo(() => {
+    const totals = castlePrizeCounts([]);
+    let totalChests = 0;
+    for (const row of visibleSummary) {
+      for (const prize of CASTLE_PRIZES) totals[prize.key] += row.counts[prize.key];
+      totalChests += row.total;
+    }
+    return { totals, totalChests };
+  }, [visibleSummary]);
+
   const prizeLabel = (key: CastlePrizeKey) => t(`prize.${key}` as const);
 
   function exportCsv() {
     const quote = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
+    // O CSV segue o filtro de entrega ativo, igual ao que está na tela.
     const lines = [
       [t("common.player"), t("common.clan"), ...CASTLE_PRIZES.map((prize) => prizeLabel(prize.key)), t("common.total")],
-      ...summary.rows.map((row) => [
+      ...visibleSummary.map((row) => [
         row.member.name,
         row.member.clan_name,
         ...CASTLE_PRIZES.map((prize) => String(row.counts[prize.key])),
@@ -123,8 +148,8 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
       [
         t("common.total").toUpperCase(),
         "",
-        ...CASTLE_PRIZES.map((prize) => String(summary.totals[prize.key])),
-        String(summary.totalChests),
+        ...CASTLE_PRIZES.map((prize) => String(visibleTotals.totals[prize.key])),
+        String(visibleTotals.totalChests),
       ],
     ];
 
@@ -361,15 +386,42 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           </div>
           <div className="row">
             <span className="badge">
-              {t("castleBoard.summaryBadge", { count: formatNumber(summary.rows.length, locale) })}
+              {t("castleBoard.summaryBadge", { count: formatNumber(visibleSummary.length, locale) })}
             </span>
             <button
               type="button"
               className="btn sm ghost"
               onClick={exportCsv}
-              disabled={summary.rows.length === 0}
+              disabled={visibleSummary.length === 0}
             >
               {t("castleBoard.exportCsv")}
+            </button>
+          </div>
+        </div>
+
+        <div className="card-body" style={{ paddingTop: 0, paddingBottom: 12 }}>
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            <span className="small muted">{t("castleBoard.deliveryFilter")}</span>
+            <button
+              type="button"
+              className={`btn sm${delivery === "all" ? " primary" : " ghost"}`}
+              onClick={() => setDelivery("all")}
+            >
+              {t("castleBoard.deliveryAll", { count: formatNumber(summary.rows.length, locale) })}
+            </button>
+            <button
+              type="button"
+              className={`btn sm${delivery === "pending" ? " primary" : " ghost"}`}
+              onClick={() => setDelivery("pending")}
+            >
+              {t("castleBoard.deliveryPending", { count: formatNumber(pendingDelivery, locale) })}
+            </button>
+            <button
+              type="button"
+              className={`btn sm${delivery === "delivered" ? " primary" : " ghost"}`}
+              onClick={() => setDelivery("delivered")}
+            >
+              {t("castleBoard.deliveryDelivered", { count: formatNumber(deliveredAssigned, locale) })}
             </button>
           </div>
         </div>
@@ -392,14 +444,16 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
               </tr>
             </thead>
             <tbody>
-              {summary.rows.length === 0 ? (
+              {visibleSummary.length === 0 ? (
                 <tr>
                   <td colSpan={CASTLE_PRIZES.length + 4}>
-                    <span className="small muted">{t("castleBoard.noChests")}</span>
+                    <span className="small muted">
+                      {summary.rows.length === 0 ? t("castleBoard.noChests") : t("castleBoard.noChestsFiltered")}
+                    </span>
                   </td>
                 </tr>
               ) : (
-                summary.rows.map((row) => (
+                visibleSummary.map((row) => (
                   <tr key={row.member.character_id}>
                     <td className="cell-title" data-label={t("common.player")}>
                       <Link className="player-name" href={`/players/${row.member.character_id}`}>
@@ -427,7 +481,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                         formAction={toggleCastleDeliveryAction}
                         name="characterId"
                         value={row.member.character_id}
-                        className={`btn sm${row.member.delivered_at ? " primary" : " ghost"}`}
+                        className={`btn sm${row.member.delivered_at ? " ok" : " ghost"}`}
                         aria-pressed={Boolean(row.member.delivered_at)}
                         title={
                           row.member.delivered_at
@@ -444,16 +498,16 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                 ))
               )}
             </tbody>
-            {summary.rows.length > 0 ? (
+            {visibleSummary.length > 0 ? (
               <tfoot>
                 <tr>
                   <td colSpan={2}>{t("common.total")}</td>
                   {CASTLE_PRIZES.map((prize) => (
                     <td key={prize.key} className="num mono">
-                      {formatNumber(summary.totals[prize.key], locale)}
+                      {formatNumber(visibleTotals.totals[prize.key], locale)}
                     </td>
                   ))}
-                  <td className="num mono">{formatNumber(summary.totalChests, locale)}</td>
+                  <td className="num mono">{formatNumber(visibleTotals.totalChests, locale)}</td>
                   <td />
                 </tr>
               </tfoot>

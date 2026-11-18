@@ -58,6 +58,7 @@ type SearchParams = {
   sort?: string;
   dir?: string;
   presence?: string;
+  paid?: string;
   ok?: string;
   error?: string;
 };
@@ -65,6 +66,7 @@ type SearchParams = {
 type SortDir = "asc" | "desc";
 type RosterSort = "name" | "power" | "salary" | "presence";
 type PresenceFilter = "all" | "with" | "without";
+type PaidFilter = "all" | "pending" | "paid";
 
 function isRosterSort(value: string | undefined): value is RosterSort {
   return value === "name" || value === "power" || value === "salary" || value === "presence";
@@ -100,6 +102,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
 
   const presence: PresenceFilter =
     params.presence === "with" || params.presence === "without" ? params.presence : "all";
+  const paidFilter: PaidFilter = params.paid === "pending" || params.paid === "paid" ? params.paid : "all";
   const sortKey: RosterSort = isRosterSort(params.sort) ? params.sort : "name";
   const sortDir: SortDir = params.dir === "desc" ? "desc" : "asc";
 
@@ -107,6 +110,9 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const visibleMembers = members
     .filter((member) =>
       presence === "all" ? true : presence === "with" ? member.attendedCount > 0 : member.attendedCount === 0,
+    )
+    .filter((member) =>
+      paidFilter === "all" ? true : paidFilter === "paid" ? Boolean(member.paid_at) : !member.paid_at,
     )
     .sort((a, b) => {
       const factor = sortDir === "asc" ? 1 : -1;
@@ -120,7 +126,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const withPresence = members.filter((member) => member.attendedCount > 0).length;
   const paidMembers = members.filter((member) => member.paid_at).length;
   const visiblePaid = visibleMembers.reduce((sum, member) => sum + member.salary, 0);
-  const filtered = presence !== "all";
+  const filtered = presence !== "all" || paidFilter !== "all";
 
   // Pedras da semana: soma as compras de cada membro, na mesma conversão da tabela.
   const stoneMembers = members.filter((member) => member.preference === "stone" && member.salary > 0);
@@ -138,8 +144,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   };
   const stoneLeftover = yellow.leftover + purple.leftover;
 
-  const rosterHref = (overrides: { sort?: RosterSort; dir?: SortDir; presence?: PresenceFilter }) => {
-    const next = { sort: sortKey, dir: sortDir, presence, ...overrides };
+  const rosterHref = (overrides: {
+    sort?: RosterSort;
+    dir?: SortDir;
+    presence?: PresenceFilter;
+    paid?: PaidFilter;
+  }) => {
+    const next = { sort: sortKey, dir: sortDir, presence, paid: paidFilter, ...overrides };
     const query = new URLSearchParams();
     if (selected) query.set("server", selected.code);
     if (period) query.set("period", String(period.id));
@@ -149,6 +160,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
       query.set("dir", next.dir);
     }
     if (next.presence !== "all") query.set("presence", next.presence);
+    if (next.paid !== "all") query.set("paid", next.paid);
     return `/salaries?${query.toString()}`;
   };
 
@@ -532,26 +544,49 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 </div>
                 {members.length > 0 ? (
                   <div className="roster-toolbar">
-                    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                      <span className="small muted">{t("salary.presence")}</span>
-                      <Link
-                        className={`btn sm${presence === "all" ? " primary" : " ghost"}`}
-                        href={rosterHref({ presence: "all" })}
-                      >
-                        {t("salary.presenceAll", { count: members.length })}
-                      </Link>
-                      <Link
-                        className={`btn sm${presence === "with" ? " primary" : " ghost"}`}
-                        href={rosterHref({ presence: "with" })}
-                      >
-                        {t("salary.presenceWith", { count: withPresence })}
-                      </Link>
-                      <Link
-                        className={`btn sm${presence === "without" ? " primary" : " ghost"}`}
-                        href={rosterHref({ presence: "without" })}
-                      >
-                        {t("salary.presenceWithout", { count: members.length - withPresence })}
-                      </Link>
+                    <div className="stack" style={{ gap: 8 }}>
+                      <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                        <span className="small muted">{t("salary.presence")}</span>
+                        <Link
+                          className={`btn sm${presence === "all" ? " primary" : " ghost"}`}
+                          href={rosterHref({ presence: "all" })}
+                        >
+                          {t("salary.presenceAll", { count: members.length })}
+                        </Link>
+                        <Link
+                          className={`btn sm${presence === "with" ? " primary" : " ghost"}`}
+                          href={rosterHref({ presence: "with" })}
+                        >
+                          {t("salary.presenceWith", { count: withPresence })}
+                        </Link>
+                        <Link
+                          className={`btn sm${presence === "without" ? " primary" : " ghost"}`}
+                          href={rosterHref({ presence: "without" })}
+                        >
+                          {t("salary.presenceWithout", { count: members.length - withPresence })}
+                        </Link>
+                      </div>
+                      <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                        <span className="small muted">{t("salary.payment")}</span>
+                        <Link
+                          className={`btn sm${paidFilter === "all" ? " primary" : " ghost"}`}
+                          href={rosterHref({ paid: "all" })}
+                        >
+                          {t("salary.paymentAll", { count: members.length })}
+                        </Link>
+                        <Link
+                          className={`btn sm${paidFilter === "pending" ? " primary" : " ghost"}`}
+                          href={rosterHref({ paid: "pending" })}
+                        >
+                          {t("salary.paymentPending", { count: members.length - paidMembers })}
+                        </Link>
+                        <Link
+                          className={`btn sm${paidFilter === "paid" ? " primary" : " ghost"}`}
+                          href={rosterHref({ paid: "paid" })}
+                        >
+                          {t("salary.paymentPaid", { count: paidMembers })}
+                        </Link>
+                      </div>
                     </div>
                     <span className="small muted">
                       {t("salary.showing", { visible: visibleMembers.length, total: members.length })}
@@ -659,7 +694,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                         {visibleMembers.length === 0 ? (
                           <tr>
                             <td colSpan={8} className="small muted" style={{ textAlign: "center", padding: "18px 14px" }}>
-                              {presence === "with" ? t("salary.noMemberWith") : t("salary.noMemberWithout")}
+                              {presence === "with"
+                                ? t("salary.noMemberWith")
+                                : presence === "without"
+                                  ? t("salary.noMemberWithout")
+                                  : paidFilter === "paid"
+                                    ? t("salary.noMemberPaid")
+                                    : t("salary.noMemberPending")}
                             </td>
                           </tr>
                         ) : null}
@@ -785,10 +826,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                               <form action={toggleSalaryPaidAction} className="inline-form" style={{ justifyContent: "flex-end" }}>
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
-                                <input type="hidden" name="redirectTo" value={returnTo} />
+                                <input type="hidden" name="redirectTo" value={rosterHref({})} />
                                 <button
                                   type="submit"
-                                  className={`btn sm${member.paid_at ? " primary" : " ghost"}`}
+                                  className={`btn sm${member.paid_at ? " ok" : " ghost"}`}
                                   aria-pressed={Boolean(member.paid_at)}
                                   title={member.paid_at ? t("salary.markUnpaid") : t("salary.markPaid")}
                                 >
@@ -860,6 +901,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       </>
                     ) : null}
                     {presence !== "all" ? <input type="hidden" name="presence" value={presence} /> : null}
+                    {paidFilter !== "all" ? <input type="hidden" name="paid" value={paidFilter} /> : null}
                     <div className="field" style={{ flex: "1 1 260px" }}>
                       <label htmlFor="q">{t("salary.searchLabel")}</label>
                       <input

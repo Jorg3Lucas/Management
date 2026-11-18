@@ -48,7 +48,14 @@ export default async function WorldBossDistributionPage() {
                     <tr>
                       <th>{t("boss.mapsTime")}</th>
                       {group.bosses.map((boss) => (
-                        <th key={boss}>{boss}</th>
+                        <th key={boss.name}>
+                          <span className="wb-boss-name">{boss.name}</span>
+                          {boss.chests ? (
+                            <span className="wb-chest" title={t("boss.mapsChests")}>
+                              {boss.chests}
+                            </span>
+                          ) : null}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -57,7 +64,7 @@ export default async function WorldBossDistributionPage() {
                       <tr key={period}>
                         <th scope="row">{t(period === "dawn" ? "boss.mapsDawn" : "boss.mapsNight")}</th>
                         {group.bosses.map((boss) => (
-                          <td key={boss}>
+                          <td key={boss.name}>
                             <span className="wb-slot" aria-hidden="true" />
                           </td>
                         ))}

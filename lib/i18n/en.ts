@@ -842,8 +842,10 @@ const en: Record<MessageKey, string> = {
   "boss.mapsTitle": "World Boss Distribution",
   "boss.mapsSub":
     "World Boss maps and times to plan the team's distribution. Cells stay empty until players are assigned.",
-  "boss.mapsListTitle": "World Boss List",
-  "boss.mapsListSub": "Bosses by period (morning and night). Each cell is a slot for one player.",
+  "boss.mapsListTitle": "Labyrinths — morning and night",
+  "boss.mapsListSub":
+    "Bosses by period. Each cell is a slot for one player; the number next to each boss is the chest count per time on each map.",
+  "boss.mapsChests": "Chests per time on each map",
   "boss.mapsTime": "Time",
   "boss.mapsDawn": "Morning",
   "boss.mapsNight": "Night",

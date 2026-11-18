@@ -863,9 +863,10 @@ const pt = {
   "boss.mapsTitle": "Distribuição World Boss",
   "boss.mapsSub":
     "Mapas e horários do World Boss para montar a distribuição do time. As células ficam vazias até a escalação dos jogadores.",
-  "boss.mapsListTitle": "Lista de World Boss",
+  "boss.mapsListTitle": "Labirintos — manhã e noite",
   "boss.mapsListSub":
-    "Bosses por período (manhã e noite). Cada célula é um espaço para um jogador.",
+    "Bosses por período. Cada célula é um espaço para um jogador; o número ao lado do boss é a quantidade de baús por horário em cada mapa.",
+  "boss.mapsChests": "Baús por horário em cada mapa",
   "boss.mapsTime": "Horário",
   "boss.mapsDawn": "Manhã",
   "boss.mapsNight": "Noite",

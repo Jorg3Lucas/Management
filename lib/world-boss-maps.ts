@@ -4,31 +4,43 @@
  * para o time montar a escalação.
  */
 
-export type WorldBossMapGroup = {
-  key: string;
-  bosses: string[];
+export type WorldBossMapBoss = {
+  name: string;
+  /** Baús por horário em cada mapa (labirintos do primeiro bloco). */
+  chests?: number;
 };
 
-/** Duas listas de bosses por período, como na planilha do time. */
+export type WorldBossMapGroup = {
+  key: string;
+  bosses: WorldBossMapBoss[];
+};
+
+/** Labirintos da manhã e da noite, como na planilha do time. */
 export const WORLD_BOSS_MAP_GROUPS: WorldBossMapGroup[] = [
   {
     key: "list-1",
     bosses: [
-      "Bicheon",
-      "Demon Bull",
-      "Snake",
-      "Abandoned Mine",
-      "Heavens Way",
-      "Redmoon",
-      "Phantasia",
-      "Rockut",
-      "Sabuk",
-      "Nine Dragon",
+      { name: "Bicheon", chests: 12 },
+      { name: "Demon Bull", chests: 12 },
+      { name: "Snake", chests: 14 },
+      { name: "Abandoned Mine", chests: 14 },
+      { name: "Heavens Way", chests: 16 },
+      { name: "Redmoon", chests: 16 },
+      { name: "Phantasia", chests: 16 },
+      { name: "Rockut", chests: 18 },
+      { name: "Sabuk", chests: 18 },
+      { name: "Nine Dragon", chests: 18 },
     ],
   },
   {
     key: "list-2",
-    bosses: ["Bicheon", "Snake", "Redmoon", "Phantasia", "Sagitarion"],
+    bosses: [
+      { name: "Bicheon" },
+      { name: "Snake" },
+      { name: "Redmoon" },
+      { name: "Phantasia" },
+      { name: "Sagitarion" },
+    ],
   },
 ];
 

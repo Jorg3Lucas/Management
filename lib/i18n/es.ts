@@ -842,8 +842,10 @@ const es: Record<MessageKey, string> = {
   "boss.mapsTitle": "Distribución World Boss",
   "boss.mapsSub":
     "Mapas y horarios del World Boss para armar la distribución del equipo. Las celdas quedan vacías hasta asignar jugadores.",
-  "boss.mapsListTitle": "Lista de World Boss",
-  "boss.mapsListSub": "Bosses por periodo (mañana y noche). Cada celda es un hueco para un jugador.",
+  "boss.mapsListTitle": "Laberintos — mañana y noche",
+  "boss.mapsListSub":
+    "Bosses por periodo. Cada celda es un hueco para un jugador; el número junto al boss es la cantidad de cofres por horario en cada mapa.",
+  "boss.mapsChests": "Cofres por horario en cada mapa",
   "boss.mapsTime": "Horario",
   "boss.mapsDawn": "Mañana",
   "boss.mapsNight": "Noche",

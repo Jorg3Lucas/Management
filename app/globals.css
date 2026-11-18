@@ -3278,18 +3278,11 @@ table.data tfoot td.num {
   background: rgba(240, 192, 96, 0.1);
 }
 
-/* Duas listas lado a lado no desktop, empilhadas no celular. */
+/* Listas empilhadas: a primeira tem 10 bosses e precisa da largura toda. */
 .wb-map-lists {
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 1180px) {
-  .wb-map-lists {
-    grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr);
-    align-items: start;
-  }
 }
 
 .wb-map-table {
@@ -3298,11 +3291,35 @@ table.data tfoot td.num {
 }
 
 .wb-maps thead th {
+  padding: 10px 8px;
+  letter-spacing: 0.06em;
   text-align: center;
+  vertical-align: bottom;
+  white-space: normal;
 }
 
 .wb-maps thead th:first-child {
   text-align: left;
+  white-space: nowrap;
+}
+
+.wb-maps thead th .wb-boss-name {
+  display: block;
+}
+
+/* Baús por horário em cada mapa, ao lado do nome do boss. */
+.wb-chest {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 7px;
+  border: 1px solid rgba(240, 192, 96, 0.32);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--gold-strong);
+  background: rgba(240, 192, 96, 0.08);
+  font-variant-numeric: tabular-nums;
 }
 
 .wb-maps tbody th {
@@ -3318,7 +3335,7 @@ table.data tfoot td.num {
 }
 
 .wb-maps td {
-  padding: 8px 12px;
+  padding: 8px 8px;
 }
 
 .wb-ffa thead th,

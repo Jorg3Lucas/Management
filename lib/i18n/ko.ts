@@ -842,8 +842,10 @@ const ko: Record<MessageKey, string> = {
   "boss.mapsTitle": "월드보스 분배",
   "boss.mapsSub":
     "팀 분배를 짜기 위한 월드보스 맵과 시간입니다. 플레이어를 배정하기 전까지 칸은 비어 있습니다.",
-  "boss.mapsListTitle": "월드보스 목록",
-  "boss.mapsListSub": "시간대(아침·밤)별 보스입니다. 각 칸은 플레이어 한 명 자리입니다.",
+  "boss.mapsListTitle": "미궁 — 아침·밤",
+  "boss.mapsListSub":
+    "시간대별 보스입니다. 각 칸은 플레이어 한 명 자리이며, 보스 옆 숫자는 맵별 시간당 상자 수입니다.",
+  "boss.mapsChests": "맵별 시간당 상자 수",
   "boss.mapsTime": "시간",
   "boss.mapsDawn": "아침",
   "boss.mapsNight": "밤",

@@ -49,6 +49,7 @@ const pt = {
   "nav.salaries": "Salários",
   "nav.ce": "CE",
   "nav.worldBoss": "WB Attendance",
+  "nav.wbDistribution": "WB Distribuição",
   "nav.transfers": "Transferências",
   "nav.servers": "Servidores",
   "nav.users": "Usuários",
@@ -852,6 +853,33 @@ const pt = {
   "bossCustom.removeAria": "Remover {name} do bloco",
   "bossCustom.removeConfirm": "Remover {name} do bloco custom? As presenças dele também serão apagadas.",
   "bossCustom.removeColumn": "Remover",
+
+  // Distribuição do World Boss (mapas sem jogadores)
+  "boss.tabsAria": "Abas do World Boss",
+  "boss.tabAttendance": "Presença",
+  "boss.tabDistribution": "Distribuição",
+  "boss.mapsMetadata": "Distribuição World Boss",
+  "boss.mapsEyebrow": "Eventos",
+  "boss.mapsTitle": "Distribuição World Boss",
+  "boss.mapsSub":
+    "Mapas e horários do World Boss para montar a distribuição do time. As células ficam vazias até a escalação dos jogadores.",
+  "boss.mapsListTitle": "Lista de World Boss",
+  "boss.mapsListSub":
+    "Bosses por período (manhã e noite). Cada célula é um espaço para um jogador.",
+  "boss.mapsTime": "Horário",
+  "boss.mapsDawn": "Manhã",
+  "boss.mapsNight": "Noite",
+  "boss.mapsFfaTitle": "Bosses FFA",
+  "boss.mapsFfaSub":
+    "Bosses livres, sem escalação fixa: entram os jogadores que estão fora do cronograma.",
+  "boss.mapsFfa": "FFA",
+  "boss.mapsPurgatoryTitle": "Purgatory",
+  "boss.mapsPurgatorySub": "Poder mínimo por andar. No 7F os horários são do servidor.",
+  "boss.mapsMinPower": "Poder mínimo",
+  "boss.mapsServer": "Servidor",
+  "boss.mapsLayersTitle": "Camadas e canais",
+  "boss.mapsLayersSub":
+    "Canais (W1 a W8) de cada camada. Cada canal é um espaço para um jogador.",
 
   // Ficha do jogador
   "player.metadata": "Jogador",

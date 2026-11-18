@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { WorldBossBoard } from "@/components/WorldBossBoard";
+import { WorldBossTabs } from "@/components/WorldBossTabs";
 import { Flash, StatCard } from "@/components/ui";
 import {
   ceWeekEnd,
@@ -135,6 +136,8 @@ export default async function WorldBossPage({ searchParams }: { searchParams: Pr
           ))}
         </div>
       </div>
+
+      <WorldBossTabs active="attendance" />
 
       <Flash ok={params.ok} error={params.error} />
 

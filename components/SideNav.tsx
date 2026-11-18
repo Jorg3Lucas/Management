@@ -8,6 +8,7 @@ import { useT } from "./I18nProvider";
 import {
   IconArrowRight,
   IconBoss,
+  IconClock,
   IconCoins,
   IconDashboard,
   IconExpedition,
@@ -48,6 +49,13 @@ const groups: { labelKey: MessageKey; items: NavItem[] }[] = [
       { href: "/salaries", labelKey: "nav.salaries", icon: IconCoins, adminOnly: false, managerOnly: true },
       { href: "/ce", labelKey: "nav.ce", icon: IconExpedition, adminOnly: false, managerOnly: true },
       { href: "/world-boss", labelKey: "nav.worldBoss", icon: IconBoss, adminOnly: false, managerOnly: true },
+      {
+        href: "/world-boss/distribution",
+        labelKey: "nav.wbDistribution",
+        icon: IconClock,
+        adminOnly: false,
+        managerOnly: true,
+      },
     ],
   },
   {
@@ -90,7 +98,9 @@ export function SideNav({ isAdmin, canManageServers }: { isAdmin: boolean; canMa
                   ? pathname === "/"
                   : item.href === "/players"
                     ? /^\/players\/\d+(\/|$)/.test(pathname) || pathname === "/players"
-                    : pathname === item.href || pathname.startsWith(item.href + "/");
+                    : item.href === "/world-boss"
+                      ? pathname === "/world-boss"
+                      : pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               return (
                 <Link

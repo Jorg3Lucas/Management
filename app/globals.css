@@ -3246,3 +3246,200 @@ table.data tfoot td.num {
   font-size: 12px;
   color: var(--text);
 }
+
+/* ---------- World Boss: distribuição ---------- */
+
+.wb-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wb-tab {
+  padding: 7px 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.wb-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.wb-tab.active {
+  color: var(--gold-strong);
+  background: rgba(240, 192, 96, 0.1);
+}
+
+/* Duas listas lado a lado no desktop, empilhadas no celular. */
+.wb-map-lists {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1180px) {
+  .wb-map-lists {
+    grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.wb-map-table {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.wb-maps thead th {
+  text-align: center;
+}
+
+.wb-maps thead th:first-child {
+  text-align: left;
+}
+
+.wb-maps tbody th {
+  padding: 8px 12px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  color: var(--text);
+  background: transparent;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.wb-maps td {
+  padding: 8px 12px;
+}
+
+.wb-ffa thead th,
+.wb-ffa td {
+  text-align: center;
+}
+
+.wb-ffa tbody td {
+  padding: 18px 12px;
+}
+
+/* Espaço vazio de escalação: mesmo desenho para boss, andar e canal. */
+.wb-slot {
+  display: block;
+  min-height: 26px;
+  border: 1px dashed rgba(148, 163, 184, 0.26);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.wb-floors {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.wb-floor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wb-floor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.wb-floor-times {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.wb-floor-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.wb-floor-time strong {
+  color: var(--text);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-floor-time .badge {
+  margin-left: auto;
+}
+
+.wb-layers {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.wb-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wb-layer-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-strong);
+}
+
+.wb-layer-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.wb-layer-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.wb-layer-grid.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .wb-layer-grid.cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.wb-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wb-channel-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}

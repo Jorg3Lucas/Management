@@ -177,7 +177,8 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
   }
 
   return (
-    <form ref={formRef} action={saveCastlePrizesAction}>
+    <>
+      <form ref={formRef} action={saveCastlePrizesAction}>
       <input type="hidden" name="serverId" value={serverId} />
       <input type="hidden" name="month" value={monthStart} />
       <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -377,6 +378,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           </span>
         </div>
       </section>
+      </form>
 
       <section className="card" style={{ marginTop: 12 }}>
         <div className="card-head">
@@ -454,7 +456,7 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                 </tr>
               ) : (
                 visibleSummary.map((row) => (
-                  <tr key={row.member.character_id}>
+                  <tr key={row.member.character_id} className={row.member.delivered_at ? "row-ok" : undefined}>
                     <td className="cell-title" data-label={t("common.player")}>
                       <Link className="player-name" href={`/players/${row.member.character_id}`}>
                         {row.member.name}
@@ -476,23 +478,30 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
                       {formatNumber(row.total, locale)}
                     </td>
                     <td className="cell-action" data-label={t("castleBoard.colDelivered")}>
-                      <button
-                        type="submit"
-                        formAction={toggleCastleDeliveryAction}
-                        name="characterId"
-                        value={row.member.character_id}
-                        className={`btn sm${row.member.delivered_at ? " ok" : " ghost"}`}
-                        aria-pressed={Boolean(row.member.delivered_at)}
-                        title={
-                          row.member.delivered_at
-                            ? t("castleBoard.markUndelivered")
-                            : t("castleBoard.markDelivered")
-                        }
+                      <form
+                        action={toggleCastleDeliveryAction}
+                        className="inline-form"
+                        style={{ justifyContent: "flex-end" }}
                       >
-                        {row.member.delivered_at
-                          ? t("castleBoard.deliveredLabel")
-                          : t("castleBoard.markDelivered")}
-                      </button>
+                        <input type="hidden" name="serverId" value={serverId} />
+                        <input type="hidden" name="month" value={monthStart} />
+                        <input type="hidden" name="redirectTo" value={redirectTo} />
+                        <input type="hidden" name="characterId" value={row.member.character_id} />
+                        <button
+                          type="submit"
+                          className={`btn sm${row.member.delivered_at ? " ok" : " ghost"}`}
+                          aria-pressed={Boolean(row.member.delivered_at)}
+                          title={
+                            row.member.delivered_at
+                              ? t("castleBoard.markUndelivered")
+                              : t("castleBoard.markDelivered")
+                          }
+                        >
+                          {row.member.delivered_at
+                            ? t("castleBoard.deliveredLabel")
+                            : t("castleBoard.markDelivered")}
+                        </button>
+                      </form>
                     </td>
                   </tr>
                 ))
@@ -515,6 +524,6 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
           </table>
         </div>
       </section>
-    </form>
+    </>
   );
 }

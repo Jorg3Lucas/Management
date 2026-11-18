@@ -705,7 +705,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                           </tr>
                         ) : null}
                         {visibleMembers.map((member) => (
-                          <tr key={member.character_id}>
+                          <tr key={member.character_id} className={member.paid_at ? "row-ok" : undefined}>
                             <td className="cell-title">
                               <Link className="player-name" href={`/players/${member.character_id}`}>
                                 {member.name}

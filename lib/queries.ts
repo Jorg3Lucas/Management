@@ -204,6 +204,8 @@ export function searchCharacters(term: string, limit = 20): CharacterSearchRow[]
   if (clean.length < 2) return [];
 
   const like = `%${clean.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+  // O SQLite devolve objetos com protótipo nulo; a server action precisa de
+  // objetos simples para serializar a resposta ao componente cliente.
   return queryAll<CharacterSearchRow>(
     `SELECT c.id, c.name, c.clan, c.clan_id, c.server_id, c.power_score,
             s.code AS server_code, s.label AS server_label,
@@ -215,7 +217,7 @@ export function searchCharacters(term: string, limit = 20): CharacterSearchRow[]
      LIMIT ?`,
     like,
     limit,
-  );
+  ).map((row) => ({ ...row }));
 }
 
 export function warSessionsForCharacters(characterIds: number[]): WarSessionWithNames[] {

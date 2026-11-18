@@ -58,7 +58,8 @@ export function WarPartyPicker({ members, initial = [], name = "characterIds" }:
       try {
         const rows = await searchWarRankingAction(term);
         if (active) setRankingResults(rows);
-      } catch {
+      } catch (error) {
+        console.error("war ranking search failed", error);
         if (active) setRankingResults([]);
       } finally {
         if (active) setSearching(false);

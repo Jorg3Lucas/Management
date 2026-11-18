@@ -173,8 +173,11 @@ const en: Record<string, string> = {
     "{label}: {read} players read, {created} new, {updated} updated.",
   "Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.":
     "Servers synced: {count} · new: {created} · updated: {updated}.",
-  "Informe o nome do membro com pelo menos 2 caracteres.": "Enter the member name with at least 2 characters.",
-  "Esse nome já está no bloco custom.": "That name is already in the custom block.",
+  "Selecione um jogador do ranking geral do jogo.": "Select a player from the game's overall ranking.",
+  "Jogador não encontrado no ranking geral do jogo.": "Player not found in the game's overall ranking.",
+  "Esse jogador é deste servidor: marque a presença dele na tabela acima.":
+    "That player belongs to this server: mark their attendance in the table above.",
+  "Esse jogador já está no bloco custom.": "That player is already in the custom block.",
   "Não foi possível adicionar o membro.": "Could not add the member.",
   "Servidor inválido ou sem permissão para montar o bloco custom.":
     "Invalid server or no permission to build the custom block.",
@@ -373,9 +376,13 @@ const es: Record<string, string> = {
     "{label}: {read} jugadores leídos, {created} nuevos, {updated} actualizados.",
   "Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.":
     "Servidores sincronizados: {count} · nuevos: {created} · actualizados: {updated}.",
-  "Informe o nome do membro com pelo menos 2 caracteres.":
-    "Escribe el nombre del miembro con al menos 2 caracteres.",
-  "Esse nome já está no bloco custom.": "Ese nombre ya está en el bloque custom.",
+  "Selecione um jogador do ranking geral do jogo.":
+    "Selecciona un jugador de la clasificación general del juego.",
+  "Jogador não encontrado no ranking geral do jogo.":
+    "Jugador no encontrado en la clasificación general del juego.",
+  "Esse jogador é deste servidor: marque a presença dele na tabela acima.":
+    "Ese jugador es de este servidor: marca su presencia en la tabla de arriba.",
+  "Esse jogador já está no bloco custom.": "Ese jugador ya está en el bloque custom.",
   "Não foi possível adicionar o membro.": "No fue posible añadir al miembro.",
   "Servidor inválido ou sem permissão para montar o bloco custom.":
     "Servidor inválido o sin permiso para armar el bloque custom.",
@@ -573,8 +580,12 @@ const ko: Record<string, string> = {
     "{label}: {read}명 조회, 신규 {created}명, 업데이트 {updated}명.",
   "Servidores sincronizados: {count} · novos: {created} · atualizados: {updated}.":
     "동기화된 서버: {count} · 신규: {created} · 업데이트: {updated}.",
-  "Informe o nome do membro com pelo menos 2 caracteres.": "멤버 이름을 2자 이상 입력하세요.",
-  "Esse nome já está no bloco custom.": "이미 커스텀 블록에 있는 이름입니다.",
+  "Selecione um jogador do ranking geral do jogo.": "게임 전체 랭킹에서 플레이어를 선택하세요.",
+  "Jogador não encontrado no ranking geral do jogo.":
+    "게임 전체 랭킹에서 플레이어를 찾을 수 없습니다.",
+  "Esse jogador é deste servidor: marque a presença dele na tabela acima.":
+    "이 서버 소속 플레이어입니다. 위 표에서 참석을 표시하세요.",
+  "Esse jogador já está no bloco custom.": "이미 커스텀 블록에 있는 플레이어입니다.",
   "Não foi possível adicionar o membro.": "멤버를 추가하지 못했습니다.",
   "Servidor inválido ou sem permissão para montar o bloco custom.":
     "서버가 잘못되었거나 커스텀 블록을 만들 권한이 없습니다.",

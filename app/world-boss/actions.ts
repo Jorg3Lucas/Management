@@ -8,7 +8,6 @@ import { ceWeekStart, shortDay } from "@/lib/ce";
 import { getT } from "@/lib/i18n";
 import { getServerById } from "@/lib/queries";
 import {
-  WORLD_BOSS_CUSTOM_NAME_MAX,
   addWorldBossCustomMember,
   createWorldBossFight,
   deleteWorldBossCustomMember,
@@ -16,6 +15,8 @@ import {
   getWorldBossFight,
   saveWorldBossAttendance,
   saveWorldBossCustomAttendance,
+  searchWorldBossRanking,
+  type WorldBossRankingPlayer,
 } from "@/lib/world-boss";
 
 function back(path: string, kind: "ok" | "error", message: string): string {
@@ -154,7 +155,17 @@ export async function saveWorldBossAttendanceAction(formData: FormData): Promise
   );
 }
 
-/** Adiciona um nome ao bloco custom (membros que lutam em outros servidores). */
+/** Busca no ranking geral do jogo quem pode entrar no bloco custom. */
+export async function searchWorldBossRankingAction(
+  serverId: number,
+  term: string,
+): Promise<WorldBossRankingPlayer[]> {
+  const user = await requireUser();
+  if (!Number.isInteger(serverId) || !canEditServer(user, serverId)) return [];
+  return searchWorldBossRanking(serverId, String(term ?? ""));
+}
+
+/** Adiciona um jogador do ranking geral ao bloco custom (membros de outros servidores). */
 export async function addWorldBossCustomMemberAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const serverId = Number(formData.get("serverId"));
@@ -165,8 +176,8 @@ export async function addWorldBossCustomMemberAction(formData: FormData): Promis
     redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para montar o bloco custom."));
   }
 
-  const name = cleanText(formData.get("name"), WORLD_BOSS_CUSTOM_NAME_MAX);
-  const result = addWorldBossCustomMember({ serverId, name });
+  const characterId = Number(formData.get("characterId"));
+  const result = addWorldBossCustomMember({ serverId, characterId });
   if (!result.ok) redirect(back(redirectTo, "error", result.error));
 
   logAudit({
@@ -175,12 +186,12 @@ export async function addWorldBossCustomMemberAction(formData: FormData): Promis
     entity: "world_boss_custom_member",
     entityId: result.id,
     serverId,
-    detail: `${server.label}: "${name}" entrou no bloco custom`,
+    detail: `${server.label}: "${result.name}" entrou no bloco custom (ranking geral)`,
   });
 
   revalidatePath("/world-boss");
   const { m } = await getT();
-  redirect(back(redirectTo, "ok", m("{name} entrou no bloco custom.", { name })));
+  redirect(back(redirectTo, "ok", m("{name} entrou no bloco custom.", { name: result.name })));
 }
 
 /** Tira um nome do bloco custom, junto com as presenças que ele tinha. */

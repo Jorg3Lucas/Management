@@ -7,6 +7,7 @@ import {
   deleteWorldBossCustomMemberAction,
   saveWorldBossAttendanceAction,
   saveWorldBossCustomAttendanceAction,
+  searchWorldBossRankingAction,
 } from "@/app/world-boss/actions";
 import { useT } from "@/components/I18nProvider";
 import { shortDay, shortWeekday } from "@/lib/ce-dates";
@@ -31,6 +32,15 @@ type Member = {
 type CustomMember = {
   id: number;
   name: string;
+  character_id: number | null;
+  server_label: string | null;
+};
+
+type RankingPlayer = {
+  id: number;
+  name: string;
+  power_score: number;
+  server_label: string;
 };
 
 type Selection = Record<number, Record<number, true>>;
@@ -104,6 +114,10 @@ export function WorldBossBoard({
   const [query, setQuery] = useState("");
   const [clan, setClan] = useState("all");
   const [onlyAttended, setOnlyAttended] = useState(false);
+  const [rankingQuery, setRankingQuery] = useState("");
+  const [rankingResults, setRankingResults] = useState<RankingPlayer[]>([]);
+  const [picked, setPicked] = useState<RankingPlayer | null>(null);
+  const [searching, setSearching] = useState(false);
 
   const initialSignature = useMemo(() => signature(selectionFrom(initial, fights), fights), [initial, fights]);
   const currentSignature = useMemo(() => signature(selection, fights), [selection, fights]);
@@ -140,6 +154,34 @@ export function WorldBossBoard({
     setSelection((previous) => prune(previous, fightIds, new Set(members.map((member) => member.character_id))));
     setCustomSelection((previous) => prune(previous, fightIds, new Set(customMembers.map((member) => member.id))));
   }, [fights, members, customMembers]);
+
+  // O bloco custom não aceita nome solto: busca no ranking geral do jogo.
+  useEffect(() => {
+    const term = rankingQuery.trim();
+    if (picked || term.length < 2) {
+      setRankingResults([]);
+      setSearching(false);
+      return;
+    }
+
+    let active = true;
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const rows = await searchWorldBossRankingAction(serverId, term);
+        if (active) setRankingResults(rows);
+      } catch {
+        if (active) setRankingResults([]);
+      } finally {
+        if (active) setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [rankingQuery, picked, serverId]);
 
   const marks = useMemo(
     () => fights.reduce((total, fight) => total + Object.keys(selection[fight.id] ?? {}).length, 0),
@@ -462,19 +504,52 @@ export function WorldBossBoard({
           <form action={addWorldBossCustomMemberAction} className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <input type="hidden" name="serverId" value={serverId} />
             <input type="hidden" name="redirectTo" value={redirectTo} />
+            <input type="hidden" name="characterId" value={picked?.id ?? ""} />
             <input
-              type="text"
-              name="name"
-              required
-              maxLength={40}
+              type="search"
+              value={rankingQuery}
+              onChange={(event) => {
+                setPicked(null);
+                setRankingQuery(event.target.value);
+              }}
+              autoComplete="off"
               placeholder={t("bossCustom.placeholder")}
               aria-label={t("bossCustom.placeholder")}
-              style={{ maxWidth: 240 }}
+              style={{ maxWidth: 280 }}
             />
-            <button className="btn sm primary" type="submit">
+            {picked ? <span className="badge">{picked.server_label}</span> : null}
+            <button className="btn sm primary" type="submit" disabled={!picked}>
               {t("bossCustom.add")}
             </button>
+            <span className="small muted">
+              {picked
+                ? formatPower(picked.power_score, locale)
+                : searching
+                  ? t("bossCustom.searching")
+                  : rankingQuery.trim().length >= 2 && rankingResults.length === 0
+                    ? t("bossCustom.noResults")
+                    : t("bossCustom.searchHint")}
+            </span>
           </form>
+
+          {!picked && rankingResults.length > 0 ? (
+            <div className="row" style={{ gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+              {rankingResults.map((player) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  className="btn sm ghost"
+                  onClick={() => {
+                    setPicked(player);
+                    setRankingQuery(player.name);
+                    setRankingResults([]);
+                  }}
+                >
+                  {player.name} · {player.server_label} · {formatPower(player.power_score, locale)}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {customMembers.length === 0 ? (
@@ -550,7 +625,14 @@ export function WorldBossBoard({
                     const percent = fights.length > 0 ? Math.round((attended / fights.length) * 100) : 0;
                     return (
                       <tr key={member.id}>
-                        <td>{member.name}</td>
+                        <td>
+                          {member.name}
+                          {member.server_label ? (
+                            <span className="small muted" style={{ marginLeft: 6 }}>
+                              {member.server_label}
+                            </span>
+                          ) : null}
+                        </td>
                         {fights.map((fight) => (
                           <td key={fight.id} style={{ textAlign: "center" }}>
                             <input

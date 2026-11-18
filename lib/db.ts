@@ -334,11 +334,13 @@ function migrate(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_world_boss_attendance_character
       ON world_boss_attendance (character_id);
 
-    -- Bloco custom da presença: membros que lutam em outros servidores, com o
-    -- nome digitado à mão, porque não existem no elenco deste servidor.
+    -- Bloco custom da presença: membros que lutam em outros servidores. O nome
+    -- vem do ranking geral do jogo (personagem de outro servidor), não é
+    -- digitado à mão.
     CREATE TABLE IF NOT EXISTS world_boss_custom_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
       name TEXT NOT NULL COLLATE NOCASE,
       created_at TEXT NOT NULL,
       UNIQUE (server_id, name)
@@ -606,6 +608,7 @@ function migrate(db: DatabaseSync) {
   }
 
   // Colunas adicionadas depois da primeira versão do schema.
+  ensureColumn(db, "world_boss_custom_members", "character_id", "INTEGER REFERENCES characters(id) ON DELETE CASCADE");
   ensureColumn(db, "characters", "clan_id", "INTEGER REFERENCES clans(id)");
   ensureColumn(db, "characters", "player_id", "INTEGER REFERENCES players(id)");
   ensureColumn(db, "characters", "team_id", "INTEGER REFERENCES teams(id) ON DELETE SET NULL");
@@ -631,6 +634,9 @@ function migrate(db: DatabaseSync) {
     db.exec("UPDATE salary_tiers SET min_power = 0 WHERE tier = 'E'");
   }
 
+  db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_world_boss_custom_members_character ON world_boss_custom_members (server_id, character_id) WHERE character_id IS NOT NULL",
+  );
   db.exec("CREATE INDEX IF NOT EXISTS idx_characters_clan ON characters (server_id, clan_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_characters_player ON characters (player_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_clan_relations_server ON clan_relations (server_id, stance)");

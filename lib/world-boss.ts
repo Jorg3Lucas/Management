@@ -49,8 +49,6 @@ export type WorldBossAttendanceRow = {
   character_id: number;
 };
 
-export const WORLD_BOSS_CUSTOM_NAME_MAX = 40;
-
 /** Membros dos clãs aliados do servidor, que são quem conta presença. */
 export function worldBossMembers(serverId: number, limit = 300): WorldBossMember[] {
   const rows = queryAll<WorldBossMember>(
@@ -78,10 +76,13 @@ export function worldBossMembers(serverId: number, limit = 300): WorldBossMember
 /**
  * Membros do bloco custom: quem luta em outros servidores e por isso não está
  * no elenco deste servidor, mas a presença ainda precisa ser acompanhada.
+ * O personagem vem do ranking geral do jogo, não de um nome digitado à mão.
  */
 export type WorldBossCustomMember = {
   id: number;
   name: string;
+  character_id: number | null;
+  server_label: string | null;
 };
 
 export type WorldBossCustomAttendanceRow = {
@@ -92,7 +93,12 @@ export type WorldBossCustomAttendanceRow = {
 /** Nomes do bloco custom do servidor, em ordem alfabética. */
 export function worldBossCustomMembers(serverId: number): WorldBossCustomMember[] {
   return queryAll<WorldBossCustomMember>(
-    `SELECT id, name FROM world_boss_custom_members WHERE server_id = ? ORDER BY name COLLATE NOCASE ASC`,
+    `SELECT m.id, m.name, m.character_id, s.label AS server_label
+     FROM world_boss_custom_members m
+     LEFT JOIN characters c ON c.id = m.character_id
+     LEFT JOIN servers s ON s.id = c.server_id
+     WHERE m.server_id = ?
+     ORDER BY m.name COLLATE NOCASE ASC`,
     serverId,
   ).map((row) => ({ ...row }));
 }
@@ -115,31 +121,92 @@ export function worldBossCustomAttendance(
   ).map((row) => ({ ...row }));
 }
 
-export type WorldBossCustomMemberResult = { ok: true; id: number } | { ok: false; error: string };
+export type WorldBossCustomMemberResult =
+  | { ok: true; id: number; name: string }
+  | { ok: false; error: string };
 
-/** Adiciona um nome ao bloco custom do servidor. */
+export type WorldBossRankingPlayer = {
+  id: number;
+  name: string;
+  power_score: number;
+  server_label: string;
+};
+
+const WORLD_BOSS_RANKING_MIN_TERM = 2;
+const WORLD_BOSS_RANKING_LIMIT = 8;
+
+/**
+ * Busca no ranking geral do jogo quem pode entrar no bloco custom: personagens
+ * de outros servidores, do maior poder para o menor, sem os que já estão aqui.
+ */
+export function searchWorldBossRanking(serverId: number, term: string): WorldBossRankingPlayer[] {
+  const clean = term.replace(/\s+/g, " ").trim().slice(0, 60);
+  if (clean.length < WORLD_BOSS_RANKING_MIN_TERM) return [];
+
+  const like = `%${clean.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+  return queryAll<WorldBossRankingPlayer>(
+    `SELECT c.id, c.name, c.power_score, s.label AS server_label
+     FROM characters c
+     JOIN servers s ON s.id = c.server_id
+     WHERE c.server_id <> ?
+       AND c.name LIKE ? ESCAPE '\\'
+       AND NOT EXISTS (
+         SELECT 1 FROM world_boss_custom_members m
+         WHERE m.server_id = ? AND m.character_id = c.id
+       )
+     ORDER BY c.power_score DESC, c.rank_position IS NULL, c.rank_position ASC, c.name COLLATE NOCASE ASC
+     LIMIT ?`,
+    serverId,
+    like,
+    serverId,
+    WORLD_BOSS_RANKING_LIMIT,
+  ).map((row) => ({ ...row }));
+}
+
+/** Adiciona ao bloco custom um personagem do ranking geral do jogo. */
 export function addWorldBossCustomMember(input: {
   serverId: number;
-  name: string;
+  characterId: number;
 }): WorldBossCustomMemberResult {
-  const name = input.name.replace(/\s+/g, " ").trim().slice(0, WORLD_BOSS_CUSTOM_NAME_MAX);
-  if (name.length < 2) {
-    return { ok: false, error: "Informe o nome do membro com pelo menos 2 caracteres." };
+  if (!Number.isInteger(input.characterId) || input.characterId <= 0) {
+    return { ok: false, error: "Selecione um jogador do ranking geral do jogo." };
+  }
+
+  const character = queryOne<{ id: number; name: string; server_id: number }>(
+    "SELECT id, name, server_id FROM characters WHERE id = ?",
+    input.characterId,
+  );
+  if (!character) {
+    return { ok: false, error: "Jogador não encontrado no ranking geral do jogo." };
+  }
+  if (character.server_id === input.serverId) {
+    return { ok: false, error: "Esse jogador é deste servidor: marque a presença dele na tabela acima." };
+  }
+
+  const existing = queryOne<{ id: number }>(
+    "SELECT id FROM world_boss_custom_members WHERE server_id = ? AND (character_id = ? OR name = ?)",
+    input.serverId,
+    character.id,
+    character.name,
+  );
+  if (existing) {
+    return { ok: false, error: "Esse jogador já está no bloco custom." };
   }
 
   try {
     const result = execute(
-      "INSERT INTO world_boss_custom_members (server_id, name, created_at) VALUES (?, ?, ?)",
+      "INSERT INTO world_boss_custom_members (server_id, character_id, name, created_at) VALUES (?, ?, ?, ?)",
       input.serverId,
-      name,
+      character.id,
+      character.name,
       new Date().toISOString(),
     );
-    return { ok: true, id: result.lastInsertRowid };
+    return { ok: true, id: result.lastInsertRowid, name: character.name };
   } catch (error) {
     const duplicate = error instanceof Error && error.message.includes("UNIQUE");
     return {
       ok: false,
-      error: duplicate ? "Esse nome já está no bloco custom." : "Não foi possível adicionar o membro.",
+      error: duplicate ? "Esse jogador já está no bloco custom." : "Não foi possível adicionar o membro.",
     };
   }
 }

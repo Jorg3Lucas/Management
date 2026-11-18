@@ -47,7 +47,7 @@ const ko: Record<MessageKey, string> = {
   "nav.castle": "성 보상",
   "nav.salaries": "급여",
   "nav.ce": "CE",
-  "nav.worldBoss": "월드 보스",
+  "nav.worldBoss": "WB Attendance",
   "nav.transfers": "서버 이전",
   "nav.servers": "서버",
   "nav.users": "사용자",

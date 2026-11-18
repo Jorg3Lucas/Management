@@ -47,7 +47,7 @@ const en: Record<MessageKey, string> = {
   "nav.castle": "Castle prize",
   "nav.salaries": "Salaries",
   "nav.ce": "CE",
-  "nav.worldBoss": "World Boss",
+  "nav.worldBoss": "WB Attendance",
   "nav.transfers": "Transfers",
   "nav.servers": "Servers",
   "nav.users": "Users",

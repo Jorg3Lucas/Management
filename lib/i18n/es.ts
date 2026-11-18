@@ -47,7 +47,7 @@ const es: Record<MessageKey, string> = {
   "nav.castle": "Premio del castillo",
   "nav.salaries": "Salarios",
   "nav.ce": "CE",
-  "nav.worldBoss": "World Boss",
+  "nav.worldBoss": "WB Attendance",
   "nav.transfers": "Transferencias",
   "nav.servers": "Servidores",
   "nav.users": "Usuarios",

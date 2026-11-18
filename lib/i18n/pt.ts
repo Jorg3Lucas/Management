@@ -48,7 +48,7 @@ const pt = {
   "nav.castle": "Prêmio do castelo",
   "nav.salaries": "Salários",
   "nav.ce": "CE",
-  "nav.worldBoss": "World Boss",
+  "nav.worldBoss": "WB Attendance",
   "nav.transfers": "Transferências",
   "nav.servers": "Servidores",
   "nav.users": "Usuários",

@@ -349,29 +349,27 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
   const user = await requireUser();
   const periodId = Number(formData.get("periodId"));
   const characterId = Number(formData.get("characterId"));
-  const period = await requirePeriod(
-    user,
-    periodId,
-    safePath(formData.get("redirectTo"), "/salaries"),
-  );
+  // Volta para a mesma visão da tabela (ordenação e filtros), não só para a semana.
+  const redirectTo = safePath(formData.get("redirectTo"), "/salaries");
+  const period = await requirePeriod(user, periodId, redirectTo);
 
   const tierRaw = String(formData.get("tier") ?? "");
-  if (!isSalaryTier(tierRaw)) redirect(back(periodPath(period), "error", "Coeficiente inválido."));
+  if (!isSalaryTier(tierRaw)) redirect(back(redirectTo, "error", "Coeficiente inválido."));
 
   // A tela informa a penalidade; guardamos quanto sobra do salário (100 − penalidade).
   const penaltyRaw = Number(formData.get("penaltyPercent") ?? 0);
-  if (!Number.isFinite(penaltyRaw)) redirect(back(periodPath(period), "error", "Percentual inválido."));
+  if (!Number.isFinite(penaltyRaw)) redirect(back(redirectTo, "error", "Percentual inválido."));
   const penaltyPercent = Math.max(0, Math.min(100, Math.round(penaltyRaw)));
   const sharePercent = 100 - penaltyPercent;
 
   const preferenceRaw = String(formData.get("preference") ?? "darksteel");
   if (!isSalaryPreference(preferenceRaw)) {
-    redirect(back(periodPath(period), "error", "Preferência inválida."));
+    redirect(back(redirectTo, "error", "Preferência inválida."));
   }
 
   const stoneSplitRaw = String(formData.get("stoneSplit") ?? "half");
   if (!isStoneSplit(stoneSplitRaw)) {
-    redirect(back(periodPath(period), "error", "Divisão da pedra inválida."));
+    redirect(back(redirectTo, "error", "Divisão da pedra inválida."));
   }
 
   const attendedHeist = formData.get("attendedHeist") === "1";
@@ -391,7 +389,7 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
     stoneSplit: stoneSplitRaw,
   });
 
-  if (!updated) redirect(back(periodPath(period), "error", "Jogador não está no elenco desta semana."));
+  if (!updated) redirect(back(redirectTo, "error", "Jogador não está no elenco desta semana."));
 
   logAudit({
     user,
@@ -405,7 +403,7 @@ export async function updateSalaryMemberAction(formData: FormData): Promise<void
   });
 
   revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", "Pagamento do jogador atualizado."));
+  redirect(back(redirectTo, "ok", "Pagamento do jogador atualizado."));
 }
 
 /** Marca (ou desmarca) o pagamento de um membro do elenco. */
@@ -413,14 +411,12 @@ export async function toggleSalaryPaidAction(formData: FormData): Promise<void> 
   const user = await requireUser();
   const periodId = Number(formData.get("periodId"));
   const characterId = Number(formData.get("characterId"));
-  const period = await requirePeriod(
-    user,
-    periodId,
-    safePath(formData.get("redirectTo"), "/salaries"),
-  );
+  // Marcar pago não pode custar a ordenação nem os filtros ativos da tabela.
+  const redirectTo = safePath(formData.get("redirectTo"), "/salaries");
+  const period = await requirePeriod(user, periodId, redirectTo);
 
   const paid = toggleSalaryMemberPaid(period.id, characterId);
-  if (paid === null) redirect(back(periodPath(period), "error", "Jogador não está no elenco desta semana."));
+  if (paid === null) redirect(back(redirectTo, "error", "Jogador não está no elenco desta semana."));
 
   logAudit({
     user,
@@ -435,7 +431,7 @@ export async function toggleSalaryPaidAction(formData: FormData): Promise<void> 
   const { m } = await getT();
   redirect(
     back(
-      periodPath(period),
+      redirectTo,
       "ok",
       paid ? m("Pagamento do jogador marcado como pago.") : m("Pagamento do jogador marcado como pendente."),
     ),
@@ -446,11 +442,8 @@ export async function removeSalaryMemberAction(formData: FormData): Promise<void
   const user = await requireUser();
   const periodId = Number(formData.get("periodId"));
   const characterId = Number(formData.get("characterId"));
-  const period = await requirePeriod(
-    user,
-    periodId,
-    safePath(formData.get("redirectTo"), "/salaries"),
-  );
+  const redirectTo = safePath(formData.get("redirectTo"), "/salaries");
+  const period = await requirePeriod(user, periodId, redirectTo);
 
   removeSalaryMember(period.id, characterId);
 
@@ -464,7 +457,7 @@ export async function removeSalaryMemberAction(formData: FormData): Promise<void
   });
 
   revalidatePath("/salaries");
-  redirect(back(periodPath(period), "ok", "Jogador removido do elenco."));
+  redirect(back(redirectTo, "ok", "Jogador removido do elenco."));
 }
 
 export async function setSalaryWeightsAction(formData: FormData): Promise<void> {

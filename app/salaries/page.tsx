@@ -853,7 +853,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                                 <AutoSave delay={500} />
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
-                                <input type="hidden" name="redirectTo" value={returnTo} />
+                                <input type="hidden" name="redirectTo" value={rosterHref({})} />
                                 <label className="mini-field">
                                   <span>{t("salary.miniTier")}</span>
                                   <select name="tier" defaultValue={member.tier}>
@@ -964,7 +964,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                               >
                                 <input type="hidden" name="periodId" value={period.id} />
                                 <input type="hidden" name="characterId" value={member.character_id} />
-                                <input type="hidden" name="redirectTo" value={returnTo} />
+                                <input type="hidden" name="redirectTo" value={rosterHref({})} />
                                 <ConfirmButton message={t("salary.removeConfirm", { player: member.name })}>
                                   {t("common.remove")}
                                 </ConfirmButton>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { CastlePrizeBoard } from "@/components/CastlePrizeBoard";
+import { CastleTabs } from "@/components/CastleTabs";
 import { Flash } from "@/components/ui";
 import { castlePrizeMembers, castlePrizeUpdatedAt } from "@/lib/castle";
 import {
@@ -80,6 +81,8 @@ export default async function CastlePrizePage({ searchParams }: { searchParams: 
           ))}
         </div>
       </div>
+
+      <CastleTabs active="chests" />
 
       <Flash ok={params.ok} error={params.error} />
 

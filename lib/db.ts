@@ -310,6 +310,24 @@ function migrate(db: DatabaseSync) {
       PRIMARY KEY (server_id, month_start, character_id)
     );
 
+    -- Recursos do castelo distribuídos no mês: quanto cada membro leva de
+    -- darksteel e gold. A linha só existe quando algum valor foi informado.
+    CREATE TABLE IF NOT EXISTS castle_resource_awards (
+      server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      month_start TEXT NOT NULL,
+      character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+      darksteel INTEGER NOT NULL DEFAULT 0,
+      gold INTEGER NOT NULL DEFAULT 0,
+      delivered_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      delivered_at TEXT,
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (server_id, month_start, character_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_castle_resources_server
+      ON castle_resource_awards (server_id, month_start);
+
     CREATE TABLE IF NOT EXISTS world_boss_fights (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useT } from "./I18nProvider";
-import { KeepScroll } from "./KeepScroll";
 
 const DEFAULT_DELAY = 700;
 const SAVED_VISIBLE_MS = 2200;
@@ -96,7 +95,6 @@ export function AutoSave({ delay = DEFAULT_DELAY, enabled = true }: { delay?: nu
   return (
     <>
       <span ref={anchorRef} hidden />
-      <KeepScroll />
       {label ? (
         <span className={`autosave-status ${state}`} role="status" aria-live="polite">
           <span className="dot" />

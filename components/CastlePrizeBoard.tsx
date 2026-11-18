@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveCastlePrizesAction } from "@/app/castle/actions";
 import { useT } from "@/components/I18nProvider";
-import { KeepScroll } from "@/components/KeepScroll";
 import {
   CASTLE_PRIZES,
   CASTLE_PRIZE_TOTAL,
@@ -153,7 +152,6 @@ export function CastlePrizeBoard({ serverId, monthStart, redirectTo, members, in
 
   return (
     <form ref={formRef} action={saveCastlePrizesAction}>
-      <KeepScroll />
       <input type="hidden" name="serverId" value={serverId} />
       <input type="hidden" name="month" value={monthStart} />
       <input type="hidden" name="redirectTo" value={redirectTo} />

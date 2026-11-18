@@ -9,7 +9,6 @@ import {
   saveWorldBossCustomAttendanceAction,
 } from "@/app/world-boss/actions";
 import { useT } from "@/components/I18nProvider";
-import { KeepScroll } from "@/components/KeepScroll";
 import { shortDay, shortWeekday } from "@/lib/ce-dates";
 import { formatNumber, formatPower } from "@/lib/format";
 import { INTL_LOCALE } from "@/lib/i18n/locales";
@@ -250,7 +249,6 @@ export function WorldBossBoard({
   return (
     <>
       <form ref={formRef} action={saveWorldBossAttendanceAction}>
-        <KeepScroll />
         <input type="hidden" name="serverId" value={serverId} />
         <input type="hidden" name="week" value={weekStart} />
         <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -485,7 +483,6 @@ export function WorldBossBoard({
           </div>
         ) : (
           <form ref={customFormRef} action={saveWorldBossCustomAttendanceAction}>
-            <KeepScroll />
             <input type="hidden" name="serverId" value={serverId} />
             <input type="hidden" name="week" value={weekStart} />
             <input type="hidden" name="redirectTo" value={redirectTo} />

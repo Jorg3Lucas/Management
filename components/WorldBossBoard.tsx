@@ -132,6 +132,9 @@ export function WorldBossBoard({
 
   const formRef = useRef<HTMLFormElement>(null);
   const customFormRef = useRef<HTMLFormElement>(null);
+  // Botão com `formAction` não envia o próprio name/value no FormData, então o
+  // id do membro vai por um campo oculto preenchido antes do submit.
+  const removeMemberRef = useRef<HTMLInputElement>(null);
   const collator = useMemo(() => new Intl.Collator(INTL_LOCALE[locale], { sensitivity: "base" }), [locale]);
 
   // Salva sozinho pouco depois da última presença marcada.
@@ -562,6 +565,7 @@ export function WorldBossBoard({
             <input type="hidden" name="week" value={weekStart} />
             <input type="hidden" name="redirectTo" value={redirectTo} />
             <input type="hidden" name="customAttendance" value={JSON.stringify(customPayload)} />
+            <input type="hidden" name="customId" ref={removeMemberRef} defaultValue="" />
 
             <div className="table-wrap">
               <table className="data">
@@ -653,14 +657,16 @@ export function WorldBossBoard({
                           <button
                             type="submit"
                             formAction={deleteWorldBossCustomMemberAction}
-                            name="customId"
-                            value={member.id}
                             className="week-fight-del-btn"
                             aria-label={t("bossCustom.removeAria", { name: member.name })}
                             title={t("bossCustom.removeAria", { name: member.name })}
                             onClick={(event) => {
                               if (!window.confirm(t("bossCustom.removeConfirm", { name: member.name }))) {
                                 event.preventDefault();
+                                return;
+                              }
+                              if (removeMemberRef.current) {
+                                removeMemberRef.current.value = String(member.id);
                               }
                             }}
                           >

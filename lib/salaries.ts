@@ -1,4 +1,5 @@
 import { execute, queryAll, queryOne, transaction } from "./db";
+import { normalizeSearch } from "./format";
 import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "./i18n/locales";
 import { APP_TIMEZONE } from "./time";
 
@@ -571,21 +572,19 @@ export type SalaryCandidateRow = {
   team_color: string | null;
 };
 
-/** Jogadores aliados do servidor já vinculados a um clã aliado. */
+/**
+ * Jogadores aliados do servidor já vinculados a um clã aliado.
+ *
+ * A busca é feita em JS com `normalizeSearch` porque o LIKE do SQLite só ignora
+ * caixa em ASCII: "jose" não acharia "José". O elenco de um servidor é pequeno,
+ * então vale mais acertar a busca do que empurrar o filtro para o SQL.
+ */
 export function salaryCandidates(
   serverId: number,
   search: string,
   limit = 200,
 ): SalaryCandidateRow[] {
-  const terms: string[] = [];
-  let filter = "";
-  if (search) {
-    filter = "AND (c.name LIKE ? OR c.clan LIKE ?)";
-    const term = `%${search}%`;
-    terms.push(term, term);
-  }
-
-  return queryAll<SalaryCandidateRow>(
+  const rows = queryAll<SalaryCandidateRow>(
     `SELECT c.id, c.name, c.clan, c.power_score,
             COALESCE(ti.name, t.name) AS team_name, COALESCE(ti.color, t.color) AS team_color
      FROM characters c
@@ -594,13 +593,18 @@ export function salaryCandidates(
      LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE c.server_id = ?
-       ${filter}
-     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
-     LIMIT ?`,
+     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC`,
     serverId,
-    ...terms,
-    limit,
   );
+
+  const term = normalizeSearch(search);
+  const matches = term
+    ? rows.filter(
+        (row) => normalizeSearch(row.name).includes(term) || normalizeSearch(row.clan ?? "").includes(term),
+      )
+    : rows;
+
+  return matches.slice(0, limit);
 }
 
 /** Personagens aliados do servidor no time, somando vínculo por clã e vínculo individual. */

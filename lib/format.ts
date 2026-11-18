@@ -1,6 +1,18 @@
 import { DEFAULT_LOCALE, INTL_LOCALE, type Locale } from "./i18n/locales";
 import { translate } from "./i18n/translate";
 
+/**
+ * Texto para comparação de busca: minúsculas, sem acentos e sem espaços nas pontas.
+ * "José" e "jose" precisam cair no mesmo termo.
+ */
+export function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase()
+    .trim();
+}
+
 export function formatNumber(value: number | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat(INTL_LOCALE[locale]).format(value);

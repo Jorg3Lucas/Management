@@ -8,6 +8,7 @@ import { useT } from "./I18nProvider";
 import {
   IconArrowRight,
   IconBoss,
+  IconCastle,
   IconClock,
   IconCoins,
   IconDashboard,
@@ -46,6 +47,13 @@ const groups: { labelKey: MessageKey; items: NavItem[] }[] = [
       { href: "/clans", labelKey: "nav.clans", icon: IconShield, adminOnly: false, managerOnly: true },
       { href: "/teams", labelKey: "nav.teams", icon: IconFlag, adminOnly: false, managerOnly: true },
       { href: "/castle", labelKey: "nav.castle", icon: IconGift, adminOnly: false, managerOnly: true },
+      {
+        href: "/castle-resources",
+        labelKey: "nav.castleResources",
+        icon: IconCastle,
+        adminOnly: false,
+        managerOnly: true,
+      },
       { href: "/salaries", labelKey: "nav.salaries", icon: IconCoins, adminOnly: false, managerOnly: true },
       { href: "/ce", labelKey: "nav.ce", icon: IconExpedition, adminOnly: false, managerOnly: true },
       { href: "/world-boss", labelKey: "nav.worldBoss", icon: IconBoss, adminOnly: false, managerOnly: true },

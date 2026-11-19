@@ -167,13 +167,17 @@ const en: Record<string, string> = {
   "Poder mínimo da faixa {tier} inválido.": "Invalid minimum power for tier {tier}.",
   "Baú de {month} salvo: {chests} baú(s) para {members} membro(s).":
     "Chests for {month} saved: chests {chests} · members {members}.",
-  "Servidor inválido ou sem permissão para distribuir os recursos.":
-    "Invalid server or no permission to distribute the resources.",
-  "Distribuição inválida.": "Invalid distribution.",
+  "Servidor inválido ou sem permissão para gerenciar os recursos.":
+    "Invalid server or no permission to manage the resources.",
+  "Lançamento inválido.": "Invalid entry.",
   "Informe apenas valores positivos em darksteel e gold.":
     "Enter only positive darksteel and gold amounts.",
-  "Distribuição de {month} salva: {darksteel} darksteel e {gold} gold para {members} membro(s).":
-    "{month} distribution saved: {darksteel} darksteel and {gold} gold for {members} member(s).",
+  "Informe darksteel ou gold no lançamento.": "Enter darksteel or gold in the entry.",
+  "Valor acima do limite permitido.": "Amount above the allowed limit.",
+  "Lançamento não encontrado neste mês.": "Entry not found in this month.",
+  "Lançamento adicionado em {month}: {darksteel} darksteel e {gold} gold.":
+    "Entry added in {month}: {darksteel} darksteel and {gold} gold.",
+  "Lançamento removido de {month}.": "Entry removed from {month}.",
   "falha ao sincronizar.": "sync failed.",
   "ranking vazio.": "empty ranking.",
   "{label}: {read} jogadores lidos, {created} novos, {updated} atualizados.":
@@ -377,13 +381,17 @@ const es: Record<string, string> = {
   "Poder mínimo da faixa {tier} inválido.": "Poder mínimo inválido para la franja {tier}.",
   "Baú de {month} salvo: {chests} baú(s) para {members} membro(s).":
     "Cofres de {month} guardados: cofres {chests} · miembros {members}.",
-  "Servidor inválido ou sem permissão para distribuir os recursos.":
-    "Servidor inválido o sin permiso para repartir los recursos.",
-  "Distribuição inválida.": "Reparto inválido.",
+  "Servidor inválido ou sem permissão para gerenciar os recursos.":
+    "Servidor inválido o sin permiso para gestionar los recursos.",
+  "Lançamento inválido.": "Movimiento inválido.",
   "Informe apenas valores positivos em darksteel e gold.":
     "Introduce solo valores positivos en darksteel y gold.",
-  "Distribuição de {month} salva: {darksteel} darksteel e {gold} gold para {members} membro(s).":
-    "Reparto de {month} guardado: {darksteel} darksteel y {gold} gold para {members} miembro(s).",
+  "Informe darksteel ou gold no lançamento.": "Introduce darksteel o gold en el movimiento.",
+  "Valor acima do limite permitido.": "Valor por encima del límite permitido.",
+  "Lançamento não encontrado neste mês.": "Movimiento no encontrado en este mes.",
+  "Lançamento adicionado em {month}: {darksteel} darksteel e {gold} gold.":
+    "Movimiento añadido en {month}: {darksteel} darksteel y {gold} gold.",
+  "Lançamento removido de {month}.": "Movimiento eliminado de {month}.",
   "falha ao sincronizar.": "fallo al sincronizar.",
   "ranking vazio.": "ranking vacío.",
   "{label}: {read} jogadores lidos, {created} novos, {updated} atualizados.":
@@ -588,13 +596,17 @@ const ko: Record<string, string> = {
   "Poder mínimo da faixa {tier} inválido.": "{tier} 구간의 최소 전투력이 잘못되었습니다.",
   "Baú de {month} salvo: {chests} baú(s) para {members} membro(s).":
     "{month} 상자 저장됨: 상자 {chests}개 · 대상 {members}명.",
-  "Servidor inválido ou sem permissão para distribuir os recursos.":
-    "서버가 잘못되었거나 자원 배분 권한이 없습니다.",
-  "Distribuição inválida.": "배분이 잘못되었습니다.",
+  "Servidor inválido ou sem permissão para gerenciar os recursos.":
+    "서버가 잘못되었거나 자원 관리 권한이 없습니다.",
+  "Lançamento inválido.": "내역이 잘못되었습니다.",
   "Informe apenas valores positivos em darksteel e gold.":
     "다크스틸과 골드는 0 이상의 값만 입력하세요.",
-  "Distribuição de {month} salva: {darksteel} darksteel e {gold} gold para {members} membro(s).":
-    "{month} 배분 저장됨: 다크스틸 {darksteel} · 골드 {gold} · 대상 {members}명.",
+  "Informe darksteel ou gold no lançamento.": "내역에 다크스틸 또는 골드를 입력하세요.",
+  "Valor acima do limite permitido.": "허용된 한도를 초과한 값입니다.",
+  "Lançamento não encontrado neste mês.": "이번 달에서 내역을 찾을 수 없습니다.",
+  "Lançamento adicionado em {month}: {darksteel} darksteel e {gold} gold.":
+    "{month} 내역 추가됨: 다크스틸 {darksteel} · 골드 {gold}.",
+  "Lançamento removido de {month}.": "{month} 내역이 삭제되었습니다.",
   "falha ao sincronizar.": "동기화 실패.",
   "ranking vazio.": "랭킹이 비어 있음.",
   "{label}: {read} jogadores lidos, {created} novos, {updated} atualizados.":

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { canEditServer, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { saveCastlePrizeDistribution, toggleCastlePrizeDelivery } from "@/lib/castle";
-import { saveCastleResourceDistribution, type CastleResourceAmount } from "@/lib/castle-resources";
 import { getT } from "@/lib/i18n";
 import {
   CASTLE_PRIZES,
@@ -142,71 +141,3 @@ export async function toggleCastleDeliveryAction(formData: FormData): Promise<vo
   );
 }
 
-/** Salva a distribuição de darksteel e gold do mês. */
-export async function saveCastleResourcesAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const serverId = Number(formData.get("serverId"));
-  const redirectTo = safePath(formData.get("redirectTo"), "/castle/resources");
-  const monthStart = castleMonthStart(String(formData.get("month") ?? ""));
-  const server = getServerById(serverId);
-
-  if (!server || !canEditServer(user, serverId)) {
-    redirect(back(redirectTo, "error", "Servidor inválido ou sem permissão para distribuir os recursos."));
-  }
-
-  let parsed: unknown = null;
-  try {
-    parsed = JSON.parse(String(formData.get("entries") ?? "{}"));
-  } catch {
-    redirect(back(redirectTo, "error", "Distribuição inválida."));
-  }
-
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    redirect(back(redirectTo, "error", "Distribuição inválida."));
-  }
-
-  const entries: Record<number, CastleResourceAmount> = {};
-  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-    const characterId = Number(key);
-    if (!Number.isInteger(characterId) || characterId <= 0) {
-      redirect(back(redirectTo, "error", "Distribuição inválida."));
-    }
-    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-
-    const record = value as Record<string, unknown>;
-    const darksteel = Number(record.darksteel ?? 0);
-    const gold = Number(record.gold ?? 0);
-    if (!Number.isFinite(darksteel) || !Number.isFinite(gold) || darksteel < 0 || gold < 0) {
-      redirect(back(redirectTo, "error", "Informe apenas valores positivos em darksteel e gold."));
-    }
-    entries[characterId] = { darksteel: Math.trunc(darksteel), gold: Math.trunc(gold), delivered: record.delivered === true };
-  }
-
-  const result = saveCastleResourceDistribution({ serverId, monthStart, userId: user.id, entries });
-  if (!result.ok) redirect(back(redirectTo, "error", result.error));
-
-  logAudit({
-    user,
-    action: "castle.resources",
-    entity: "server",
-    entityId: serverId,
-    serverId,
-    detail: `Recursos de ${castleMonthTitle(monthStart)} · ${result.darksteel} darksteel e ${result.gold} gold para ${result.members} membro(s), ${result.delivered} entregue(s)`,
-  });
-
-  revalidatePath("/castle");
-  revalidatePath("/castle/resources");
-  const { m } = await getT();
-  redirect(
-    back(
-      redirectTo,
-      "ok",
-      m("Distribuição de {month} salva: {darksteel} darksteel e {gold} gold para {members} membro(s).", {
-        month: castleMonthTitle(monthStart),
-        darksteel: result.darksteel,
-        gold: result.gold,
-        members: result.members,
-      }),
-    ),
-  );
-}

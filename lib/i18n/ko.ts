@@ -656,6 +656,8 @@ const ko: Record<MessageKey, string> = {
   "salary.noCosts": "이번 주에 등록된 비용이 없습니다.",
   "salary.tiersTitle": "{server} 계수",
   "salary.tiersSub": "최소 전투력이 구간을 정하며, heist·altar·계곡은 각각 1/3씩 지급합니다",
+  "salary.recalcTiers": "계수 재계산",
+  "salary.recalcTiersConfirm": "모든 플레이어의 구간을 현재 전투력으로 다시 계산할까요? 수동 조정은 덮어씌워집니다.",
   "salary.costsOverProduction": "비용이 생산보다 큽니다",
   "salary.tableHint": "표를 옆으로 밀면 모든 열을 볼 수 있습니다 →",
   "salary.colTier": "구간",

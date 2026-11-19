@@ -39,6 +39,7 @@ import {
   deleteSalaryEntryAction,
   deleteSalaryPeriodAction,
   removeSalaryMemberAction,
+  recalculateSalaryTiersAction,
   setSalaryProductionSlotAction,
   setSalaryWeightsAction,
   toggleSalaryPaidAction,
@@ -589,6 +590,13 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     </div>
                   </div>
                   <div className="row">
+                    <form action={recalculateSalaryTiersAction} className="inline-form">
+                      <input type="hidden" name="periodId" value={period.id} />
+                      <input type="hidden" name="redirectTo" value={returnTo} />
+                      <ConfirmButton className="btn sm ghost" message={t("salary.recalcTiersConfirm")}>
+                        {t("salary.recalcTiers")}
+                      </ConfirmButton>
+                    </form>
                     <span className="badge">
                       {summary.attended}/{summary.members.length}
                     </span>

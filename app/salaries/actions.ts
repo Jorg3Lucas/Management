@@ -18,6 +18,7 @@ import {
   isSalaryPreference,
   isSalaryTier,
   isStoneSplit,
+  recalculateSalaryMemberTiers,
   removeSalaryMember,
   SALARY_TIERS,
   SALARY_VALES,
@@ -458,6 +459,42 @@ export async function removeSalaryMemberAction(formData: FormData): Promise<void
 
   revalidatePath("/salaries");
   redirect(back(redirectTo, "ok", "Jogador removido do elenco."));
+}
+
+/** Reaplica a faixa de cada membro do elenco pelas faixas de poder do servidor. */
+export async function recalculateSalaryTiersAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const periodId = Number(formData.get("periodId"));
+  const redirectTo = safePath(formData.get("redirectTo"), "/salaries");
+  const period = await requirePeriod(user, periodId, redirectTo);
+
+  const result = recalculateSalaryMemberTiers(period.id, period.server_id);
+
+  logAudit({
+    user,
+    action: "salary.member.tiers",
+    entity: "salary_period",
+    entityId: period.id,
+    serverId: period.server_id,
+    detail: `${result.changed} de ${result.total} membro(s) com faixa ajustada pelo poder`,
+  });
+
+  revalidatePath("/salaries");
+  const { m } = await getT();
+  redirect(
+    back(
+      redirectTo,
+      "ok",
+      result.changed > 0
+        ? m("Coeficientes recalculados pelo poder: {changed} de {total} jogador(es) ajustado(s).", {
+            changed: result.changed,
+            total: result.total,
+          })
+        : m("Todos os coeficientes já estavam de acordo com o poder: {total} jogador(es) conferido(s).", {
+            total: result.total,
+          }),
+    ),
+  );
 }
 
 export async function setSalaryWeightsAction(formData: FormData): Promise<void> {

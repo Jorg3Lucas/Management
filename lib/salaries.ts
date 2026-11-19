@@ -497,6 +497,41 @@ export function addAlliedSalaryMembers(periodId: number, serverId: number): numb
   return addSalaryMembers(periodId, serverId, ids);
 }
 
+/**
+ * Reaplica a faixa de cada membro do elenco pelo poder atual e pelos poderes
+ * mínimos configurados no servidor. Devolve quantos jogadores mudaram de faixa.
+ */
+export function recalculateSalaryMemberTiers(
+  periodId: number,
+  serverId: number,
+): { changed: number; total: number } {
+  const tiers = salaryTiers(serverId);
+  const rows = queryAll<{ character_id: number; tier: string; power_score: number }>(
+    `SELECT m.character_id, m.tier, c.power_score
+     FROM salary_members m
+     JOIN characters c ON c.id = m.character_id
+     WHERE m.period_id = ?`,
+    periodId,
+  );
+
+  const now = new Date().toISOString();
+  return transaction(() => {
+    let changed = 0;
+    for (const row of rows) {
+      const tier = tierForPower(row.power_score, tiers);
+      if (tier === row.tier) continue;
+      changed += execute(
+        "UPDATE salary_members SET tier = ?, updated_at = ? WHERE period_id = ? AND character_id = ?",
+        tier,
+        now,
+        periodId,
+        row.character_id,
+      ).changes;
+    }
+    return { changed, total: rows.length };
+  });
+}
+
 export function updateSalaryMember(input: {
   periodId: number;
   characterId: number;

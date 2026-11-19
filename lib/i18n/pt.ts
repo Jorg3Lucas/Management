@@ -674,6 +674,8 @@ const pt = {
   "salary.noCosts": "Nenhum custo lançado nesta semana.",
   "salary.tiersTitle": "Coeficientes de {server}",
   "salary.tiersSub": "Poder mínimo define a faixa; heist, altar e vale pagam 1/3 cada",
+  "salary.recalcTiers": "Recalcular coeficientes",
+  "salary.recalcTiersConfirm": "Recalcular as faixas de todos os jogadores pelo poder atual? Ajustes manuais serão substituídos.",
   "salary.costsOverProduction": "custos maiores que a produção",
   "salary.tableHint": "Deslize a tabela para o lado para ver todas as colunas →",
   "salary.colTier": "Faixa",

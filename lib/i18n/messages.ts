@@ -15,6 +15,10 @@ const en: Record<string, string> = {
   "Clã ou servidor inválido.": "Invalid clan or server.",
   "Coeficiente inválido.": "Invalid coefficient.",
   "Coeficientes e poderes mínimos atualizados.": "Coefficients and minimum power updated.",
+  "Coeficientes recalculados pelo poder: {changed} de {total} jogador(es) ajustado(s).":
+    "Coefficients recalculated from power: {changed} of {total} player(s) adjusted.",
+  "Todos os coeficientes já estavam de acordo com o poder: {total} jogador(es) conferido(s).":
+    "All coefficients already matched the power: {total} player(s) checked.",
   "Cor inválida.": "Invalid color.",
   "Dados do jogador atualizados.": "Player data updated.",
   "Data de fim inválida.": "Invalid end date.",
@@ -223,6 +227,10 @@ const es: Record<string, string> = {
   "Clã ou servidor inválido.": "Clan o servidor inválido.",
   "Coeficiente inválido.": "Coeficiente inválido.",
   "Coeficientes e poderes mínimos atualizados.": "Coeficientes y poderes mínimos actualizados.",
+  "Coeficientes recalculados pelo poder: {changed} de {total} jogador(es) ajustado(s).":
+    "Coeficientes recalculados según el poder: {changed} de {total} jugador(es) ajustado(s).",
+  "Todos os coeficientes já estavam de acordo com o poder: {total} jogador(es) conferido(s).":
+    "Todos los coeficientes ya coincidían con el poder: {total} jugador(es) revisado(s).",
   "Cor inválida.": "Color inválido.",
   "Dados do jogador atualizados.": "Datos del jugador actualizados.",
   "Data de fim inválida.": "Fecha de fin inválida.",
@@ -439,6 +447,10 @@ const ko: Record<string, string> = {
   "Clã ou servidor inválido.": "클랜 또는 서버가 잘못되었습니다.",
   "Coeficiente inválido.": "계수가 잘못되었습니다.",
   "Coeficientes e poderes mínimos atualizados.": "계수와 최소 전투력이 업데이트되었습니다.",
+  "Coeficientes recalculados pelo poder: {changed} de {total} jogador(es) ajustado(s).":
+    "전투력 기준으로 계수를 재계산했습니다: {total}명 중 {changed}명 조정됨.",
+  "Todos os coeficientes já estavam de acordo com o poder: {total} jogador(es) conferido(s).":
+    "모든 계수가 이미 전투력과 일치했습니다: {total}명 확인됨.",
   "Cor inválida.": "색상이 잘못되었습니다.",
   "Dados do jogador atualizados.": "플레이어 정보가 업데이트되었습니다.",
   "Data de fim inválida.": "종료 시간이 잘못되었습니다.",

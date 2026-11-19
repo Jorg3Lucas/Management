@@ -656,6 +656,8 @@ const en: Record<MessageKey, string> = {
   "salary.noCosts": "No cost added this week.",
   "salary.tiersTitle": "Coefficients of {server}",
   "salary.tiersSub": "Minimum power defines the tier; heist, altar and vale pay 1/3 each",
+  "salary.recalcTiers": "Recalculate coefficients",
+  "salary.recalcTiersConfirm": "Recalculate every player's tier from their current power? Manual adjustments will be replaced.",
   "salary.costsOverProduction": "costs above production",
   "salary.tableHint": "Slide the table sideways to see all columns →",
   "salary.colTier": "Tier",

@@ -656,6 +656,8 @@ const es: Record<MessageKey, string> = {
   "salary.noCosts": "Ningún coste registrado esta semana.",
   "salary.tiersTitle": "Coeficientes de {server}",
   "salary.tiersSub": "El poder mínimo define la franja; heist, altar y valle pagan 1/3 cada uno",
+  "salary.recalcTiers": "Recalcular coeficientes",
+  "salary.recalcTiersConfirm": "¿Recalcular la franja de todos los jugadores según su poder actual? Se sustituirán los ajustes manuales.",
   "salary.costsOverProduction": "costes mayores que la producción",
   "salary.tableHint": "Desliza la tabla hacia el lado para ver todas las columnas →",
   "salary.colTier": "Franja",

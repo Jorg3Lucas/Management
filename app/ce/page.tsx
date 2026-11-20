@@ -36,6 +36,8 @@ type SearchParams = {
   server?: string;
   week?: string;
   clan?: string;
+  don?: string;
+  kind?: string;
   ok?: string;
   error?: string;
 };
@@ -70,6 +72,10 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
 
   const activeClan =
     clanPlans.find((entry) => String(entry.clan.id) === params.clan) ?? clanPlans[0] ?? null;
+  const donationFilter =
+    params.don === "done" ? "done" : params.don === "pending" ? "pending" : "all";
+  const donorScope =
+    params.kind === "members" ? "members" : params.kind === "guests" ? "guests" : "all";
   const activeHistory = activeClan
     ? weeks.filter((entry) => entry.clan_id === activeClan.clan.id)
     : [];
@@ -84,9 +90,38 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
     guestGroups.set(candidate.clan_name, list);
   }
 
-  const weekHref = (week: string) => `/ce?server=${selected?.code ?? ""}&week=${week}`;
+  const donParam = donationFilter === "all" ? "" : `&don=${donationFilter}`;
+  const kindParam = donorScope === "all" ? "" : `&kind=${donorScope}`;
+  const filterParams = `${donParam}${kindParam}`;
+  const weekHref = (week: string) =>
+    `/ce?server=${selected?.code ?? ""}&week=${week}${filterParams}`;
   const clanHref = (clanId: number, week = weekStart) =>
-    `/ce?server=${selected?.code ?? ""}&week=${week}&clan=${clanId}`;
+    `/ce?server=${selected?.code ?? ""}&week=${week}&clan=${clanId}${filterParams}`;
+  const donationHref = (don: string) =>
+    `/ce?server=${selected?.code ?? ""}&week=${weekStart}&clan=${activeClan?.clan.id ?? ""}${
+      don === "all" ? "" : `&don=${don}`
+    }${kindParam}`;
+  const scopeHref = (kind: string) =>
+    `/ce?server=${selected?.code ?? ""}&week=${weekStart}&clan=${activeClan?.clan.id ?? ""}${donParam}${
+      kind === "all" ? "" : `&kind=${kind}`
+    }`;
+
+  // Membros do próprio clã x convidados de clãs aliados.
+  const clanDonors = activeClan ? activeClan.donors.filter((donor) => donor.is_guest !== 1) : [];
+  const guestDonors = activeClan ? activeClan.donors.filter((donor) => donor.is_guest === 1) : [];
+  const scopedDonors =
+    donorScope === "members" ? clanDonors : donorScope === "guests" ? guestDonors : (activeClan?.donors ?? []);
+  const scopedDonated = scopedDonors.filter((donor) => donor.gold_done === 1).length;
+  const visibleDonors = scopedDonors.filter((donor) =>
+    donationFilter === "done"
+      ? donor.gold_done === 1
+      : donationFilter === "pending"
+        ? donor.gold_done !== 1
+        : true,
+  );
+  const pendingDonors = scopedDonors.filter((donor) => donor.gold_done !== 1);
+  const pendingShown = pendingDonors.slice(0, 8);
+  const pendingRest = pendingDonors.length - pendingShown.length;
   const returnTo = activeClan ? clanHref(activeClan.clan.id) : weekHref(weekStart);
 
   return (
@@ -165,7 +200,27 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                     <div className="card-title">{t("ce.clanPlans")}</div>
                     <div className="card-sub">{t("ce.clanPlansSub")}</div>
                   </div>
-                  <span className="badge">{t("ce.clanCount", { count: clanPlans.length })}</span>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <Link
+                      className={`btn sm ${donationFilter === "all" ? "primary" : "ghost"}`}
+                      href={donationHref("all")}
+                    >
+                      {t("ce.filterAll")}
+                    </Link>
+                    <Link
+                      className={`btn sm ${donationFilter === "done" ? "primary" : "ghost"}`}
+                      href={donationHref("done")}
+                    >
+                      {t("ce.filterDone")}
+                    </Link>
+                    <Link
+                      className={`btn sm ${donationFilter === "pending" ? "primary" : "ghost"}`}
+                      href={donationHref("pending")}
+                    >
+                      {t("ce.filterPending")}
+                    </Link>
+                    <span className="badge">{t("ce.clanCount", { count: clanPlans.length })}</span>
+                  </div>
                 </div>
                 <div className="table-wrap">
                   <table className="data">
@@ -373,16 +428,88 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                                   : "—",
                             })}
                           </div>
+                          {scopedDonors.length > 0 ? (
+                            <div
+                              className="small muted"
+                              style={{ marginTop: 4 }}
+                              title={pendingDonors.map((donor) => donor.name).join(", ")}
+                            >
+                              {pendingDonors.length === 0
+                                ? t("ce.pendingAllDone")
+                                : t("ce.pendingSummary", {
+                                    count: formatNumber(pendingDonors.length, locale),
+                                    names: pendingShown.map((donor) => donor.name).join(", "),
+                                  })}
+                              {pendingRest > 0
+                                ? ` ${t("ce.pendingMore", {
+                                    count: formatNumber(pendingRest, locale),
+                                  })}`
+                                : null}
+                            </div>
+                          ) : null}
                         </div>
-                        <span className="badge gold">
-                          {formatNumber(activeClan.donated, locale)}/{formatNumber(activeClan.donors.length, locale)}
-                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            alignItems: "flex-end",
+                          }}
+                        >
+                          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                            <Link
+                              className={`btn sm ${donationFilter === "all" ? "primary" : "ghost"}`}
+                              href={donationHref("all")}
+                            >
+                              {t("ce.filterAll")} · {formatNumber(scopedDonors.length, locale)}
+                            </Link>
+                            <Link
+                              className={`btn sm ${donationFilter === "done" ? "primary" : "ghost"}`}
+                              href={donationHref("done")}
+                            >
+                              {t("ce.filterDone")} · {formatNumber(scopedDonated, locale)}
+                            </Link>
+                            <Link
+                              className={`btn sm ${donationFilter === "pending" ? "primary" : "ghost"}`}
+                              href={donationHref("pending")}
+                            >
+                              {t("ce.filterPending")} ·{" "}
+                              {formatNumber(scopedDonors.length - scopedDonated, locale)}
+                            </Link>
+                          </div>
+                          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                            <Link
+                              className={`btn sm ${donorScope === "all" ? "primary" : "ghost"}`}
+                              href={scopeHref("all")}
+                            >
+                              {t("ce.kindAll")}
+                            </Link>
+                            <Link
+                              className={`btn sm ${donorScope === "members" ? "primary" : "ghost"}`}
+                              href={scopeHref("members")}
+                            >
+                              {t("ce.kindMembers")} · {formatNumber(clanDonors.length, locale)}
+                            </Link>
+                            <Link
+                              className={`btn sm ${donorScope === "guests" ? "primary" : "ghost"}`}
+                              href={scopeHref("guests")}
+                            >
+                              {t("ce.kindGuests")} · {formatNumber(guestDonors.length, locale)}
+                            </Link>
+                          </div>
+                        </div>
                       </div>
 
                       {activeClan.donors.length === 0 ? (
                         <div className="card-body">
                           <p className="small muted" style={{ margin: 0 }}>
                             {t("ce.noMembersSynced")}
+                          </p>
+                        </div>
+                      ) : visibleDonors.length === 0 ? (
+                        <div className="card-body">
+                          <p className="small muted" style={{ margin: 0 }}>
+                            {t("ce.filterEmpty")}
                           </p>
                         </div>
                       ) : (
@@ -397,7 +524,7 @@ export default async function CePage({ searchParams }: { searchParams: Promise<S
                               </tr>
                             </thead>
                             <tbody>
-                              {activeClan.donors.map((donor) => (
+                              {visibleDonors.map((donor) => (
                                 <tr
                                   key={donor.character_id}
                                   className={donor.gold_done === 1 ? "row-ok" : undefined}

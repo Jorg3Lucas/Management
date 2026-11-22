@@ -203,9 +203,9 @@ export type PlayerJourneyRow = {
 };
 
 /**
- * Todos os jogadores do jogo com o servidor onde foram vistos primeiro
- * (origem) e o servidor atual (casa), independente de existir registro em
- * server_moves. É o panorama completo usado na aba de transferências.
+ * Jogadores que mudaram de servidor desde que o rastreio começou. A origem é o
+ * servidor da primeira transferência registrada e o servidor atual é o destino
+ * da última. Quem nunca teve transferência detectada não entra na lista.
  */
 export function listPlayerJourneys(
   options: { search?: string; page?: number; pageSize?: number } = {},
@@ -222,49 +222,45 @@ export function listPlayerJourneys(
   }
   const where = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
-  const total = queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM players p ${where}`, ...params)?.total ?? 0;
+  const moved = "EXISTS (SELECT 1 FROM server_moves m WHERE m.player_id = p.id AND m.status <> 'pending')";
+  const countWhere = where ? `${where} AND ${moved}` : `WHERE ${moved}`;
+  const total = queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM players p ${countWhere}`, ...params)?.total ?? 0;
 
   const rows = queryAll<PlayerJourneyRow>(
     `SELECT
        p.id AS player_id,
        p.display_name AS player_name,
-       os.id AS origin_server_id, os.label AS origin_label, os.code AS origin_code,
-       cs.id AS current_server_id, cs.label AS current_label, cs.code AS current_code,
+       fs.id AS origin_server_id, fs.label AS origin_label, fs.code AS origin_code,
+       ts.id AS current_server_id, ts.label AS current_label, ts.code AS current_code,
        cur.id AS character_id,
        (SELECT COUNT(*) FROM server_moves m WHERE m.player_id = p.id AND m.status <> 'pending') AS move_count,
        lm.detected_at AS last_move_at,
        lf.label AS last_move_from_label,
-       lt.label AS last_move_to_label
+       ts.label AS last_move_to_label
      FROM players p
-     LEFT JOIN servers os ON os.id = (
-       SELECT c.server_id FROM characters c
-       WHERE c.player_id = p.id
-       ORDER BY c.created_at ASC, c.id ASC
+     JOIN server_moves fm ON fm.id = (
+       SELECT m.id FROM server_moves m
+       WHERE m.player_id = p.id AND m.status <> 'pending'
+       ORDER BY m.detected_at ASC, m.id ASC
        LIMIT 1
      )
-     LEFT JOIN servers cs ON cs.id = COALESCE(
-       p.home_server_id,
-       (SELECT c.server_id FROM characters c
-        WHERE c.player_id = p.id
-        ORDER BY (c.last_seen_at IS NULL), c.last_seen_at DESC, c.id DESC
-        LIMIT 1)
-     )
-     LEFT JOIN characters cur ON cur.id = (
-       SELECT c.id FROM characters c
-       WHERE c.player_id = p.id AND c.server_id = cs.id
-       ORDER BY (c.last_seen_at IS NULL), c.last_seen_at DESC, c.id DESC
-       LIMIT 1
-     )
-     LEFT JOIN server_moves lm ON lm.id = (
+     LEFT JOIN servers fs ON fs.id = fm.from_server_id
+     JOIN server_moves lm ON lm.id = (
        SELECT m.id FROM server_moves m
        WHERE m.player_id = p.id AND m.status <> 'pending'
        ORDER BY m.detected_at DESC, m.id DESC
        LIMIT 1
      )
+     JOIN servers ts ON ts.id = lm.to_server_id
      LEFT JOIN servers lf ON lf.id = lm.from_server_id
-     LEFT JOIN servers lt ON lt.id = lm.to_server_id
+     LEFT JOIN characters cur ON cur.id = (
+       SELECT c.id FROM characters c
+       WHERE c.player_id = p.id AND c.server_id = ts.id
+       ORDER BY (c.last_seen_at IS NULL), c.last_seen_at DESC, c.id DESC
+       LIMIT 1
+     )
      ${where}
-     ORDER BY p.display_name COLLATE NOCASE ASC
+     ORDER BY lm.detected_at DESC, p.display_name COLLATE NOCASE ASC
      LIMIT ? OFFSET ?`,
     ...params,
     pageSize,

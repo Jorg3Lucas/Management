@@ -51,7 +51,6 @@ export default async function TransfersPage({
         </div>
         <div className="head-actions">
           <span className="badge">{t("transfers.playersCount", { count: journeys.total })}</span>
-          <span className="badge">{t("transfers.count", { count: moves.length })}</span>
         </div>
       </div>
 

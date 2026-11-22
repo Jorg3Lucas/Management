@@ -310,8 +310,8 @@ const pt = {
   "transfers.colDetected": "Detectada",
   "transfers.rejected": "rejeitada",
   "transfers.confirmed": "confirmada",
-  "transfers.playersTitle": "Jogadores e servidores",
-  "transfers.playersSub": "Todos os jogadores do jogo com o servidor onde foram vistos primeiro e o servidor onde estão agora.",
+  "transfers.playersTitle": "Jogadores que transferiram",
+  "transfers.playersSub": "Somente quem mudou de servidor desde que o rastreio começou, com o servidor de origem e o destino atual.",
   "transfers.playersCount": "{count} jogadores",
   "transfers.searchPlaceholder": "Buscar jogador pelo nome",
   "transfers.colPlayerOrigin": "Onde estavam",
@@ -319,8 +319,8 @@ const pt = {
   "transfers.colLastMove": "Última mudança",
   "transfers.colMoves": "Transferências",
   "transfers.noMove": "sem transferência registrada",
-  "transfers.playersEmpty": "Nenhum jogador encontrado",
-  "transfers.playersEmptyBody": "Rode a sincronização dos servidores para carregar o ranking do jogo.",
+  "transfers.playersEmpty": "Nenhuma transferência registrada",
+  "transfers.playersEmptyBody": "Ninguém mudou de servidor desde que o rastreio começou. Novas mudanças aparecem aqui automaticamente pela sincronização.",
 
   // Usuários
   "users.metadata": "Usuários",

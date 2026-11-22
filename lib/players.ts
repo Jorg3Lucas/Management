@@ -164,6 +164,88 @@ export function refreshPlayerLinks(): number {
   });
 }
 
+/**
+ * Reconstrói as transferências que a detecção em tempo real não viu: percorre
+ * os personagens de cada jogador na ordem em que foram vistos e registra a
+ * mudança quando o personagem novo aparece em outro servidor depois de o
+ * anterior deixar de ser visto (dentro da janela de 30 dias). É idempotente:
+ * rodar de novo não duplica registros.
+ */
+export function backfillServerMoves(): number {
+  const candidates = queryAll<{
+    player_id: number;
+    from_server_id: number;
+    to_server_id: number;
+    detected_at: string;
+  }>(
+    `WITH ordered AS (
+       SELECT c.id, c.player_id, c.server_id, c.created_at, c.last_seen_at,
+              LAG(c.server_id) OVER w AS prev_server_id,
+              LAG(c.last_seen_at) OVER w AS prev_last_seen_at
+       FROM characters c
+       WHERE c.player_id IS NOT NULL
+       WINDOW w AS (PARTITION BY c.player_id ORDER BY c.created_at ASC, c.id ASC)
+     )
+     SELECT player_id, prev_server_id AS from_server_id, server_id AS to_server_id,
+            created_at AS detected_at
+     FROM ordered
+     WHERE prev_server_id IS NOT NULL
+       AND prev_server_id <> server_id
+       AND prev_last_seen_at IS NOT NULL
+       AND prev_last_seen_at < created_at
+       AND (julianday(created_at) - julianday(prev_last_seen_at)) <= 30
+     ORDER BY player_id ASC, detected_at ASC`,
+  );
+  if (candidates.length === 0) return 0;
+
+  return transaction(() => {
+    let inserted = 0;
+    for (const move of candidates) {
+      // A detecção em tempo real grava a mesma mudança com o instante da
+      // sincronização; considera duplicada qualquer registro próximo dele.
+      const exists = queryOne<{ id: number; status: string }>(
+        `SELECT id, status FROM server_moves
+         WHERE player_id = ? AND from_server_id = ? AND to_server_id = ?
+           AND abs(julianday(detected_at) - julianday(?)) < 2`,
+        move.player_id,
+        move.from_server_id,
+        move.to_server_id,
+        move.detected_at,
+      );
+      if (exists) {
+        // Pendências antigas nunca eram confirmadas; a mudança é real.
+        if (exists.status === "pending") {
+          execute(
+            "UPDATE server_moves SET status = 'confirmed', decided_at = COALESCE(decided_at, detected_at) WHERE id = ?",
+            exists.id,
+          );
+        }
+        continue;
+      }
+
+      execute(
+        `INSERT INTO server_moves
+          (player_id, from_server_id, to_server_id, detected_at, status, source, decided_at)
+         VALUES (?, ?, ?, ?, 'confirmed', 'backfill', ?)`,
+        move.player_id,
+        move.from_server_id,
+        move.to_server_id,
+        move.detected_at,
+        move.detected_at,
+      );
+      // O servidor casa passa a ser o destino, como na detecção em tempo real.
+      execute(
+        "UPDATE players SET home_server_id = ? WHERE id = ? AND (home_server_id IS NULL OR home_server_id = ?)",
+        move.to_server_id,
+        move.player_id,
+        move.from_server_id,
+      );
+      inserted += 1;
+    }
+    return inserted;
+  });
+}
+
 const MOVE_SELECT = `
   SELECT m.id, m.player_id, m.from_server_id, m.to_server_id, m.detected_at,
          m.status, m.source, m.note, m.decided_at,

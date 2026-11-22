@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
 import { getT } from "@/lib/i18n";
-import { listPlayerJourneys, recentMoves, refreshPlayerLinks } from "@/lib/players";
+import { backfillServerMoves, listPlayerJourneys, recentMoves, refreshPlayerLinks } from "@/lib/players";
 import { formatDateTime } from "@/lib/time";
 import { EmptyState } from "@/components/ui";
 
@@ -27,6 +27,7 @@ export default async function TransfersPage({
   const { locale, t } = await getT();
   const params = await searchParams;
   refreshPlayerLinks();
+  backfillServerMoves();
 
   const search = (params.q ?? "").trim().slice(0, 60);
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);

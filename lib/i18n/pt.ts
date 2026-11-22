@@ -310,6 +310,17 @@ const pt = {
   "transfers.colDetected": "Detectada",
   "transfers.rejected": "rejeitada",
   "transfers.confirmed": "confirmada",
+  "transfers.playersTitle": "Jogadores e servidores",
+  "transfers.playersSub": "Todos os jogadores do jogo com o servidor onde foram vistos primeiro e o servidor onde estão agora.",
+  "transfers.playersCount": "{count} jogadores",
+  "transfers.searchPlaceholder": "Buscar jogador pelo nome",
+  "transfers.colPlayerOrigin": "Onde estavam",
+  "transfers.colPlayerCurrent": "Onde estão",
+  "transfers.colLastMove": "Última mudança",
+  "transfers.colMoves": "Transferências",
+  "transfers.noMove": "sem transferência registrada",
+  "transfers.playersEmpty": "Nenhum jogador encontrado",
+  "transfers.playersEmptyBody": "Rode a sincronização dos servidores para carregar o ranking do jogo.",
 
   // Usuários
   "users.metadata": "Usuários",

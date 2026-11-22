@@ -186,6 +186,94 @@ export function recentMoves(limit = 60): ServerMoveView[] {
   );
 }
 
+export type PlayerJourneyRow = {
+  player_id: number;
+  player_name: string;
+  origin_server_id: number | null;
+  origin_label: string | null;
+  origin_code: string | null;
+  current_server_id: number | null;
+  current_label: string | null;
+  current_code: string | null;
+  character_id: number | null;
+  move_count: number;
+  last_move_at: string | null;
+  last_move_from_label: string | null;
+  last_move_to_label: string | null;
+};
+
+/**
+ * Todos os jogadores do jogo com o servidor onde foram vistos primeiro
+ * (origem) e o servidor atual (casa), independente de existir registro em
+ * server_moves. É o panorama completo usado na aba de transferências.
+ */
+export function listPlayerJourneys(
+  options: { search?: string; page?: number; pageSize?: number } = {},
+): { rows: PlayerJourneyRow[]; total: number; page: number; pageSize: number; pages: number } {
+  const pageSize = options.pageSize ?? 100;
+  const page = Math.max(1, options.page ?? 1);
+  const search = (options.search ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+
+  const filters: string[] = [];
+  const params: (string | number)[] = [];
+  if (search) {
+    filters.push("p.display_name LIKE ? ESCAPE '\\'");
+    params.push(`%${search.replace(/[\\%_]/g, (char) => `\\${char}`)}%`);
+  }
+  const where = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
+  const total = queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM players p ${where}`, ...params)?.total ?? 0;
+
+  const rows = queryAll<PlayerJourneyRow>(
+    `SELECT
+       p.id AS player_id,
+       p.display_name AS player_name,
+       os.id AS origin_server_id, os.label AS origin_label, os.code AS origin_code,
+       cs.id AS current_server_id, cs.label AS current_label, cs.code AS current_code,
+       cur.id AS character_id,
+       (SELECT COUNT(*) FROM server_moves m WHERE m.player_id = p.id AND m.status <> 'pending') AS move_count,
+       lm.detected_at AS last_move_at,
+       lf.label AS last_move_from_label,
+       lt.label AS last_move_to_label
+     FROM players p
+     LEFT JOIN servers os ON os.id = (
+       SELECT c.server_id FROM characters c
+       WHERE c.player_id = p.id
+       ORDER BY c.created_at ASC, c.id ASC
+       LIMIT 1
+     )
+     LEFT JOIN servers cs ON cs.id = COALESCE(
+       p.home_server_id,
+       (SELECT c.server_id FROM characters c
+        WHERE c.player_id = p.id
+        ORDER BY (c.last_seen_at IS NULL), c.last_seen_at DESC, c.id DESC
+        LIMIT 1)
+     )
+     LEFT JOIN characters cur ON cur.id = (
+       SELECT c.id FROM characters c
+       WHERE c.player_id = p.id AND c.server_id = cs.id
+       ORDER BY (c.last_seen_at IS NULL), c.last_seen_at DESC, c.id DESC
+       LIMIT 1
+     )
+     LEFT JOIN server_moves lm ON lm.id = (
+       SELECT m.id FROM server_moves m
+       WHERE m.player_id = p.id AND m.status <> 'pending'
+       ORDER BY m.detected_at DESC, m.id DESC
+       LIMIT 1
+     )
+     LEFT JOIN servers lf ON lf.id = lm.from_server_id
+     LEFT JOIN servers lt ON lt.id = lm.to_server_id
+     ${where}
+     ORDER BY p.display_name COLLATE NOCASE ASC
+     LIMIT ? OFFSET ?`,
+    ...params,
+    pageSize,
+    (page - 1) * pageSize,
+  );
+
+  return { rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
 export function movesForPlayer(playerId: number, limit = 10): ServerMoveView[] {
   return queryAll<ServerMoveView>(
     `${MOVE_SELECT} WHERE m.player_id = ? ORDER BY m.detected_at DESC LIMIT ?`,

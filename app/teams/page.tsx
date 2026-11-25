@@ -11,6 +11,7 @@ import {
   teamClans,
   teamForce,
   teamIndividualMembers,
+  teamMembers,
   unassignedClans,
 } from "@/lib/teams";
 import { AutoSave } from "@/components/AutoSave";
@@ -56,10 +57,12 @@ export default async function TeamsPage({
   const force = selected ? teamForce(selected.id) : [];
   const free = selected ? unassignedClans(selected.id) : [];
   const clanLists = new Map<number, ReturnType<typeof teamClans>>();
+  const memberLists = new Map<number, ReturnType<typeof teamMembers>>();
   const individualLists = new Map<number, ReturnType<typeof teamIndividualMembers>>();
   if (selected) {
     for (const team of force) {
       clanLists.set(team.team_id, teamClans(team.team_id));
+      memberLists.set(team.team_id, teamMembers(team.team_id));
       individualLists.set(team.team_id, teamIndividualMembers(team.team_id));
     }
   }
@@ -166,6 +169,7 @@ export default async function TeamsPage({
 
           {force.map((team) => {
             const clans = clanLists.get(team.team_id) ?? [];
+            const members = memberLists.get(team.team_id) ?? [];
             const individuals = individualLists.get(team.team_id) ?? [];
             return (
               <section key={team.team_id} className="card" style={{ marginBottom: 16 }}>
@@ -248,6 +252,28 @@ export default async function TeamsPage({
                         </div>
                       ))}
                     </div>
+                  ) : null}
+
+                  {members.length > 0 ? (
+                    <>
+                      <div className="roster-toolbar">
+                        <span className="small muted">{t("teams.members")}</span>
+                        <span className="badge">{formatNumber(members.length, locale)}</span>
+                      </div>
+                      <div className="list">
+                        {members.map((member) => (
+                          <div key={member.character_id} className="list-row">
+                            <div>
+                              <Link className="player-name" href={`/players/${member.character_id}`}>
+                                {member.character_name}
+                              </Link>
+                              <div className="small muted">{member.clan_name}</div>
+                            </div>
+                            <span className="small mono">{formatPower(member.power_score, locale)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   ) : null}
 
                   {individuals.length > 0 ? (

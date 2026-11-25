@@ -536,6 +536,7 @@ const ko: Record<MessageKey, string> = {
   "teams.emptyTeam": "이 팀에 연결된 클랜이나 플레이어가 없습니다.",
   "teams.unlink": "연결 해제",
   "teams.individuals": "개별 연결",
+  "teams.members": "멤버",
   "teams.backToClan": "클랜으로 복귀",
   "teams.allClansAssigned": "서버의 모든 동맹 클랜이 이미 팀에 속해 있습니다.",
   "teams.clanAria": "{team}에 연결할 클랜",

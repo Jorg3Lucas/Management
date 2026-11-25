@@ -536,6 +536,7 @@ const en: Record<MessageKey, string> = {
   "teams.emptyTeam": "No clan or player linked to this team.",
   "teams.unlink": "Unlink",
   "teams.individuals": "Individual links",
+  "teams.members": "Members",
   "teams.backToClan": "Back to clan",
   "teams.allClansAssigned": "Every allied clan on the server is already in a team.",
   "teams.clanAria": "Clan to link to {team}",

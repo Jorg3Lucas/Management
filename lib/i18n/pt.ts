@@ -554,6 +554,7 @@ const pt = {
   "teams.emptyTeam": "Nenhum clã ou jogador vinculado a este time.",
   "teams.unlink": "Desvincular",
   "teams.individuals": "Vínculos individuais",
+  "teams.members": "Membros",
   "teams.backToClan": "Voltar ao clã",
   "teams.allClansAssigned": "Todos os clãs aliados do servidor já estão em um time.",
   "teams.clanAria": "Clã para vincular a {team}",

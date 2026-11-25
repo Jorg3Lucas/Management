@@ -536,6 +536,7 @@ const es: Record<MessageKey, string> = {
   "teams.emptyTeam": "Ningún clan o jugador vinculado a este equipo.",
   "teams.unlink": "Desvincular",
   "teams.individuals": "Vínculos individuales",
+  "teams.members": "Miembros",
   "teams.backToClan": "Volver al clan",
   "teams.allClansAssigned": "Todos los clanes aliados del servidor ya están en un equipo.",
   "teams.clanAria": "Clan a vincular a {team}",

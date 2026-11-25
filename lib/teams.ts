@@ -212,6 +212,32 @@ export function teamClans(teamId: number): TeamClanRow[] {
   );
 }
 
+export type TeamMemberRow = {
+  character_id: number;
+  character_name: string;
+  clan_name: string;
+  power_score: number;
+};
+
+/** Todos os jogadores dos clãs aliados que compõem o time, do mais forte ao mais fraco. */
+export function teamMembers(teamId: number): TeamMemberRow[] {
+  return queryAll<TeamMemberRow>(
+    `SELECT ch.id AS character_id,
+            ch.name AS character_name,
+            c.name AS clan_name,
+            ch.power_score
+     FROM clan_teams ct
+     JOIN clans c ON c.id = ct.clan_id
+     JOIN clan_relations r
+       ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id AND r.stance = 'ally'
+     JOIN characters ch ON ch.server_id = ct.server_id AND ch.clan_id = ct.clan_id
+       AND COALESCE(ch.team_id, ct.team_id) = ct.team_id
+     WHERE ct.team_id = ?
+     ORDER BY ch.power_score DESC, ch.name COLLATE NOCASE ASC`,
+    teamId,
+  );
+}
+
 export type TeamIndividualRow = {
   character_id: number;
   character_name: string;

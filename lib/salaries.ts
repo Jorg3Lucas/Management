@@ -413,12 +413,18 @@ export function setSalaryTier(serverId: number, tier: SalaryTier, weight: number
   );
 }
 
+/**
+ * Poder usado no salário: o maior já registrado para o jogador no histórico,
+ * nunca abaixo do poder atual. Quem caiu de poder mantém a faixa conquistada.
+ */
+const SALARY_POWER = `MAX(c.power_score, COALESCE((SELECT MAX(ph.power_score) FROM power_history ph WHERE ph.character_id = c.id), 0))`;
+
 export function salaryMembers(periodId: number): SalaryMemberRow[] {
   return queryAll<SalaryMemberRow>(
     `SELECT m.character_id,
             c.name,
             c.clan,
-            c.power_score,
+            ${SALARY_POWER} AS power_score,
             m.tier,
             m.share_percent,
             m.attended_heist,
@@ -436,7 +442,7 @@ export function salaryMembers(periodId: number): SalaryMemberRow[] {
      LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE m.period_id = ?
-     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC`,
+     ORDER BY power_score DESC, c.name COLLATE NOCASE ASC`,
     periodId,
   );
 }
@@ -452,7 +458,7 @@ export function addSalaryMembers(periodId: number, serverId: number, characterId
   const placeholders = ids.map(() => "?").join(",");
   const tiers = salaryTiers(serverId);
   const rows = queryAll<{ id: number; power_score: number }>(
-    `SELECT c.id, c.power_score
+    `SELECT c.id, ${SALARY_POWER} AS power_score
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
      WHERE c.server_id = ? AND c.id IN (${placeholders})`,
@@ -507,7 +513,7 @@ export function recalculateSalaryMemberTiers(
 ): { changed: number; total: number } {
   const tiers = salaryTiers(serverId);
   const rows = queryAll<{ character_id: number; tier: string; power_score: number }>(
-    `SELECT m.character_id, m.tier, c.power_score
+    `SELECT m.character_id, m.tier, ${SALARY_POWER} AS power_score
      FROM salary_members m
      JOIN characters c ON c.id = m.character_id
      WHERE m.period_id = ?`,
@@ -620,7 +626,7 @@ export function salaryCandidates(
   limit = 200,
 ): SalaryCandidateRow[] {
   const rows = queryAll<SalaryCandidateRow>(
-    `SELECT c.id, c.name, c.clan, c.power_score,
+    `SELECT c.id, c.name, c.clan, ${SALARY_POWER} AS power_score,
             COALESCE(ti.name, t.name) AS team_name, COALESCE(ti.color, t.color) AS team_color
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
@@ -628,7 +634,7 @@ export function salaryCandidates(
      LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
      WHERE c.server_id = ?
-     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC`,
+     ORDER BY power_score DESC, c.name COLLATE NOCASE ASC`,
     serverId,
   );
 

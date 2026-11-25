@@ -226,7 +226,6 @@ export default async function PlayersPage({
                   <th>{t("common.server")}</th>
                   <th>{t("players.colClass")}</th>
                   <th className="num">{t("players.colPower")}</th>
-                  <th className="num">{t("players.colPeak")}</th>
                   <th className="num">{t("players.colWar")}</th>
                   <th>{t("players.colUpdated")}</th>
                   <th />
@@ -281,9 +280,6 @@ export default async function PlayersPage({
                         {character.class_name ?? "—"}
                       </td>
                       <td className="num mono" style={{ fontWeight: 650 }} data-label={t("players.colPower")}>
-                        {formatPower(character.power_score, locale)}
-                      </td>
-                      <td className="num mono muted" data-label={t("players.colPeak")}>
                         {formatPower(character.peak_power, locale)}
                       </td>
                       <td className="num mono" data-label={t("players.colWar")}>

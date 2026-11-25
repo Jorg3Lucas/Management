@@ -321,10 +321,10 @@ export type ClanMemberRow = {
 /** Jogadores do ranking que estão no clã dentro do servidor, do mais forte para o mais fraco. */
 export function clanMembers(serverId: number, clanId: number): ClanMemberRow[] {
   return queryAll<ClanMemberRow>(
-    `SELECT id, name, class_name, power_score, rank_position, last_seen_at, sync_locked
+    `SELECT id, name, class_name, peak_power AS power_score, rank_position, last_seen_at, sync_locked
      FROM characters
      WHERE server_id = ? AND clan_id = ?
-     ORDER BY power_score DESC, rank_position ASC`,
+     ORDER BY peak_power DESC, rank_position ASC`,
     serverId,
     clanId,
   );
@@ -358,10 +358,10 @@ export function clanCandidates(
   }
 
   return queryAll<ClanCandidateRow>(
-    `SELECT id, name, clan, power_score, rank_position
+    `SELECT id, name, clan, peak_power AS power_score, rank_position
      FROM characters
      WHERE ${filters.join(" AND ")}
-     ORDER BY clan_id IS NULL DESC, power_score DESC, rank_position ASC
+     ORDER BY clan_id IS NULL DESC, peak_power DESC, rank_position ASC
      LIMIT ?`,
     ...params,
     limit,

@@ -83,14 +83,15 @@ export function listCharacters(options: CharacterListOptions): {
     ...params,
   );
 
+  // O ranking usa o maior poder já registrado, não o poder do último sync.
   const order =
     options.sort === "rank"
-      ? "c.rank_position IS NULL, c.rank_position ASC, c.power_score DESC"
+      ? "c.rank_position IS NULL, c.rank_position ASC, c.peak_power DESC"
       : options.sort === "name"
         ? "c.name COLLATE NOCASE ASC"
         : options.sort === "recent"
           ? "c.updated_at DESC"
-          : "c.power_score DESC, c.rank_position ASC";
+          : "c.peak_power DESC, c.rank_position ASC";
 
   const offset = (page - 1) * pageSize;
   const rows = queryAll<CharacterWithServer>(
@@ -123,7 +124,7 @@ export function topCharacters(serverId: number, limit = 5): CharacterWithServer[
     `SELECT c.*, s.code AS server_code, s.label AS server_label, s.group_name
      FROM characters c JOIN servers s ON s.id = c.server_id
      WHERE c.server_id = ?
-     ORDER BY c.power_score DESC, c.rank_position ASC
+     ORDER BY c.peak_power DESC, c.rank_position ASC
      LIMIT ?`,
     serverId,
     limit,
@@ -132,7 +133,7 @@ export function topCharacters(serverId: number, limit = 5): CharacterWithServer[
 
 export function charactersByServer(serverId: number): { id: number; name: string }[] {
   return queryAll<{ id: number; name: string }>(
-    "SELECT id, name FROM characters WHERE server_id = ? ORDER BY power_score DESC",
+    "SELECT id, name FROM characters WHERE server_id = ? ORDER BY peak_power DESC",
     serverId,
   );
 }
@@ -207,13 +208,13 @@ export function searchCharacters(term: string, limit = 20): CharacterSearchRow[]
   // O SQLite devolve objetos com protótipo nulo; a server action precisa de
   // objetos simples para serializar a resposta ao componente cliente.
   return queryAll<CharacterSearchRow>(
-    `SELECT c.id, c.name, c.clan, c.clan_id, c.server_id, c.power_score,
+    `SELECT c.id, c.name, c.clan, c.clan_id, c.server_id, c.peak_power AS power_score,
             s.code AS server_code, s.label AS server_label,
             EXISTS (SELECT 1 FROM clan_relations r
                     WHERE r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally') AS ally
      FROM characters c JOIN servers s ON s.id = c.server_id
      WHERE c.name LIKE ? ESCAPE '\\'
-     ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
+     ORDER BY c.peak_power DESC, c.name COLLATE NOCASE ASC
      LIMIT ?`,
     like,
     limit,

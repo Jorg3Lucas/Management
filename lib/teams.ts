@@ -225,7 +225,7 @@ export function teamMembers(teamId: number): TeamMemberRow[] {
     `SELECT ch.id AS character_id,
             ch.name AS character_name,
             c.name AS clan_name,
-            ch.power_score
+            ch.peak_power AS power_score
      FROM clan_teams ct
      JOIN clans c ON c.id = ct.clan_id
      JOIN clan_relations r
@@ -233,7 +233,7 @@ export function teamMembers(teamId: number): TeamMemberRow[] {
      JOIN characters ch ON ch.server_id = ct.server_id AND ch.clan_id = ct.clan_id
        AND COALESCE(ch.team_id, ct.team_id) = ct.team_id
      WHERE ct.team_id = ?
-     ORDER BY ch.power_score DESC, ch.name COLLATE NOCASE ASC`,
+     ORDER BY ch.peak_power DESC, ch.name COLLATE NOCASE ASC`,
     teamId,
   );
 }
@@ -257,13 +257,13 @@ export function allianceRoster(serverId: number): AllianceMemberRow[] {
             c.name AS clan_name,
             ch.id AS character_id,
             ch.name AS character_name,
-            ch.power_score
+            ch.peak_power AS power_score
      FROM characters ch
      JOIN clans c ON c.id = ch.clan_id
      JOIN clan_relations r
        ON r.server_id = ch.server_id AND r.clan_id = ch.clan_id AND r.stance = 'ally'
      WHERE ch.server_id = ?
-     ORDER BY c.name COLLATE NOCASE ASC, ch.power_score DESC, ch.name COLLATE NOCASE ASC`,
+     ORDER BY c.name COLLATE NOCASE ASC, ch.peak_power DESC, ch.name COLLATE NOCASE ASC`,
     serverId,
   );
 }

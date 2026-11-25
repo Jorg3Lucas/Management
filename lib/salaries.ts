@@ -197,17 +197,22 @@ export type SalarySummary = {
   leftover: number;
 };
 
-/**
- * Semana do salário: começa na quinta e fecha na quarta seguinte, dia da guerra
- * do vale e do pagamento. A referência é o dia de hoje no fuso da app.
- */
-export function salaryWeekRange(reference: Date = new Date()): { startsOn: string; endsOn: string } {
-  const today = new Intl.DateTimeFormat("en-CA", {
+/** Data de hoje (AAAA-MM-DD) no fuso da app. */
+function appToday(reference: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: APP_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(reference);
+}
+
+/**
+ * Semana do salário: começa na quinta e fecha na quarta seguinte, dia da guerra
+ * do vale e do pagamento. A referência é o dia de hoje no fuso da app.
+ */
+export function salaryWeekRange(reference: Date = new Date()): { startsOn: string; endsOn: string } {
+  const today = appToday(reference);
 
   // Quinta é o dia 4; recua até a quinta mais recente.
   const start = new Date(`${today}T00:00:00Z`);
@@ -243,7 +248,10 @@ export function listSalaryPeriods(serverId: number, limit = 24): SalaryPeriodSum
               WHERE e.period_id = p.id AND e.kind = 'production') AS production,
             (SELECT COALESCE(SUM(e.amount), 0) FROM salary_entries e
               WHERE e.period_id = p.id AND e.kind = 'fixed') AS fixed_costs,
-            (SELECT COUNT(*) FROM salary_members m WHERE m.period_id = p.id) AS members
+            (SELECT COUNT(*) FROM salary_members m
+              JOIN characters c ON c.id = m.character_id AND c.server_id = p.server_id
+              JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
+              WHERE m.period_id = p.id) AS members
      FROM salary_periods p
      WHERE p.server_id = ?
      ORDER BY p.starts_on DESC, p.id DESC
@@ -419,7 +427,32 @@ export function setSalaryTier(serverId: number, tier: SalaryTier, weight: number
  */
 const SALARY_POWER = `MAX(c.power_score, COALESCE((SELECT MAX(ph.power_score) FROM power_history ph WHERE ph.character_id = c.id), 0))`;
 
+/**
+ * Tira do elenco da semana quem não está mais no servidor: personagem que não
+ * existe mais, que foi para outro servidor ou que está fora dos clãs aliados.
+ * Roda antes de listar, para a semana nunca pagar quem saiu.
+ */
+export function pruneSalaryMembers(periodId: number): number {
+  const period = queryOne<{ server_id: number }>("SELECT server_id FROM salary_periods WHERE id = ?", periodId);
+  if (!period) return 0;
+
+  return execute(
+    `DELETE FROM salary_members
+     WHERE period_id = ?
+       AND NOT EXISTS (
+         SELECT 1
+         FROM characters c
+         JOIN clan_relations r
+           ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
+         WHERE c.id = salary_members.character_id AND c.server_id = ?
+       )`,
+    periodId,
+    period.server_id,
+  ).changes;
+}
+
 export function salaryMembers(periodId: number): SalaryMemberRow[] {
+  pruneSalaryMembers(periodId);
   return queryAll<SalaryMemberRow>(
     `SELECT m.character_id,
             c.name,
@@ -536,6 +569,27 @@ export function recalculateSalaryMemberTiers(
     }
     return { changed, total: rows.length };
   });
+}
+
+/**
+ * Reaplica a faixa dos membros de todas as semanas ainda em aberto (as que não
+ * terminaram) usando o poder máximo já registrado de cada jogador.
+ */
+export function recalculateOpenSalaryTiers(): { periods: number; changed: number; total: number } {
+  const open = queryAll<{ id: number; server_id: number }>(
+    "SELECT id, server_id FROM salary_periods WHERE ends_on >= ? ORDER BY starts_on ASC, id ASC",
+    appToday(),
+  );
+
+  let changed = 0;
+  let total = 0;
+  for (const period of open) {
+    const result = recalculateSalaryMemberTiers(period.id, period.server_id);
+    changed += result.changed;
+    total += result.total;
+  }
+
+  return { periods: open.length, changed, total };
 }
 
 export function updateSalaryMember(input: {

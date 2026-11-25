@@ -96,7 +96,7 @@ export default async function DashboardPage({
               </div>
               <div className="metric">
                 <div className="metric-label">{t("dash.maxPower")}</div>
-                <div className="metric-value">{topPlayer ? formatPower(topPlayer.power_score, locale) : "—"}</div>
+                <div className="metric-value">{topPlayer ? formatPower(topPlayer.peak_power, locale) : "—"}</div>
               </div>
               <div className="metric">
                 <div className="metric-label">{t("dash.warTime")}</div>
@@ -267,7 +267,7 @@ export default async function DashboardPage({
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div className="mono" style={{ fontWeight: 650 }}>
-                          {formatPower(character.power_score, locale)}
+                          {formatPower(character.peak_power, locale)}
                         </div>
                         <div className="small muted">
                           {t("dash.atWar", {

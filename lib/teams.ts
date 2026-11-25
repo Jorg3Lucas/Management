@@ -238,6 +238,93 @@ export function teamMembers(teamId: number): TeamMemberRow[] {
   );
 }
 
+export type AllianceMemberRow = {
+  clan_id: number;
+  clan_name: string;
+  character_id: number;
+  character_name: string;
+  power_score: number;
+};
+
+/**
+ * O time do servidor é a própria aliança: todos os jogadores dos clãs com postura
+ * "aliado" entram automaticamente, sem precisar criar time nem vincular clã.
+ * Ordenado por clã e, dentro do clã, do jogador mais forte ao mais fraco.
+ */
+export function allianceRoster(serverId: number): AllianceMemberRow[] {
+  return queryAll<AllianceMemberRow>(
+    `SELECT c.id AS clan_id,
+            c.name AS clan_name,
+            ch.id AS character_id,
+            ch.name AS character_name,
+            ch.power_score
+     FROM characters ch
+     JOIN clans c ON c.id = ch.clan_id
+     JOIN clan_relations r
+       ON r.server_id = ch.server_id AND r.clan_id = ch.clan_id AND r.stance = 'ally'
+     WHERE ch.server_id = ?
+     ORDER BY c.name COLLATE NOCASE ASC, ch.power_score DESC, ch.name COLLATE NOCASE ASC`,
+    serverId,
+  );
+}
+
+/** Nome do time automático de um servidor: o time é a própria aliança. */
+export const ALLIANCE_TEAM_NAME = "Aliança";
+
+/**
+ * O time do servidor é a aliança: não existe criação manual. Garante o time do
+ * servidor (criado na primeira visita) e coloca todo clã aliado dentro dele, para
+ * que ficha do jogador e salários enxerguem o mesmo time.
+ */
+export function ensureAllianceTeam(serverId: number): TeamRow | null {
+  let team = queryOne<TeamRow>("SELECT * FROM teams WHERE server_id = ? ORDER BY id ASC LIMIT 1", serverId);
+
+  if (!team) {
+    const allies = queryOne<{ total: number }>(
+      "SELECT COUNT(*) AS total FROM clan_relations WHERE server_id = ? AND stance = 'ally'",
+      serverId,
+    );
+    if (!allies || allies.total === 0) return null;
+
+    const now = new Date().toISOString();
+    try {
+      const created = execute(
+        "INSERT INTO teams (server_id, name, color, created_at) VALUES (?, ?, ?, ?)",
+        serverId,
+        ALLIANCE_TEAM_NAME,
+        TEAM_COLORS[0].value,
+        now,
+      );
+      team = {
+        id: created.lastInsertRowid,
+        server_id: serverId,
+        name: ALLIANCE_TEAM_NAME,
+        color: TEAM_COLORS[0].value,
+        created_at: now,
+      };
+    } catch {
+      // Duas visitas simultâneas: a primeira já criou o time.
+      team = queryOne<TeamRow>("SELECT * FROM teams WHERE server_id = ? ORDER BY id ASC LIMIT 1", serverId);
+      if (!team) return null;
+    }
+  }
+
+  execute(
+    `INSERT INTO clan_teams (server_id, clan_id, team_id, updated_at)
+     SELECT r.server_id, r.clan_id, ?, ?
+     FROM clan_relations r
+     WHERE r.server_id = ? AND r.stance = 'ally'
+       AND NOT EXISTS (
+         SELECT 1 FROM clan_teams ct WHERE ct.server_id = r.server_id AND ct.clan_id = r.clan_id
+       )`,
+    team.id,
+    new Date().toISOString(),
+    serverId,
+  );
+
+  return team;
+}
+
 export type TeamIndividualRow = {
   character_id: number;
   character_name: string;

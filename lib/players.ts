@@ -164,6 +164,88 @@ export function refreshPlayerLinks(): number {
   });
 }
 
+/**
+ * Reconstrói as transferências que a detecção em tempo real não viu: percorre
+ * os personagens de cada jogador na ordem em que foram vistos e registra a
+ * mudança quando o personagem novo aparece em outro servidor depois de o
+ * anterior deixar de ser visto (dentro da janela de 30 dias). É idempotente:
+ * rodar de novo não duplica registros.
+ */
+export function backfillServerMoves(): number {
+  const candidates = queryAll<{
+    player_id: number;
+    from_server_id: number;
+    to_server_id: number;
+    detected_at: string;
+  }>(
+    `WITH ordered AS (
+       SELECT c.id, c.player_id, c.server_id, c.created_at, c.last_seen_at,
+              LAG(c.server_id) OVER w AS prev_server_id,
+              LAG(c.last_seen_at) OVER w AS prev_last_seen_at
+       FROM characters c
+       WHERE c.player_id IS NOT NULL
+       WINDOW w AS (PARTITION BY c.player_id ORDER BY c.created_at ASC, c.id ASC)
+     )
+     SELECT player_id, prev_server_id AS from_server_id, server_id AS to_server_id,
+            created_at AS detected_at
+     FROM ordered
+     WHERE prev_server_id IS NOT NULL
+       AND prev_server_id <> server_id
+       AND prev_last_seen_at IS NOT NULL
+       AND prev_last_seen_at < created_at
+       AND (julianday(created_at) - julianday(prev_last_seen_at)) <= 30
+     ORDER BY player_id ASC, detected_at ASC`,
+  );
+  if (candidates.length === 0) return 0;
+
+  return transaction(() => {
+    let inserted = 0;
+    for (const move of candidates) {
+      // A detecção em tempo real grava a mesma mudança com o instante da
+      // sincronização; considera duplicada qualquer registro próximo dele.
+      const exists = queryOne<{ id: number; status: string }>(
+        `SELECT id, status FROM server_moves
+         WHERE player_id = ? AND from_server_id = ? AND to_server_id = ?
+           AND abs(julianday(detected_at) - julianday(?)) < 2`,
+        move.player_id,
+        move.from_server_id,
+        move.to_server_id,
+        move.detected_at,
+      );
+      if (exists) {
+        // Pendências antigas nunca eram confirmadas; a mudança é real.
+        if (exists.status === "pending") {
+          execute(
+            "UPDATE server_moves SET status = 'confirmed', decided_at = COALESCE(decided_at, detected_at) WHERE id = ?",
+            exists.id,
+          );
+        }
+        continue;
+      }
+
+      execute(
+        `INSERT INTO server_moves
+          (player_id, from_server_id, to_server_id, detected_at, status, source, decided_at)
+         VALUES (?, ?, ?, ?, 'confirmed', 'backfill', ?)`,
+        move.player_id,
+        move.from_server_id,
+        move.to_server_id,
+        move.detected_at,
+        move.detected_at,
+      );
+      // O servidor casa passa a ser o destino, como na detecção em tempo real.
+      execute(
+        "UPDATE players SET home_server_id = ? WHERE id = ? AND (home_server_id IS NULL OR home_server_id = ?)",
+        move.to_server_id,
+        move.player_id,
+        move.from_server_id,
+      );
+      inserted += 1;
+    }
+    return inserted;
+  });
+}
+
 const MOVE_SELECT = `
   SELECT m.id, m.player_id, m.from_server_id, m.to_server_id, m.detected_at,
          m.status, m.source, m.note, m.decided_at,
@@ -184,6 +266,90 @@ export function recentMoves(limit = 60): ServerMoveView[] {
     `${MOVE_SELECT} WHERE m.status <> 'pending' ORDER BY m.detected_at DESC LIMIT ?`,
     limit,
   );
+}
+
+export type PlayerJourneyRow = {
+  player_id: number;
+  player_name: string;
+  origin_server_id: number | null;
+  origin_label: string | null;
+  origin_code: string | null;
+  current_server_id: number | null;
+  current_label: string | null;
+  current_code: string | null;
+  character_id: number | null;
+  move_count: number;
+  last_move_at: string | null;
+  last_move_from_label: string | null;
+  last_move_to_label: string | null;
+};
+
+/**
+ * Jogadores que mudaram de servidor desde que o rastreio começou. A origem é o
+ * servidor da primeira transferência registrada e o servidor atual é o destino
+ * da última. Quem nunca teve transferência detectada não entra na lista.
+ */
+export function listPlayerJourneys(
+  options: { search?: string; page?: number; pageSize?: number } = {},
+): { rows: PlayerJourneyRow[]; total: number; page: number; pageSize: number; pages: number } {
+  const pageSize = options.pageSize ?? 100;
+  const page = Math.max(1, options.page ?? 1);
+  const search = (options.search ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+
+  const filters: string[] = [];
+  const params: (string | number)[] = [];
+  if (search) {
+    filters.push("p.display_name LIKE ? ESCAPE '\\'");
+    params.push(`%${search.replace(/[\\%_]/g, (char) => `\\${char}`)}%`);
+  }
+  const where = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
+  const moved = "EXISTS (SELECT 1 FROM server_moves m WHERE m.player_id = p.id AND m.status <> 'pending')";
+  const countWhere = where ? `${where} AND ${moved}` : `WHERE ${moved}`;
+  const total = queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM players p ${countWhere}`, ...params)?.total ?? 0;
+
+  const rows = queryAll<PlayerJourneyRow>(
+    `SELECT
+       p.id AS player_id,
+       p.display_name AS player_name,
+       fs.id AS origin_server_id, fs.label AS origin_label, fs.code AS origin_code,
+       ts.id AS current_server_id, ts.label AS current_label, ts.code AS current_code,
+       cur.id AS character_id,
+       (SELECT COUNT(*) FROM server_moves m WHERE m.player_id = p.id AND m.status <> 'pending') AS move_count,
+       lm.detected_at AS last_move_at,
+       lf.label AS last_move_from_label,
+       ts.label AS last_move_to_label
+     FROM players p
+     JOIN server_moves fm ON fm.id = (
+       SELECT m.id FROM server_moves m
+       WHERE m.player_id = p.id AND m.status <> 'pending'
+       ORDER BY m.detected_at ASC, m.id ASC
+       LIMIT 1
+     )
+     LEFT JOIN servers fs ON fs.id = fm.from_server_id
+     JOIN server_moves lm ON lm.id = (
+       SELECT m.id FROM server_moves m
+       WHERE m.player_id = p.id AND m.status <> 'pending'
+       ORDER BY m.detected_at DESC, m.id DESC
+       LIMIT 1
+     )
+     JOIN servers ts ON ts.id = lm.to_server_id
+     LEFT JOIN servers lf ON lf.id = lm.from_server_id
+     LEFT JOIN characters cur ON cur.id = (
+       SELECT c.id FROM characters c
+       WHERE c.player_id = p.id AND c.server_id = ts.id
+       ORDER BY (c.last_seen_at IS NULL), c.last_seen_at DESC, c.id DESC
+       LIMIT 1
+     )
+     ${where}
+     ORDER BY lm.detected_at DESC, p.display_name COLLATE NOCASE ASC
+     LIMIT ? OFFSET ?`,
+    ...params,
+    pageSize,
+    (page - 1) * pageSize,
+  );
+
+  return { rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
 export function movesForPlayer(playerId: number, limit = 10): ServerMoveView[] {

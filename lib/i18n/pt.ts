@@ -310,6 +310,17 @@ const pt = {
   "transfers.colDetected": "Detectada",
   "transfers.rejected": "rejeitada",
   "transfers.confirmed": "confirmada",
+  "transfers.playersTitle": "Jogadores que transferiram",
+  "transfers.playersSub": "Somente quem mudou de servidor desde que o rastreio começou, com o servidor de origem e o destino atual.",
+  "transfers.playersCount": "{count} jogadores",
+  "transfers.searchPlaceholder": "Buscar jogador pelo nome",
+  "transfers.colPlayerOrigin": "Onde estavam",
+  "transfers.colPlayerCurrent": "Onde estão",
+  "transfers.colLastMove": "Última mudança",
+  "transfers.colMoves": "Transferências",
+  "transfers.noMove": "sem transferência registrada",
+  "transfers.playersEmpty": "Nenhuma transferência registrada",
+  "transfers.playersEmptyBody": "Ninguém mudou de servidor desde que o rastreio começou. Novas mudanças aparecem aqui automaticamente pela sincronização.",
 
   // Usuários
   "users.metadata": "Usuários",

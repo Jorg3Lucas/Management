@@ -1,5 +1,9 @@
+import { stanceForClan } from "./clans";
 import { execute, queryAll, queryOne } from "./db";
 import type { ClanStance } from "./types";
+
+/** Cookie com o último servidor aberto na página Times. */
+export const TEAM_SERVER_COOKIE = "mir4_teams_server";
 
 export type TeamRow = {
   id: number;
@@ -79,7 +83,8 @@ export function deleteTeam(teamId: number): void {
 
 /**
  * Vincula um clã ao time do servidor (ou desvincula com teamId = null).
- * Retorna falso quando o time não pertence ao servidor informado.
+ * O time é a aliança do servidor: só clãs com postura "aliado" entram.
+ * Retorna falso quando o clã não é aliado ou o time não pertence ao servidor.
  */
 export function assignClanTeam(input: {
   serverId: number;
@@ -91,6 +96,8 @@ export function assignClanTeam(input: {
     execute("DELETE FROM clan_teams WHERE server_id = ? AND clan_id = ?", input.serverId, input.clanId);
     return true;
   }
+
+  if (stanceForClan(input.serverId, input.clanId) !== "ally") return false;
 
   const team = getTeam(input.teamId);
   if (!team || team.server_id !== input.serverId) return false;
@@ -142,20 +149,28 @@ export type TeamForceRow = {
   top_power: number;
 };
 
-/** Força de cada time do servidor, somando o ranking sincronizado. */
+/**
+ * Força de cada time do servidor, somando o ranking sincronizado.
+ * Só contam clãs aliados: um clã que vira inimigo/neutro sai do time sozinho.
+ */
 export function teamForce(serverId: number): TeamForceRow[] {
   return queryAll<TeamForceRow>(
-    `WITH effective AS (
+    `WITH ally_links AS (
+       SELECT ct.server_id, ct.clan_id, ct.team_id
+       FROM clan_teams ct
+       JOIN clan_relations r
+         ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id AND r.stance = 'ally'
+     ), effective AS (
        SELECT ch.id, ch.server_id, ch.power_score,
-              COALESCE(ch.team_id, ct.team_id) AS team_id
+              COALESCE(ch.team_id, al.team_id) AS team_id
        FROM characters ch
-       LEFT JOIN clan_teams ct ON ct.server_id = ch.server_id AND ct.clan_id = ch.clan_id
+       LEFT JOIN ally_links al ON al.server_id = ch.server_id AND al.clan_id = ch.clan_id
      )
      SELECT t.id AS team_id,
             t.name AS team_name,
             t.color AS color,
-            (SELECT COUNT(*) FROM clan_teams ct2
-              WHERE ct2.team_id = t.id AND ct2.server_id = t.server_id) AS clans,
+            (SELECT COUNT(*) FROM ally_links al2
+              WHERE al2.team_id = t.id AND al2.server_id = t.server_id) AS clans,
             COUNT(e.id) AS members,
             COALESCE(SUM(e.power_score), 0) AS total_power,
             COALESCE(MAX(e.power_score), 0) AS top_power
@@ -190,7 +205,7 @@ export function teamClans(teamId: number): TeamClanRow[] {
      LEFT JOIN characters ch ON ch.server_id = ct.server_id AND ch.clan_id = ct.clan_id
        AND COALESCE(ch.team_id, ct.team_id) = ct.team_id
      LEFT JOIN clan_relations r ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id
-     WHERE ct.team_id = ?
+     WHERE ct.team_id = ? AND r.stance = 'ally'
      GROUP BY c.id
      ORDER BY total_power DESC`,
     teamId,
@@ -217,6 +232,8 @@ export function teamIndividualMembers(teamId: number): TeamIndividualRow[] {
      WHERE c.team_id = ?
        AND NOT EXISTS (
          SELECT 1 FROM clan_teams ct
+         JOIN clan_relations r
+           ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id AND r.stance = 'ally'
          WHERE ct.server_id = c.server_id AND ct.clan_id = c.clan_id AND ct.team_id = c.team_id
        )
      ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC`,
@@ -231,7 +248,7 @@ export type UnassignedClanRow = {
   total_power: number;
 };
 
-/** Clãs que têm jogadores no servidor mas ainda não estão em nenhum time. */
+/** Clãs aliados que têm jogadores no servidor mas ainda não estão em nenhum time. */
 export function unassignedClans(serverId: number): UnassignedClanRow[] {
   return queryAll<UnassignedClanRow>(
     `SELECT c.id AS clan_id,
@@ -240,6 +257,8 @@ export function unassignedClans(serverId: number): UnassignedClanRow[] {
             COALESCE(SUM(ch.power_score), 0) AS total_power
      FROM characters ch
      JOIN clans c ON c.id = ch.clan_id
+     JOIN clan_relations r
+       ON r.server_id = ch.server_id AND r.clan_id = ch.clan_id AND r.stance = 'ally'
      LEFT JOIN clan_teams ct ON ct.server_id = ch.server_id AND ct.clan_id = ch.clan_id
      WHERE ch.server_id = ? AND ct.team_id IS NULL AND ch.team_id IS NULL
      GROUP BY c.id

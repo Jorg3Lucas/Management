@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
 import { formatNumber, formatPower } from "@/lib/format";
 import { getT } from "@/lib/i18n";
 import {
   TEAM_COLORS,
+  TEAM_SERVER_COOKIE,
   listTeams,
   teamClans,
   teamForce,
@@ -19,6 +21,7 @@ import {
   assignTeamClanAction,
   createTeamAction,
   deleteTeamAction,
+  selectTeamServerAction,
   updateTeamAction,
 } from "./actions";
 
@@ -40,7 +43,14 @@ export default async function TeamsPage({
 
   const managed = accessibleServers(user).filter((server) => canEditServer(user, server.id));
   const requested = (params.server ?? "").toUpperCase();
-  const selected = managed.find((server) => server.code === requested) ?? managed[0] ?? null;
+  // Sem servidor na URL, volta no último escolhido no filtro (se ainda houver acesso).
+  const remembered =
+    requested === "" ? ((await cookies()).get(TEAM_SERVER_COOKIE)?.value ?? "").toUpperCase() : "";
+  const selected =
+    managed.find((server) => server.code === requested) ??
+    managed.find((server) => server.code === remembered) ??
+    managed[0] ??
+    null;
 
   const teams = selected ? listTeams(selected.id) : [];
   const force = selected ? teamForce(selected.id) : [];
@@ -66,22 +76,29 @@ export default async function TeamsPage({
           <h1 className="page-title">{t("teams.title")}</h1>
           <p className="page-sub">{t("teams.sub")}</p>
         </div>
-        <div className="head-actions">
-          {managed.slice(0, 6).map((server) => (
-            <Link
-              key={server.id}
-              className={`btn sm${selected?.id === server.id ? " primary" : " ghost"}`}
-              href={`/teams?server=${server.code}`}
-            >
-              {server.label}
-            </Link>
-          ))}
-        </div>
       </div>
 
       <Flash ok={params.ok} error={params.error} />
 
       {managed.length === 0 ? <div className="alert warn">{t("gest.noServers")}</div> : null}
+
+      {managed.length > 0 ? (
+        <form className="filters" style={{ marginBottom: 18 }} action={selectTeamServerAction}>
+          <div className="field">
+            <label htmlFor="server">{t("common.server")}</label>
+            <select id="server" name="server" defaultValue={selected?.code ?? ""}>
+              {managed.map((server) => (
+                <option key={server.id} value={server.code}>
+                  {server.label} — {server.group_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="btn" type="submit">
+            {t("common.filter")}
+          </button>
+        </form>
+      ) : null}
 
       {selected ? (
         <>

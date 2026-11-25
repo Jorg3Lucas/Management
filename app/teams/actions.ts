@@ -1,10 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
-import { canEditServer, requireUser } from "@/lib/auth";
-import { getClan } from "@/lib/clans";
+import { accessibleServers, canEditServer, requireUser } from "@/lib/auth";
+import { getClan, stanceForClan } from "@/lib/clans";
 import { getT } from "@/lib/i18n";
 import { getCharacterWithServer, getServerById } from "@/lib/queries";
 import {
@@ -15,6 +16,7 @@ import {
   getTeam,
   isValidTeamColor,
   TEAM_COLORS,
+  TEAM_SERVER_COOKIE,
   updateTeam,
 } from "@/lib/teams";
 
@@ -32,6 +34,30 @@ function cleanText(value: FormDataEntryValue | null, max: number): string {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, max);
+}
+
+/** Guarda o servidor escolhido no filtro da página Times para as próximas visitas. */
+export async function selectTeamServerAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const code = String(formData.get("server") ?? "").toUpperCase();
+  const server = accessibleServers(user).find(
+    (entry) => entry.code === code && canEditServer(user, entry.id),
+  );
+
+  if (!server) {
+    redirect("/teams?error=" + encodeURIComponent("Servidor inválido ou sem permissão para administrá-lo."));
+  }
+
+  const store = await cookies();
+  store.set(TEAM_SERVER_COOKIE, server.code, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+
+  redirect(`/teams?server=${server.code}`);
 }
 
 export async function createTeamAction(formData: FormData): Promise<void> {
@@ -160,6 +186,9 @@ export async function assignTeamClanAction(formData: FormData): Promise<void> {
 
   const teamId = rawTeamId === "" ? null : Number(rawTeamId);
   if (teamId !== null && !getTeam(teamId)) redirect(back(returnTo, "error", "Time inválido."));
+  if (teamId !== null && stanceForClan(serverId, clanId) !== "ally") {
+    redirect(back(returnTo, "error", "Só clãs aliados podem entrar em um time."));
+  }
 
   const ok = assignClanTeam({ serverId, clanId, teamId, userId: user.id });
   if (!ok) redirect(back(returnTo, "error", "O time escolhido não pertence a este servidor."));

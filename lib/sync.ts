@@ -3,6 +3,7 @@ import { fetchRankingPage, isRankingEmptyMessage, parseForumRanking, type Rankin
 import { ensureClan, logClanChange, normalizeClanKey } from "./clans";
 import { detectServerMove, linkCharacterPlayer } from "./players";
 import { getServerById } from "./queries";
+import { pruneServerSalaryMembers } from "./salaries";
 import type { ClanRow, ServerRow } from "./types";
 
 export type SyncStatus = "success" | "empty" | "error";
@@ -288,6 +289,14 @@ export async function syncServer(
     message = `${counts.created} novo(s), ${counts.updated} atualizado(s)${
       counts.skipped ? `, ${counts.skipped} protegido(s) contra sync` : ""
     }.`;
+
+    // Depois do ranking novo, tira dos elencos de salário quem não está mais no servidor.
+    try {
+      const pruned = pruneServerSalaryMembers(serverId);
+      if (pruned > 0) message += ` ${pruned} membro(s) removido(s) do elenco de salário.`;
+    } catch (error) {
+      console.error("[sync] falha ao limpar elencos de salário:", error);
+    }
 
     recordRun({
       serverId,

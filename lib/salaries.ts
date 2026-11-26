@@ -428,27 +428,38 @@ export function setSalaryTier(serverId: number, tier: SalaryTier, weight: number
 const SALARY_POWER = `MAX(c.power_score, COALESCE((SELECT MAX(ph.power_score) FROM power_history ph WHERE ph.character_id = c.id), 0))`;
 
 /**
- * Tira do elenco da semana quem não está mais no servidor: personagem que não
+ * Tira do elenco quem não está mais no servidor da semana: personagem que não
  * existe mais, que foi para outro servidor ou que está fora dos clãs aliados.
- * Roda antes de listar, para a semana nunca pagar quem saiu.
  */
-export function pruneSalaryMembers(periodId: number): number {
-  const period = queryOne<{ server_id: number }>("SELECT server_id FROM salary_periods WHERE id = ?", periodId);
-  if (!period) return 0;
+function pruneSalaryMembersWhere(scope: "period" | "server", id: number): number {
+  const filter =
+    scope === "period"
+      ? "period_id = ?"
+      : "period_id IN (SELECT sp.id FROM salary_periods sp WHERE sp.server_id = ?)";
 
   return execute(
     `DELETE FROM salary_members
-     WHERE period_id = ?
+     WHERE ${filter}
        AND NOT EXISTS (
          SELECT 1
          FROM characters c
+         JOIN salary_periods bp ON bp.id = salary_members.period_id
          JOIN clan_relations r
            ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-         WHERE c.id = salary_members.character_id AND c.server_id = ?
+         WHERE c.id = salary_members.character_id AND c.server_id = bp.server_id
        )`,
-    periodId,
-    period.server_id,
+    id,
   ).changes;
+}
+
+/** Limpa o elenco de uma semana, para ela nunca pagar quem saiu do servidor. */
+export function pruneSalaryMembers(periodId: number): number {
+  return pruneSalaryMembersWhere("period", periodId);
+}
+
+/** Limpa os elencos de todas as semanas do servidor depois de uma sincronização. */
+export function pruneServerSalaryMembers(serverId: number): number {
+  return pruneSalaryMembersWhere("server", serverId);
 }
 
 export function salaryMembers(periodId: number): SalaryMemberRow[] {

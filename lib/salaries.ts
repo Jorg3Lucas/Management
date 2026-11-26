@@ -249,7 +249,7 @@ export function listSalaryPeriods(serverId: number, limit = 24): SalaryPeriodSum
             (SELECT COALESCE(SUM(e.amount), 0) FROM salary_entries e
               WHERE e.period_id = p.id AND e.kind = 'fixed') AS fixed_costs,
             (SELECT COUNT(*) FROM salary_members m
-              JOIN characters c ON c.id = m.character_id AND c.server_id = p.server_id
+              JOIN characters c ON c.id = m.character_id AND c.server_id = p.server_id AND c.gone_at IS NULL
               JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
               WHERE m.period_id = p.id) AS members
      FROM salary_periods p
@@ -447,6 +447,7 @@ function pruneSalaryMembersWhere(scope: "period" | "server", id: number): number
          JOIN clan_relations r
            ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
          WHERE c.id = salary_members.character_id AND c.server_id = bp.server_id
+           AND c.gone_at IS NULL
        )`,
     id,
   ).changes;
@@ -505,7 +506,7 @@ export function addSalaryMembers(periodId: number, serverId: number, characterId
     `SELECT c.id, ${SALARY_POWER} AS power_score
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ? AND c.id IN (${placeholders})`,
+     WHERE c.server_id = ? AND c.gone_at IS NULL AND c.id IN (${placeholders})`,
     serverId,
     ...ids,
   );
@@ -538,7 +539,7 @@ export function addAlliedSalaryMembers(periodId: number, serverId: number): numb
     `SELECT c.id
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL
      ORDER BY c.power_score DESC, c.name COLLATE NOCASE ASC
      LIMIT 300`,
     serverId,
@@ -698,7 +699,7 @@ export function salaryCandidates(
      LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
      LEFT JOIN teams ti ON ti.id = c.team_id
      LEFT JOIN teams t ON t.id = ct.team_id
-     WHERE c.server_id = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL
      ORDER BY power_score DESC, c.name COLLATE NOCASE ASC`,
     serverId,
   );
@@ -720,7 +721,7 @@ function teamCharacterIds(serverId: number, teamId: number, limit = 300): number
      FROM characters c
      JOIN clan_relations r ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
      LEFT JOIN clan_teams ct ON ct.server_id = c.server_id AND ct.clan_id = c.clan_id
-     WHERE c.server_id = ? AND COALESCE(c.team_id, ct.team_id) = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL AND COALESCE(c.team_id, ct.team_id) = ?
      ORDER BY c.power_score DESC
      LIMIT ?`,
     serverId,

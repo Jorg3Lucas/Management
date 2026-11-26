@@ -639,6 +639,8 @@ function migrate(db: DatabaseSync) {
   ensureColumn(db, "characters", "clan_id", "INTEGER REFERENCES clans(id)");
   ensureColumn(db, "characters", "player_id", "INTEGER REFERENCES players(id)");
   ensureColumn(db, "characters", "team_id", "INTEGER REFERENCES teams(id) ON DELETE SET NULL");
+  // Quando o personagem some do ranking do fórum, sai do servidor (ou do jogo).
+  ensureColumn(db, "characters", "gone_at", "TEXT");
   ensureColumn(db, "user_servers", "role", "TEXT NOT NULL DEFAULT 'editor'");
   ensureColumn(db, "salary_entries", "slot", "INTEGER");
   ensureColumn(db, "salary_members", "preference", "TEXT NOT NULL DEFAULT 'darksteel'");

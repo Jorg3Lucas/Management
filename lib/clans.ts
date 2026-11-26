@@ -269,7 +269,7 @@ export function listServerClans(serverId: number): ServerClanRow[] {
      FROM characters ch
      JOIN clans c ON c.id = ch.clan_id
      LEFT JOIN clan_relations r ON r.server_id = ch.server_id AND r.clan_id = c.id
-     WHERE ch.server_id = ?
+     WHERE ch.server_id = ? AND ch.gone_at IS NULL
      GROUP BY c.id
      ORDER BY CASE r.stance WHEN 'enemy' THEN 0 WHEN 'ally' THEN 1 WHEN 'neutral' THEN 2 ELSE 3 END,
               total_power DESC`,
@@ -298,7 +298,7 @@ export function getServerClan(serverId: number, clanId: number): ClanDetailRow |
             COALESCE(MAX(ch.power_score), 0) AS top_power,
             MAX(ch.last_seen_at) AS last_seen_at
      FROM clans c
-     LEFT JOIN characters ch ON ch.server_id = ? AND ch.clan_id = c.id
+     LEFT JOIN characters ch ON ch.server_id = ? AND ch.clan_id = c.id AND ch.gone_at IS NULL
      LEFT JOIN clan_relations r ON r.server_id = ? AND r.clan_id = c.id
      WHERE c.id = ?
      GROUP BY c.id`,
@@ -323,7 +323,7 @@ export function clanMembers(serverId: number, clanId: number): ClanMemberRow[] {
   return queryAll<ClanMemberRow>(
     `SELECT id, name, class_name, peak_power AS power_score, rank_position, last_seen_at, sync_locked
      FROM characters
-     WHERE server_id = ? AND clan_id = ?
+     WHERE server_id = ? AND clan_id = ? AND gone_at IS NULL
      ORDER BY peak_power DESC, rank_position ASC`,
     serverId,
     clanId,
@@ -349,7 +349,7 @@ export function clanCandidates(
 ): ClanCandidateRow[] {
   const search = (options.search ?? "").trim();
   const limit = Math.min(Math.max(options.limit ?? 100, 1), 300);
-  const filters = ["server_id = ?", "(clan_id IS NULL OR clan_id <> ?)"];
+  const filters = ["server_id = ?", "gone_at IS NULL", "(clan_id IS NULL OR clan_id <> ?)"];
   const params: (string | number)[] = [serverId, clanId];
 
   if (search) {
@@ -371,7 +371,7 @@ export function clanCandidates(
 /** Personagens do servidor que o ranking não associa a nenhum clã. */
 export function countClanlessCharacters(serverId: number): number {
   const row = queryOne<{ total: number }>(
-    "SELECT COUNT(*) AS total FROM characters WHERE server_id = ? AND clan_id IS NULL",
+    "SELECT COUNT(*) AS total FROM characters WHERE server_id = ? AND clan_id IS NULL AND gone_at IS NULL",
     serverId,
   );
   return row?.total ?? 0;
@@ -386,7 +386,7 @@ export function clanStanceCounts(serverId: number): { ally: number; neutral: num
   for (const row of rows) counts[row.stance] = row.total;
 
   const total = queryOne<{ total: number }>(
-    "SELECT COUNT(DISTINCT clan_id) AS total FROM characters WHERE server_id = ? AND clan_id IS NOT NULL",
+    "SELECT COUNT(DISTINCT clan_id) AS total FROM characters WHERE server_id = ? AND clan_id IS NOT NULL AND gone_at IS NULL",
     serverId,
   );
   const marked = counts.ally + counts.neutral + counts.enemy;

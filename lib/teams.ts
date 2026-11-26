@@ -165,6 +165,7 @@ export function teamForce(serverId: number): TeamForceRow[] {
               COALESCE(ch.team_id, al.team_id) AS team_id
        FROM characters ch
        LEFT JOIN ally_links al ON al.server_id = ch.server_id AND al.clan_id = ch.clan_id
+       WHERE ch.gone_at IS NULL
      )
      SELECT t.id AS team_id,
             t.name AS team_name,
@@ -203,7 +204,7 @@ export function teamClans(teamId: number): TeamClanRow[] {
      FROM clan_teams ct
      JOIN clans c ON c.id = ct.clan_id
      LEFT JOIN characters ch ON ch.server_id = ct.server_id AND ch.clan_id = ct.clan_id
-       AND COALESCE(ch.team_id, ct.team_id) = ct.team_id
+       AND COALESCE(ch.team_id, ct.team_id) = ct.team_id AND ch.gone_at IS NULL
      LEFT JOIN clan_relations r ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id
      WHERE ct.team_id = ? AND r.stance = 'ally'
      GROUP BY c.id
@@ -232,7 +233,7 @@ export function teamMembers(teamId: number): TeamMemberRow[] {
        ON r.server_id = ct.server_id AND r.clan_id = ct.clan_id AND r.stance = 'ally'
      JOIN characters ch ON ch.server_id = ct.server_id AND ch.clan_id = ct.clan_id
        AND COALESCE(ch.team_id, ct.team_id) = ct.team_id
-     WHERE ct.team_id = ?
+     WHERE ct.team_id = ? AND ch.gone_at IS NULL
      ORDER BY ch.peak_power DESC, ch.name COLLATE NOCASE ASC`,
     teamId,
   );
@@ -262,7 +263,7 @@ export function allianceRoster(serverId: number): AllianceMemberRow[] {
      JOIN clans c ON c.id = ch.clan_id
      JOIN clan_relations r
        ON r.server_id = ch.server_id AND r.clan_id = ch.clan_id AND r.stance = 'ally'
-     WHERE ch.server_id = ?
+     WHERE ch.server_id = ? AND ch.gone_at IS NULL
      ORDER BY c.name COLLATE NOCASE ASC, ch.peak_power DESC, ch.name COLLATE NOCASE ASC`,
     serverId,
   );

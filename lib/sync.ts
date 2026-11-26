@@ -174,8 +174,35 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
       updated += 1;
     }
 
+    // Faixa de posições lida nesta rodada: o ranking pode ter parado antes do fim.
+    const windowRank = rows.reduce((max, row) => Math.max(max, row.rank), 0);
+    markGoneCharacters(serverId, now, windowRank);
+
     return { created, updated, skipped };
   });
+}
+
+/**
+ * Marca como fora do servidor quem apareceu no ranking antes mas não voltou nesta
+ * rodada (saiu do servidor ou do jogo). Só olha as posições que a rodada realmente
+ * leu (`windowRank`): o sync pode parar antes do fim do ranking, e quem está abaixo
+ * da faixa lida não é "sumido", só não foi consultado.
+ * Quem voltou tem o registro limpo; personagens manuais e protegidos contra sync
+ * ficam intactos.
+ */
+export function markGoneCharacters(serverId: number, seenAt: string, windowRank: number): number {
+  if (windowRank < 1) return 0;
+
+  return execute(
+    `UPDATE characters
+     SET gone_at = CASE WHEN last_seen_at = ? THEN NULL ELSE COALESCE(gone_at, ?) END
+     WHERE server_id = ? AND sync_locked = 0 AND last_seen_at IS NOT NULL
+       AND rank_position IS NOT NULL AND rank_position <= ?`,
+    seenAt,
+    seenAt,
+    serverId,
+    windowRank,
+  ).changes;
 }
 
 function recordRun(input: {

@@ -343,7 +343,7 @@ export function teamIndividualMembers(teamId: number): TeamIndividualRow[] {
             c.power_score,
             c.rank_position
      FROM characters c
-     WHERE c.team_id = ?
+     WHERE c.team_id = ? AND c.gone_at IS NULL
        AND NOT EXISTS (
          SELECT 1 FROM clan_teams ct
          JOIN clan_relations r
@@ -374,7 +374,7 @@ export function unassignedClans(serverId: number): UnassignedClanRow[] {
      JOIN clan_relations r
        ON r.server_id = ch.server_id AND r.clan_id = ch.clan_id AND r.stance = 'ally'
      LEFT JOIN clan_teams ct ON ct.server_id = ch.server_id AND ct.clan_id = ch.clan_id
-     WHERE ch.server_id = ? AND ct.team_id IS NULL AND ch.team_id IS NULL
+     WHERE ch.server_id = ? AND ch.gone_at IS NULL AND ct.team_id IS NULL AND ch.team_id IS NULL
      GROUP BY c.id
      HAVING COUNT(ch.id) > 0
      ORDER BY total_power DESC`,

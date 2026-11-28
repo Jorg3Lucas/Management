@@ -64,7 +64,7 @@ export function saveSlotMembers(slotKey: string, members: string[]): string[] | 
 /** Nomes conhecidos para sugerir no campo de membro (personagens do ranking). */
 export function listMemberSuggestions(limit = 500): string[] {
   const rows = queryAll<{ name: string }>(
-    "SELECT DISTINCT name FROM characters ORDER BY name LIMIT ?",
+    "SELECT DISTINCT name FROM characters WHERE gone_at IS NULL ORDER BY name LIMIT ?",
     limit,
   );
   return rows.map((row) => row.name);

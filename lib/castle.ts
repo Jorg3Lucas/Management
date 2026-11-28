@@ -22,7 +22,7 @@ export function castlePrizeMembers(serverId: number, monthStart: string): Castle
      JOIN clans cl ON cl.id = c.clan_id
      JOIN clan_relations r
        ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL
      ORDER BY cl.name COLLATE NOCASE ASC, c.power_score DESC, c.name COLLATE NOCASE ASC`,
     serverId,
   );
@@ -88,7 +88,7 @@ export function saveCastlePrizeDistribution(input: {
        FROM characters c
        JOIN clan_relations r
          ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-       WHERE c.server_id = ?`,
+       WHERE c.server_id = ? AND c.gone_at IS NULL`,
       input.serverId,
     ).map((row) => row.id),
   );
@@ -182,7 +182,7 @@ export function toggleCastlePrizeDelivery(input: {
      FROM characters c
      JOIN clan_relations r
        ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ? AND c.id = ?`,
+     WHERE c.server_id = ? AND c.id = ? AND c.gone_at IS NULL`,
     input.serverId,
     input.monthStart,
     input.serverId,

@@ -161,7 +161,7 @@ export function ceAlliedClans(serverId: number): CeClan[] {
     `SELECT cl.id, cl.name, COUNT(c.id) AS members
      FROM clan_relations r
      JOIN clans cl ON cl.id = r.clan_id
-     LEFT JOIN characters c ON c.clan_id = cl.id AND c.server_id = r.server_id
+     LEFT JOIN characters c ON c.clan_id = cl.id AND c.server_id = r.server_id AND c.gone_at IS NULL
      WHERE r.server_id = ? AND r.stance = 'ally'
      GROUP BY cl.id, cl.name
      ORDER BY cl.name COLLATE NOCASE ASC`,
@@ -175,7 +175,7 @@ export function ceAlliedClan(serverId: number, clanId: number): CeClan | undefin
     `SELECT cl.id, cl.name, COUNT(c.id) AS members
      FROM clan_relations r
      JOIN clans cl ON cl.id = r.clan_id
-     LEFT JOIN characters c ON c.clan_id = cl.id AND c.server_id = r.server_id
+     LEFT JOIN characters c ON c.clan_id = cl.id AND c.server_id = r.server_id AND c.gone_at IS NULL
      WHERE r.server_id = ? AND r.clan_id = ? AND r.stance = 'ally'
      GROUP BY cl.id, cl.name`,
     serverId,
@@ -252,7 +252,9 @@ export function getCePlan(serverId: number, weekStart: string, clanId: number): 
 export function listCePlans(serverId: number, limit = 100): CePlanListItem[] {
   const rows = queryAll<CePlanRow & { clan_name: string; donors_gold: number }>(
     `SELECT p.*, cl.name AS clan_name,
-            (SELECT COUNT(*) FROM ce_donations d WHERE d.plan_id = p.id AND d.gold_done = 1) AS donors_gold
+            (SELECT COUNT(*) FROM ce_donations d
+              JOIN characters dc ON dc.id = d.character_id AND dc.gone_at IS NULL
+              WHERE d.plan_id = p.id AND d.gold_done = 1) AS donors_gold
      FROM ce_plans p
      JOIN clans cl ON cl.id = p.clan_id
      WHERE p.server_id = ?
@@ -351,7 +353,7 @@ export function ceDonors(serverId: number, clanId: number, planId: number | null
      FROM characters c
      JOIN clans cl ON cl.id = c.clan_id
      LEFT JOIN ce_donations d ON d.character_id = c.id AND d.plan_id = ?
-     WHERE c.server_id = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL
        AND (c.clan_id = ? OR c.id IN (SELECT character_id FROM ce_plan_guests WHERE plan_id = ?))
      ORDER BY is_guest ASC, c.power_score DESC, c.name COLLATE NOCASE ASC
      LIMIT 300`,
@@ -380,7 +382,7 @@ export function ceGuestCandidates(serverId: number, clanId: number): CeGuestCand
      JOIN clans cl ON cl.id = c.clan_id
      JOIN clan_relations r
        ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ? AND c.clan_id <> ?
+     WHERE c.server_id = ? AND c.clan_id <> ? AND c.gone_at IS NULL
      ORDER BY cl.name COLLATE NOCASE ASC, c.power_score DESC, c.name COLLATE NOCASE ASC
      LIMIT 500`,
     serverId,
@@ -399,7 +401,7 @@ export function ceGuestCandidate(
      FROM characters c
      JOIN clan_relations r
        ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ? AND c.id = ? AND c.clan_id <> ?`,
+     WHERE c.server_id = ? AND c.id = ? AND c.clan_id <> ? AND c.gone_at IS NULL`,
     serverId,
     characterId,
     clanId,
@@ -444,7 +446,7 @@ export function ceDonorAllowed(
 export function characterInClan(characterId: number, serverId: number, clanId: number): boolean {
   return Boolean(
     queryOne<{ id: number }>(
-      "SELECT id FROM characters WHERE id = ? AND server_id = ? AND clan_id = ?",
+      "SELECT id FROM characters WHERE id = ? AND server_id = ? AND clan_id = ? AND gone_at IS NULL",
       characterId,
       serverId,
       clanId,

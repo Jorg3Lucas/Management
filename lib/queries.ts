@@ -60,7 +60,10 @@ export function listCharacters(options: CharacterListOptions): {
     return { rows: [], total: 0, page, pageSize, pages: 0 };
   }
 
-  const filters: string[] = [`c.server_id IN (${ids.map(() => "?").join(",")})`];
+  const filters: string[] = [
+    `c.server_id IN (${ids.map(() => "?").join(",")})`,
+    "c.gone_at IS NULL",
+  ];
   const params: (string | number | null)[] = [...ids];
 
   if (options.search) {
@@ -123,7 +126,7 @@ export function topCharacters(serverId: number, limit = 5): CharacterWithServer[
   return queryAll<CharacterWithServer>(
     `SELECT c.*, s.code AS server_code, s.label AS server_label, s.group_name
      FROM characters c JOIN servers s ON s.id = c.server_id
-     WHERE c.server_id = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL
      ORDER BY c.peak_power DESC, c.rank_position ASC
      LIMIT ?`,
     serverId,
@@ -133,7 +136,7 @@ export function topCharacters(serverId: number, limit = 5): CharacterWithServer[
 
 export function charactersByServer(serverId: number): { id: number; name: string }[] {
   return queryAll<{ id: number; name: string }>(
-    "SELECT id, name FROM characters WHERE server_id = ? ORDER BY peak_power DESC",
+    "SELECT id, name FROM characters WHERE server_id = ? AND gone_at IS NULL ORDER BY peak_power DESC",
     serverId,
   );
 }
@@ -213,7 +216,7 @@ export function searchCharacters(term: string, limit = 20): CharacterSearchRow[]
             EXISTS (SELECT 1 FROM clan_relations r
                     WHERE r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally') AS ally
      FROM characters c JOIN servers s ON s.id = c.server_id
-     WHERE c.name LIKE ? ESCAPE '\\'
+     WHERE c.name LIKE ? ESCAPE '\\' AND c.gone_at IS NULL
      ORDER BY c.peak_power DESC, c.name COLLATE NOCASE ASC
      LIMIT ?`,
     like,
@@ -403,7 +406,7 @@ export function lastDailySyncRun(serverIds?: number[]): DailySyncRunSummary | un
 
 export function serverPlayerCounts(): Map<number, number> {
   const rows = queryAll<{ server_id: number; total: number }>(
-    "SELECT server_id, COUNT(*) AS total FROM characters GROUP BY server_id",
+    "SELECT server_id, COUNT(*) AS total FROM characters WHERE gone_at IS NULL GROUP BY server_id",
   );
   return new Map(rows.map((row) => [row.server_id, row.total]));
 }
@@ -411,7 +414,7 @@ export function serverPlayerCounts(): Map<number, number> {
 export function countCharactersForServers(serverIds: number[]): number {
   if (serverIds.length === 0) return 0;
   const row = queryOne<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM characters WHERE server_id IN (${serverIds.map(() => "?").join(",")})`,
+    `SELECT COUNT(*) AS total FROM characters WHERE gone_at IS NULL AND server_id IN (${serverIds.map(() => "?").join(",")})`,
     ...serverIds,
   );
   return row?.total ?? 0;

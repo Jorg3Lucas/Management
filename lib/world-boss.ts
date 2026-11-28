@@ -61,7 +61,7 @@ export function worldBossMembers(serverId: number, limit = 300): WorldBossMember
      JOIN clans cl ON cl.id = c.clan_id
      JOIN clan_relations r
        ON r.server_id = c.server_id AND r.clan_id = c.clan_id AND r.stance = 'ally'
-     WHERE c.server_id = ?
+     WHERE c.server_id = ? AND c.gone_at IS NULL
      ORDER BY cl.name COLLATE NOCASE ASC, c.power_score DESC, c.name COLLATE NOCASE ASC
      LIMIT ?`,
     serverId,
@@ -97,7 +97,7 @@ export function worldBossCustomMembers(serverId: number): WorldBossCustomMember[
      FROM world_boss_custom_members m
      LEFT JOIN characters c ON c.id = m.character_id
      LEFT JOIN servers s ON s.id = c.server_id
-     WHERE m.server_id = ?
+     WHERE m.server_id = ? AND (m.character_id IS NULL OR c.gone_at IS NULL)
      ORDER BY m.name COLLATE NOCASE ASC`,
     serverId,
   ).map((row) => ({ ...row }));
@@ -149,6 +149,7 @@ export function searchWorldBossRanking(serverId: number, term: string): WorldBos
      FROM characters c
      JOIN servers s ON s.id = c.server_id
      WHERE c.server_id <> ?
+       AND c.gone_at IS NULL
        AND c.name LIKE ? ESCAPE '\\'
        AND NOT EXISTS (
          SELECT 1 FROM world_boss_custom_members m

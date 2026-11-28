@@ -79,11 +79,12 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
           `INSERT INTO characters
             (server_id, name, clan, clan_id, class_name, level, power_score, peak_power, peak_power_at,
              rank_position, notes, sync_locked, last_seen_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, 0, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, 0, ?, ?, ?)`,
           serverId,
           row.name,
           row.clan,
           clanRow?.id ?? null,
+          row.className,
           row.power,
           row.power,
           now,
@@ -122,6 +123,7 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
         `UPDATE characters
          SET clan = COALESCE(?, clan),
              clan_id = COALESCE(?, clan_id),
+             class_name = COALESCE(?, class_name),
              power_score = ?,
              rank_position = ?,
              peak_power = ?,
@@ -131,6 +133,7 @@ function upsertRanking(serverId: number, rows: RankingRow[]): SyncCounts {
          WHERE id = ?`,
         row.clan,
         clanRow?.id ?? null,
+        row.className,
         row.power,
         row.rank,
         Math.max(existing.peak_power, row.power),

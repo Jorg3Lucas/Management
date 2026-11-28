@@ -5,6 +5,20 @@ export type RankingRow = {
   name: string;
   clan: string | null;
   power: number;
+  /** Classe deduzida do ícone que o ranking mostra ao lado do nome. */
+  className: string | null;
+};
+
+/** O fórum não escreve a classe: ela aparece só no ícone `char_1.png` … `char_8.png`. */
+const CLASS_ICONS: Record<string, string> = {
+  "1": "Warrior",
+  "2": "Sorcerer",
+  "3": "Taoist",
+  "4": "Arbalist",
+  "5": "Lancer",
+  "6": "Darkist",
+  "7": "Lionheart",
+  "8": "Spirit Summoner",
 };
 
 const ENTITIES: Record<string, string> = {
@@ -58,6 +72,9 @@ export function parseForumRanking(html: string): RankingRow[] {
     const nameMatch = /<span class="user_name">([\s\S]*?)<\/span>/.exec(rowHtml);
     if (!rankMatch || !nameMatch) continue;
 
+    const iconMatch = /class="user_icon"[^>]*char_(\d+)\.(?:png|webp|jpe?g)/i.exec(rowHtml);
+    const className = iconMatch ? CLASS_ICONS[iconMatch[1]] ?? null : null;
+
     const rank = Number(rankMatch[1].replace(/[^\d]/g, ""));
     const name = stripHtml(nameMatch[1]);
     const clan = cells[2] ? cells[2] : null;
@@ -65,7 +82,7 @@ export function parseForumRanking(html: string): RankingRow[] {
     const power = Number((powerCell ?? "").replace(/[^\d]/g, ""));
 
     if (!name || !Number.isFinite(rank) || !Number.isFinite(power)) continue;
-    rows.push({ rank, name, clan: clan && clan.length > 0 ? clan : null, power });
+    rows.push({ rank, name, clan: clan && clan.length > 0 ? clan : null, power, className });
   }
 
   return rows;

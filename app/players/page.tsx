@@ -343,6 +343,8 @@ export default async function PlayersPage({
         <option value="Arbalist" />
         <option value="Lancer" />
         <option value="Darkist" />
+        <option value="Lionheart" />
+        <option value="Spirit Summoner" />
       </datalist>
     </>
   );
